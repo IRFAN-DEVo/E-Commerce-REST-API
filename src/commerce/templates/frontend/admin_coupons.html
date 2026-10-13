@@ -1,0 +1,259 @@
+﻿{% extends 'frontend/admin_base.html' %}
+{% load static %}
+
+{% block title %}Manage Coupons - DjangoMart Admin{% endblock %}
+{% block breadcrumb %}Coupons{% endblock %}
+
+{% block content %}
+<div class="admin-page-header">
+    <div>
+        <h1 class="admin-page-title">Manage Coupons</h1>
+        <p class="admin-page-subtitle">Create, view, and manage discount coupons.</p>
+    </div>
+    <div class="admin-header-actions">
+        <button class="btn btn-primary btn-sm" onclick="openCouponModal()" id="add-coupon-btn">
+            <i class="fas fa-plus" aria-hidden="true"></i> New Coupon
+        </button>
+    </div>
+</div>
+
+<!-- Coupon Create/Edit Modal -->
+<div id="coupon-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.65);backdrop-filter:blur(3px);z-index:3000;align-items:center;justify-content:center;overflow-y:auto;padding:2rem 1rem;">
+    <div style="background:#fff;width:100%;max-width:520px;border-radius:16px;box-shadow:0 25px 60px rgba(0,0,0,.18);overflow:hidden;margin:auto;">
+        <div style="padding:1.25rem 1.5rem;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;">
+            <h3 style="margin:0;font-size:1rem;font-weight:700;color:#0f172a;" id="coupon-modal-title">New Coupon</h3>
+            <button onclick="closeCouponModal()" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:1.1rem;"><i class="fas fa-times"></i></button>
+        </div>
+        <form id="coupon-form" onsubmit="submitCoupon(event)" style="padding:1.5rem;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                <div>
+                    <label class="form-label">Code <span style="color:#ef4444;">*</span></label>
+                    <input type="text" id="c-code" class="form-control" placeholder="e.g. SAVE20" required style="text-transform:uppercase;">
+                </div>
+                <div>
+                    <label class="form-label">Discount Type <span style="color:#ef4444;">*</span></label>
+                    <select id="c-type" class="form-control" required onchange="toggleMaxDiscount()">
+                        <option value="PERCENTAGE">Percentage (%)</option>
+                        <option value="FIXED">Fixed Amount ($)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Discount Value <span style="color:#ef4444;">*</span></label>
+                    <input type="number" id="c-value" class="form-control" placeholder="e.g. 20" min="0" step="0.01" required>
+                </div>
+                <div id="max-discount-wrap">
+                    <label class="form-label">Max Discount ($)</label>
+                    <input type="number" id="c-max" class="form-control" placeholder="e.g. 500" min="0" step="0.01">
+                </div>
+                <div>
+                    <label class="form-label">Min Order Amount ($)</label>
+                    <input type="number" id="c-min-order" class="form-control" placeholder="0" min="0" step="0.01" value="0">
+                </div>
+                <div>
+                    <label class="form-label">Max Uses</label>
+                    <input type="number" id="c-max-uses" class="form-control" placeholder="Unlimited" min="0">
+                </div>
+                <div>
+                    <label class="form-label">Valid From <span style="color:#ef4444;">*</span></label>
+                    <input type="datetime-local" id="c-from" class="form-control" required>
+                </div>
+                <div>
+                    <label class="form-label">Valid To <span style="color:#ef4444;">*</span></label>
+                    <input type="datetime-local" id="c-to" class="form-control" required>
+                </div>
+            </div>
+            <div style="margin-top:1rem;display:flex;align-items:center;gap:.5rem;">
+                <input type="checkbox" id="c-active" checked style="accent-color:#6366f1;">
+                <label for="c-active" style="font-size:.875rem;font-weight:500;color:#334155;">Active</label>
+            </div>
+            <div style="margin-top:1.25rem;display:flex;justify-content:flex-end;gap:.75rem;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="closeCouponModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm" id="coupon-submit-btn">Create Coupon</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="delete-coupon-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.6);backdrop-filter:blur(2px);z-index:3001;align-items:center;justify-content:center;">
+    <div style="background:#fff;width:100%;max-width:380px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.1);overflow:hidden;">
+        <div style="padding:1.5rem;">
+            <div style="display:flex;gap:1rem;align-items:center;margin-bottom:1rem;">
+                <div style="width:40px;height:40px;border-radius:50%;background:#fee2e2;color:#ef4444;display:flex;align-items:center;justify-content:center;font-size:1.1rem;"><i class="fas fa-exclamation-triangle"></i></div>
+                <h3 style="margin:0;font-size:1rem;font-weight:600;">Delete Coupon</h3>
+            </div>
+            <p style="margin:0;font-size:.875rem;color:#64748b;">Are you sure you want to delete coupon <strong id="delete-coupon-code">this coupon</strong>? This cannot be undone.</p>
+        </div>
+        <div style="padding:.75rem 1.5rem;background:#f8fafc;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:.75rem;">
+            <button class="btn btn-outline btn-sm" onclick="closeDeleteCouponModal()">Cancel</button>
+            <button class="btn btn-danger btn-sm" onclick="confirmDeleteCoupon()"><i class="fas fa-trash"></i> Delete</button>
+        </div>
+    </div>
+</div>
+
+<div class="chart-card admin-table-card">
+    <div class="table-toolbar">
+        <div class="table-search" role="search">
+            <i class="fas fa-search" aria-hidden="true"></i>
+            <input type="text" id="coupon-search" placeholder="Search coupons…" aria-label="Search coupons" oninput="filterCoupons(this.value)">
+        </div>
+        <div style="display:flex;gap:.5rem;">
+            <select class="form-control btn-sm" id="coupon-status-filter" onchange="filterCoupons(document.getElementById('coupon-search').value)" style="width:auto;">
+                <option value="">All</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
+        </div>
+    </div>
+    <div class="table-container">
+        <table aria-label="Coupons management table">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Type</th>
+                    <th>Value</th>
+                    <th>Min Order</th>
+                    <th>Valid From</th>
+                    <th>Valid To</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="coupons-tbody">
+                <tr><td colspan="8" style="text-align:center;padding:3rem;color:#94a3b8;"><i class="fas fa-circle-notch fa-spin"></i> Loading coupons…</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+.status-chip{display:inline-block;padding:.2rem .65rem;border-radius:20px;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.03em;}
+.chip-green{background:#d1fae5;color:#065f46;} .chip-gray{background:#f1f5f9;color:#64748b;}
+</style>
+<script>
+let allCoupons=[];
+let deleteCouponId=null;
+
+async function loadCoupons(){
+    const tbody=document.getElementById('coupons-tbody');
+    try {
+        const res=await authAPI.fetchWithAuth('/coupons/admin/coupons/');
+        if(!res.ok){if(res.status===401||res.status===403){authAPI.logout();return;}throw new Error('API error '+res.status);}
+        const data=await res.json();
+        allCoupons=Array.isArray(data)?data:(data.results||[]);
+        filterCoupons('');
+    } catch(e){
+        tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;padding:2.5rem;color:#ef4444;"><i class="fas fa-exclamation-circle"></i> ${e.message}</td></tr>`;
+    }
+}
+
+function filterCoupons(q){
+    const sf=document.getElementById('coupon-status-filter').value;
+    let f=allCoupons;
+    if(sf==='active') f=f.filter(c=>c.is_active);
+    if(sf==='inactive') f=f.filter(c=>!c.is_active);
+    if(q.trim()){const lq=q.toLowerCase();f=f.filter(c=>(c.code||'').toLowerCase().includes(lq));}
+    renderCoupons(f);
+}
+
+function fmtDate(d){if(!d)return'—';return new Date(d).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});}
+
+function renderCoupons(coupons){
+    const tbody=document.getElementById('coupons-tbody');
+    if(!coupons.length){tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;padding:2.5rem;color:#94a3b8;"><i class="fas fa-ticket-alt" style="font-size:2rem;display:block;margin-bottom:.5rem;"></i>No coupons found.</td></tr>`;return;}
+    tbody.innerHTML=coupons.map(c=>`
+        <tr>
+            <td><strong style="font-family:monospace;font-size:.9rem;background:#f1f5f9;padding:.2rem .5rem;border-radius:6px;">${c.code}</strong></td>
+            <td>${c.discount_type==='PERCENTAGE'?'%':'$'} ${c.discount_type}</td>
+            <td><strong>${c.discount_type==='PERCENTAGE'?c.discount_value+'%':'$'+parseFloat(c.discount_value||0).toFixed(2)}</strong></td>
+            <td>$${parseFloat(c.minimum_order_amount||0).toFixed(2)}</td>
+            <td style="font-size:.8rem;">${fmtDate(c.valid_from)}</td>
+            <td style="font-size:.8rem;">${fmtDate(c.valid_to)}</td>
+            <td><span class="status-chip ${c.is_active?'chip-green':'chip-gray'}">${c.is_active?'Active':'Inactive'}</span></td>
+            <td>
+                <div class="table-actions">
+                    <button class="btn btn-danger btn-icon btn-xs" onclick="openDeleteCouponModal(${c.id},'${c.code}')" title="Delete"><i class="fas fa-trash"></i></button>
+                </div>
+            </td>
+        </tr>`).join('');
+}
+
+function toggleMaxDiscount(){
+    const type=document.getElementById('c-type').value;
+    document.getElementById('max-discount-wrap').style.display=type==='PERCENTAGE'?'block':'none';
+}
+
+function openCouponModal(){
+    document.getElementById('coupon-form').reset();
+    document.getElementById('coupon-modal-title').textContent='New Coupon';
+    document.getElementById('coupon-submit-btn').textContent='Create Coupon';
+    document.getElementById('c-active').checked=true;
+    toggleMaxDiscount();
+    document.getElementById('coupon-modal').style.display='flex';
+    document.body.style.overflow='hidden';
+}
+function closeCouponModal(){
+    document.getElementById('coupon-modal').style.display='none';
+    document.body.style.overflow='';
+}
+
+async function submitCoupon(e){
+    e.preventDefault();
+    const body={
+        code:document.getElementById('c-code').value.toUpperCase(),
+        discount_type:document.getElementById('c-type').value,
+        discount_value:parseFloat(document.getElementById('c-value').value),
+        minimum_order_amount:parseFloat(document.getElementById('c-min-order').value)||0,
+        valid_from:document.getElementById('c-from').value,
+        valid_to:document.getElementById('c-to').value,
+        is_active:document.getElementById('c-active').checked,
+    };
+    const maxVal=document.getElementById('c-max').value;
+    if(maxVal) body.maximum_discount=parseFloat(maxVal);
+    const maxUses=document.getElementById('c-max-uses').value;
+    if(maxUses) body.max_uses=parseInt(maxUses);
+    try {
+        const res=await authAPI.fetchWithAuth('/coupons/coupons/create/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        if(!res.ok){const err=await res.json();showToast('Error: '+(err.detail||JSON.stringify(err)),'error');return;}
+        showToast('Coupon created!','success');
+        closeCouponModal();
+        loadCoupons();
+    } catch(e){showToast('Error: '+e.message,'error');}
+}
+
+function openDeleteCouponModal(id,code){
+    deleteCouponId=id;
+    document.getElementById('delete-coupon-code').textContent=code;
+    document.getElementById('delete-coupon-modal').style.display='flex';
+    document.body.style.overflow='hidden';
+}
+function closeDeleteCouponModal(){
+    document.getElementById('delete-coupon-modal').style.display='none';
+    document.body.style.overflow='';
+    deleteCouponId=null;
+}
+async function confirmDeleteCoupon(){
+    if(!deleteCouponId) return;
+    try {
+        const res=await authAPI.fetchWithAuth(`/coupons/coupons/delete/${deleteCouponId}/`,{method:'DELETE'});
+        if(!res.ok&&res.status!==204){const err=await res.json();showToast('Error: '+(err.detail||JSON.stringify(err)),'error');return;}
+        showToast('Coupon deleted!','success');
+        closeDeleteCouponModal();
+        loadCoupons();
+    } catch(e){showToast('Error: '+e.message,'error');}
+}
+
+function showToast(msg,type='success'){
+    const t=document.createElement('div');
+    t.style.cssText=`position:fixed;bottom:1.5rem;right:1.5rem;padding:.75rem 1.25rem;border-radius:10px;font-size:.875rem;font-weight:500;z-index:9999;color:#fff;background:${type==='error'?'#ef4444':'#10b981'};box-shadow:0 4px 20px rgba(0,0,0,.15);`;
+    t.textContent=msg;document.body.appendChild(t);
+    setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),400);},3000);
+}
+
+document.addEventListener('DOMContentLoaded',()=>{loadCoupons();toggleMaxDiscount();});
+document.getElementById('coupon-modal').addEventListener('click',function(e){if(e.target===this)closeCouponModal();});
+document.getElementById('delete-coupon-modal').addEventListener('click',function(e){if(e.target===this)closeDeleteCouponModal();});
+</script>
+{% endblock %}

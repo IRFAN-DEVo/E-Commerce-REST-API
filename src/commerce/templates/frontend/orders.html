@@ -1,0 +1,186 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}My Orders - DjangoMart{% endblock %}
+
+{% block content %}
+<div class="page-hero page-hero-sm">
+    <div class="container">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+            <a href="{% url 'frontend-home' %}">Home</a>
+            <i class="fas fa-chevron-right" aria-hidden="true"></i>
+            <span>My Orders</span>
+        </nav>
+        <h1><i class="fas fa-box-open" aria-hidden="true"></i> My Orders</h1>
+    </div>
+</div>
+
+<div class="section container">
+
+    <!-- Order Filter Tabs -->
+    <div class="order-tabs" role="tablist" aria-label="Order status filter">
+        <button class="order-tab active" role="tab" aria-selected="true" data-filter="all" id="tab-all" onclick="filterOrders('all')">All Orders</button>
+        <button class="order-tab" role="tab" aria-selected="false" data-filter="pending" id="tab-pending" onclick="filterOrders('pending')">Pending</button>
+        <button class="order-tab" role="tab" aria-selected="false" data-filter="processing" id="tab-processing" onclick="filterOrders('processing')">Processing</button>
+        <button class="order-tab" role="tab" aria-selected="false" data-filter="shipped" id="tab-shipped" onclick="filterOrders('shipped')">Shipped</button>
+        <button class="order-tab" role="tab" aria-selected="false" data-filter="delivered" id="tab-delivered" onclick="filterOrders('delivered')">Delivered</button>
+        <button class="order-tab" role="tab" aria-selected="false" data-filter="cancelled" id="tab-cancelled" onclick="filterOrders('cancelled')">Cancelled</button>
+    </div>
+
+    <div class="empty-state text-center" id="orders-loading">
+        <i class="fas fa-spinner fa-spin empty-icon"></i>
+        <h2>Loading orders...</h2>
+    </div>
+
+    <!-- Orders List -->
+    <div class="orders-list" id="orders-list" style="display:none;">
+        <!-- JS populated -->
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state text-center" id="orders-empty" style="display:none;">
+        <div class="empty-icon-wrap" aria-hidden="true">
+            <i class="fas fa-box-open empty-icon"></i>
+        </div>
+        <h2>No orders yet</h2>
+        <p>You haven't placed any orders. Start shopping to see your orders here.</p>
+        <a href="{% url 'frontend-products' %}" class="btn btn-primary btn-lg">
+            <i class="fas fa-shopping-bag" aria-hidden="true"></i> Start Shopping
+        </a>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    if (!authAPI.isAuthenticated()) {
+        window.location.href = "{% url 'frontend-login' %}?next={% url 'frontend-orders' %}";
+    }
+
+    let allOrders = [];
+
+    document.addEventListener('DOMContentLoaded', loadOrders);
+
+    async function loadOrders() {
+        try {
+            const res = await authAPI.fetchWithAuth('/orders/orders/');
+            if (!res.ok) throw new Error();
+            allOrders = await res.json();
+            
+            document.getElementById('orders-loading').style.display = 'none';
+            
+            if (allOrders.length === 0) {
+                document.getElementById('orders-empty').style.display = 'block';
+                document.getElementById('orders-list').style.display = 'none';
+            } else {
+                document.getElementById('orders-empty').style.display = 'none';
+                document.getElementById('orders-list').style.display = 'block';
+                renderOrders(allOrders);
+            }
+        } catch(e) {
+            document.getElementById('orders-loading').innerHTML = '<h2 class="text-danger">Failed to load orders</h2>';
+        }
+    }
+
+    function renderOrders(ordersToRender) {
+        const list = document.getElementById('orders-list');
+        list.innerHTML = ordersToRender.map(order => {
+            const statusLower = (order.status || 'pending').toLowerCase();
+            const date = new Date(order.created_at).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+            
+            let statusIcon = 'clock';
+            if (statusLower === 'delivered') statusIcon = 'check-circle';
+            else if (statusLower === 'shipped') statusIcon = 'truck';
+            else if (statusLower === 'processing') statusIcon = 'cog';
+            else if (statusLower === 'cancelled') statusIcon = 'times-circle';
+            
+            const items = order.items || [];
+            const visibleItems = items.slice(0, 3);
+            const remainingCount = items.length - 3;
+            
+            let itemsHtml = visibleItems.map(item => {
+                const img = item.product.image || '/static/images/product_placeholder.png';
+                return `
+                    <div class="order-item">
+                        <img src="${img}" alt="${item.product.name}" class="order-item-img">
+                        <div class="order-item-info">
+                            <span class="order-item-name">${item.product.name}</span>
+                            <span class="order-item-qty">Qty: ${item.quantity}</span>
+                        </div>
+                        <span class="order-item-price">$${parseFloat(item.price).toFixed(2)}</span>
+                    </div>
+                `;
+            }).join('');
+            
+            if (remainingCount > 0) {
+                itemsHtml += `<p class="order-more-items">+${remainingCount} more item${remainingCount > 1 ? 's' : ''}</p>`;
+            }
+            
+            let actionHtml = `<a href="#?order=${order.id}" class="btn btn-outline btn-sm">View Details</a>`;
+            if (statusLower === 'delivered') {
+                actionHtml += ` <a href="/products/${items[0]?.product?.id || ''}" class="btn btn-outline btn-sm">Write Review</a>`;
+            } else if (statusLower === 'pending' || statusLower === 'processing') {
+                actionHtml += ` <button class="btn btn-outline btn-danger-outline btn-sm" onclick="cancelOrder(${order.id})">Cancel Order</button>`;
+            }
+            
+            return `
+                <div class="card order-card" data-status="${statusLower}">
+                    <div class="order-card-header">
+                        <div class="order-info">
+                            <span class="order-id">#${order.order_number || order.id}</span>
+                            <span class="order-date">${date}</span>
+                        </div>
+                        <div class="order-status-wrap">
+                            <span class="badge order-status-badge status-${statusLower}">
+                                <i class="fas fa-${statusIcon}"></i> ${order.status}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="order-items">${itemsHtml}</div>
+                    
+                    <div class="order-card-footer">
+                        <div class="order-totals">
+                            <span class="order-items-count">${items.length} item${items.length !== 1 ? 's' : ''}</span>
+                            <span class="order-total-label">Total: <strong class="order-total-amount">$${parseFloat(order.total_price).toFixed(2)}</strong></span>
+                        </div>
+                        <div class="order-card-actions">
+                            ${actionHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function filterOrders(status) {
+        document.querySelectorAll('.order-tab').forEach(t => t.classList.remove('active'));
+        document.getElementById('tab-' + status).classList.add('active');
+        
+        document.querySelectorAll('.order-card').forEach(card => {
+            if (status === 'all' || card.dataset.status === status) {
+                card.style.display = '';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
+    async function cancelOrder(orderId) {
+        if (!confirm("Are you sure you want to cancel this order?")) return;
+        try {
+            const res = await authAPI.fetchWithAuth(`/orders/orders/${orderId}/cancel/`, { method: 'PATCH' });
+            if (res.ok) {
+                alert("Order cancelled successfully.");
+                loadOrders(); // Refresh list
+            } else {
+                const err = await res.json();
+                alert("Could not cancel order: " + JSON.stringify(err));
+            }
+        } catch(e) {
+            alert("Error cancelling order");
+        }
+    }
+</script>
+{% endblock %}

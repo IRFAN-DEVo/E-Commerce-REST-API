@@ -1,0 +1,218 @@
+﻿{% extends 'frontend/admin_base.html' %}
+{% load static %}
+
+{% block title %}Manage Orders - DjangoMart Admin{% endblock %}
+{% block breadcrumb %}Orders{% endblock %}
+
+{% block content %}
+<div class="admin-page-header">
+    <div>
+        <h1 class="admin-page-title">Manage Orders</h1>
+        <p class="admin-page-subtitle">View and manage all customer orders.</p>
+    </div>
+    <div class="admin-header-actions">
+        <span id="orders-count-badge" style="font-size:.875rem;color:#64748b;"></span>
+    </div>
+</div>
+
+<!-- Order Detail Modal -->
+<div id="order-detail-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.65);backdrop-filter:blur(3px);z-index:3000;align-items:flex-start;justify-content:center;overflow-y:auto;padding:2rem 1rem;">
+    <div style="background:#fff;width:100%;max-width:720px;border-radius:16px;box-shadow:0 25px 60px rgba(0,0,0,.18);margin:auto;overflow:hidden;">
+        <div style="padding:1.5rem 1.5rem 1rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e2e8f0;">
+            <div>
+                <h2 style="margin:0;font-size:1.125rem;font-weight:700;color:#0f172a;" id="modal-order-title">Order #—</h2>
+                <p style="margin:.25rem 0 0;font-size:.8125rem;color:#94a3b8;" id="modal-order-date"></p>
+            </div>
+            <button onclick="closeOrderModal()" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:1.25rem;" aria-label="Close modal">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div id="order-modal-body" style="padding:1.5rem;max-height:65vh;overflow-y:auto;"></div>
+        <div style="padding:1rem 1.5rem;background:#f8fafc;border-top:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:.75rem;">
+                <label style="font-size:.875rem;font-weight:500;color:#334155;">Update Status:</label>
+                <select id="modal-status-select" style="border:1px solid #e2e8f0;border-radius:8px;padding:.375rem .75rem;font-size:.875rem;" aria-label="Update order status">
+                    <option value="PENDING">Pending</option>
+                    <option value="PROCESSING">Processing</option>
+                    <option value="SHIPPED">Shipped</option>
+                    <option value="DELIVERED">Delivered</option>
+                    <option value="CANCELLED">Cancelled</option>
+                </select>
+                <button class="btn btn-primary btn-sm" onclick="updateOrderStatus()">Update</button>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="closeOrderModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<div class="chart-card admin-table-card">
+    <div class="table-toolbar">
+        <div class="table-search" role="search">
+            <i class="fas fa-search" aria-hidden="true"></i>
+            <input type="text" id="order-search" placeholder="Search by ID or customer…" aria-label="Search orders" oninput="filterOrders(this.value)">
+        </div>
+        <div style="display:flex;gap:.5rem;align-items:center;">
+            <select class="form-control btn-sm" id="status-filter" onchange="filterOrders(document.getElementById('order-search').value)" style="width:auto;" aria-label="Filter by status">
+                <option value="">All Statuses</option>
+                <option value="PENDING">Pending</option>
+                <option value="PROCESSING">Processing</option>
+                <option value="SHIPPED">Shipped</option>
+                <option value="DELIVERED">Delivered</option>
+                <option value="CANCELLED">Cancelled</option>
+            </select>
+        </div>
+    </div>
+    <div class="table-container">
+        <table aria-label="Orders management table">
+            <thead>
+                <tr>
+                    <th scope="col">Order ID</th>
+                    <th scope="col">Customer</th>
+                    <th scope="col">Date</th>
+                    <th scope="col">Items</th>
+                    <th scope="col">Total</th>
+                    <th scope="col">Payment</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="orders-tbody">
+                <tr><td colspan="8" style="text-align:center;padding:3rem;color:#94a3b8;"><i class="fas fa-circle-notch fa-spin" style="margin-right:.5rem;"></i> Loading orders…</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+.status-chip{display:inline-block;padding:.2rem .65rem;border-radius:20px;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.03em;}
+.status-pending{background:#fef9c3;color:#a16207;} .status-processing{background:#dbeafe;color:#1d4ed8;}
+.status-shipped{background:#e0e7ff;color:#4338ca;} .status-delivered{background:#d1fae5;color:#065f46;}
+.status-cancelled{background:#fee2e2;color:#b91c1c;} .pay-success{background:#d1fae5;color:#065f46;}
+.pay-pending{background:#fef9c3;color:#a16207;} .pay-failed{background:#fee2e2;color:#b91c1c;}
+.pay-refunded{background:#f3e8ff;color:#7c3aed;} .pay-—{background:#f1f5f9;color:#64748b;}
+</style>
+<script>
+let allOrders = [];
+let currentOrderId = null;
+
+async function loadOrders() {
+    const tbody = document.getElementById('orders-tbody');
+    try {
+        const res = await authAPI.fetchWithAuth('/orders/admin/orders/');
+        if (!res.ok) { if (res.status===401||res.status===403){authAPI.logout();return;} throw new Error('API error '+res.status); }
+        const data = await res.json();
+        allOrders = Array.isArray(data) ? data : (data.results||[]);
+        document.getElementById('orders-count-badge').textContent = `${allOrders.length} total orders`;
+        filterOrders('');
+    } catch(e) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:2.5rem;color:#ef4444;"><i class="fas fa-exclamation-circle"></i> ${e.message}</td></tr>`;
+    }
+}
+
+function statusChip(s){const c=`status-${(s||'pending').toLowerCase()}`;return `<span class="status-chip ${c}">${s||'—'}</span>`;}
+function payChip(s){const c=`pay-${(s||'').toLowerCase().replace(/[^a-z]/g,'')||'unknown'}`;return `<span class="status-chip ${c}">${s||'—'}</span>`;}
+
+function filterOrders(query){
+    const sf=document.getElementById('status-filter').value;
+    let f=allOrders;
+    if(sf) f=f.filter(o=>o.status===sf);
+    if(query.trim()){const q=query.toLowerCase();f=f.filter(o=>String(o.id).includes(q)||(o.customer_name||'').toLowerCase().includes(q)||(o.customer_email||'').toLowerCase().includes(q));}
+    renderOrders(f);
+}
+
+function renderOrders(orders){
+    const tbody=document.getElementById('orders-tbody');
+    if(!orders.length){tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;padding:2.5rem;color:#94a3b8;"><i class="fas fa-inbox" style="font-size:2rem;display:block;margin-bottom:.5rem;"></i>No orders found.</td></tr>`;return;}
+    tbody.innerHTML=orders.map(o=>{
+        const init=(o.customer_name||'?').charAt(0).toUpperCase();
+        const date=new Date(o.created_at).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});
+        const cnt=(o.items||[]).length;
+        return `<tr>
+            <td><strong>#${o.id}</strong></td>
+            <td><div class="table-user"><div class="table-user-avatar">${init}</div><div><div style="font-weight:600;color:#0f172a;">${o.customer_name||'—'}</div><div style="font-size:.75rem;color:#94a3b8;">${o.customer_email||''}</div></div></div></td>
+            <td style="font-size:.8125rem;color:#64748b;">${date}</td>
+            <td style="text-align:center;">${cnt} item${cnt!==1?'s':''}</td>
+            <td><strong>$${parseFloat(o.total_price||0).toFixed(2)}</strong></td>
+            <td>${payChip(o.payment_status)}<div style="font-size:.75rem;color:#94a3b8;margin-top:.15rem;">${o.payment_method||'—'}</div></td>
+            <td>${statusChip(o.status)}</td>
+            <td><button class="btn btn-outline btn-icon btn-xs" onclick="openOrderModal(${o.id})" aria-label="View order ${o.id}"><i class="fas fa-eye"></i></button></td>
+        </tr>`;
+    }).join('');
+}
+
+function openOrderModal(orderId){
+    const o=allOrders.find(x=>x.id===orderId);
+    if(!o) return;
+    currentOrderId=orderId;
+    document.getElementById('modal-order-title').textContent=`Order #${o.id}`;
+    document.getElementById('modal-order-date').textContent=new Date(o.created_at).toLocaleString();
+    document.getElementById('modal-status-select').value=o.status;
+    const sa=o.shipping_address||{};
+    const items=(o.items||[]).map(item=>`
+        <div style="display:flex;gap:.75rem;align-items:center;padding:.6rem 0;border-bottom:1px solid #f1f5f9;">
+            ${item.product_image?`<img src="${item.product_image}" alt="${item.product_name}" style="width:48px;height:48px;object-fit:cover;border-radius:8px;">`:`<div style="width:48px;height:48px;border-radius:8px;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:700;color:#64748b;">${(item.product_name||'?').charAt(0)}</div>`}
+            <div style="flex:1;"><div style="font-weight:600;font-size:.875rem;">${item.product_name||'—'}</div><div style="font-size:.75rem;color:#94a3b8;">Qty: ${item.quantity} × $${parseFloat(item.price||0).toFixed(2)}</div></div>
+            <strong>$${parseFloat(item.sub_total||0).toFixed(2)}</strong>
+        </div>`).join('')||'<p style="color:#94a3b8;text-align:center;">No items.</p>';
+    document.getElementById('order-modal-body').innerHTML=`
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">
+            <div style="background:#f8fafc;border-radius:10px;padding:1rem;">
+                <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:#94a3b8;margin-bottom:.5rem;">Customer</div>
+                <div style="font-weight:700;">${o.customer_name||'—'}</div>
+                <div style="font-size:.8125rem;color:#64748b;">${o.customer_email||''}</div>
+                <div style="font-size:.8125rem;color:#64748b;">${o.customer_phone||''}</div>
+            </div>
+            <div style="background:#f8fafc;border-radius:10px;padding:1rem;">
+                <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:#94a3b8;margin-bottom:.5rem;">Shipping</div>
+                <div style="font-weight:600;">${sa.full_name||'—'}</div>
+                <div style="font-size:.8125rem;color:#64748b;">${sa.address||''}</div>
+                <div style="font-size:.8125rem;color:#64748b;">${[sa.city,sa.state,sa.postal_code,sa.country].filter(Boolean).join(', ')}</div>
+                <div style="font-size:.8125rem;color:#64748b;">📞 ${sa.phone||''}</div>
+            </div>
+        </div>
+        <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:#94a3b8;margin-bottom:.75rem;">Items</div>
+        ${items}
+        <div style="display:flex;justify-content:flex-end;margin-top:.75rem;">
+            <div style="background:#4f46e5;color:#fff;border-radius:10px;padding:.75rem 1.25rem;text-align:right;">
+                <div style="font-size:.75rem;opacity:.8;">Order Total</div>
+                <div style="font-size:1.25rem;font-weight:800;">$${parseFloat(o.total_price||0).toFixed(2)}</div>
+            </div>
+        </div>`;
+    const modal=document.getElementById('order-detail-modal');
+    modal.style.display='flex';
+    document.body.style.overflow='hidden';
+}
+
+function closeOrderModal(){
+    document.getElementById('order-detail-modal').style.display='none';
+    document.body.style.overflow='';
+    currentOrderId=null;
+}
+
+async function updateOrderStatus(){
+    if(!currentOrderId) return;
+    const newStatus=document.getElementById('modal-status-select').value;
+    try {
+        const res=await authAPI.fetchWithAuth(`/orders/admin/orders/${currentOrderId}/status/`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:newStatus})});
+        if(!res.ok){const err=await res.json();showToast('Error: '+(err.detail||JSON.stringify(err)),'error');return;}
+        const o=allOrders.find(x=>x.id===currentOrderId);
+        if(o) o.status=newStatus;
+        showToast('Order status updated!','success');
+        closeOrderModal();
+        filterOrders(document.getElementById('order-search').value);
+    } catch(e){showToast('Error: '+e.message,'error');}
+}
+
+function showToast(msg,type='success'){
+    const t=document.createElement('div');
+    t.style.cssText=`position:fixed;bottom:1.5rem;right:1.5rem;padding:.75rem 1.25rem;border-radius:10px;font-size:.875rem;font-weight:500;z-index:9999;color:#fff;background:${type==='error'?'#ef4444':'#10b981'};box-shadow:0 4px 20px rgba(0,0,0,.15);`;
+    t.textContent=msg;document.body.appendChild(t);
+    setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),400);},3000);
+}
+
+document.addEventListener('DOMContentLoaded',loadOrders);
+document.getElementById('order-detail-modal').addEventListener('click',function(e){if(e.target===this)closeOrderModal();});
+</script>
+{% endblock %}

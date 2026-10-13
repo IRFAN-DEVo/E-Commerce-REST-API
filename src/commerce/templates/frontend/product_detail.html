@@ -1,0 +1,418 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}Product Detail - DjangoMart{% endblock %}
+
+{% block content %}
+<div class="container section">
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="{% url 'frontend-home' %}">Home</a>
+        <i class="fas fa-chevron-right" aria-hidden="true"></i>
+        <a href="{% url 'frontend-products' %}">Products</a>
+        <i class="fas fa-chevron-right" aria-hidden="true"></i>
+        <span id="breadcrumb-name">Loading...</span>
+    </nav>
+
+    <!-- Product Detail -->
+    <div class="product-detail-grid" id="product-container" style="display:none;">
+
+        <!-- Product Images -->
+        <div class="product-gallery">
+            <div class="product-main-image" id="main-image-container">
+                <img src="{% static 'images/product_placeholder.png' %}" alt="Product image" id="main-product-img">
+                <span class="badge badge-danger product-badge-lg" id="discount-badge" style="display:none;"></span>
+            </div>
+        </div>
+
+        <!-- Product Info -->
+        <div class="product-detail-info">
+            <span class="product-category-tag">
+                <a href="#" id="product-category">Uncategorized</a>
+            </span>
+            <h1 class="product-detail-title" id="product-title">Loading...</h1>
+
+            <!-- Rating -->
+            <div class="product-rating-detail">
+                <div class="stars-lg" id="product-stars">
+                    <!-- JS populated -->
+                </div>
+                <span class="rating-avg" id="product-rating-avg">0.0</span>
+                <span class="rating-count" id="product-review-count">(0 reviews)</span>
+            </div>
+
+            <!-- Price -->
+            <div class="product-price-detail" id="product-price-container">
+                <span class="price-current-lg" id="product-price">$0.00</span>
+            </div>
+
+            <!-- Description -->
+            <div class="product-description">
+                <p id="product-description"></p>
+            </div>
+
+            <!-- Product Meta -->
+            <div class="product-meta">
+                <div class="meta-item" id="brand-container" style="display:none;">
+                    <span class="meta-label">Brand:</span>
+                    <span class="meta-value" id="product-brand"></span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Availability:</span>
+                    <span class="meta-value" id="product-stock"></span>
+                </div>
+            </div>
+
+            <!-- Actions Container (JS populated based on auth state) -->
+            <div id="actions-container"></div>
+
+            <!-- Trust Badges -->
+            <div class="trust-badges">
+                <div class="trust-badge">
+                    <i class="fas fa-shield-alt" aria-hidden="true"></i>
+                    <span>Secure Payment</span>
+                </div>
+                <div class="trust-badge">
+                    <i class="fas fa-undo-alt" aria-hidden="true"></i>
+                    <span>30-Day Returns</span>
+                </div>
+                <div class="trust-badge">
+                    <i class="fas fa-shipping-fast" aria-hidden="true"></i>
+                    <span>Fast Delivery</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Loading State -->
+    <div id="loading-state" class="empty-state" style="margin: 50px 0;">
+        <i class="fas fa-spinner fa-spin empty-icon" aria-hidden="true"></i>
+        <h3>Loading Product Details...</h3>
+    </div>
+    
+    <!-- Error State -->
+    <div id="error-state" class="empty-state" style="margin: 50px 0; display:none;">
+        <i class="fas fa-exclamation-triangle empty-icon" style="color:var(--danger)" aria-hidden="true"></i>
+        <h3 id="error-message">Product Not Found</h3>
+        <p>The product you are looking for does not exist or has been removed.</p>
+        <a href="{% url 'frontend-products' %}" class="btn btn-primary mt-3">Back to Products</a>
+    </div>
+
+    <!-- ========== REVIEWS SECTION ========== -->
+    <div class="reviews-section" id="reviews-section" style="display:none;">
+        <div class="section-header">
+            <h2 class="section-title" style="text-align:left;">Customer Reviews</h2>
+        </div>
+
+        <div id="review-form-container"></div>
+
+        <div class="reviews-list" id="reviews-list">
+            <div class="empty-state">
+                <i class="fas fa-spinner fa-spin empty-icon" aria-hidden="true"></i>
+                <p>Loading reviews...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const productId = "{{ request.resolver_match.kwargs.pk }}";
+    let productData = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadProductDetails();
+    });
+
+    async function loadProductDetails() {
+        try {
+            const res = await fetch(`/api/v1/products/products/${productId}/`);
+            if (!res.ok) throw new Error("Product not found");
+            productData = await res.json();
+            
+            // Hide loading, show content
+            document.getElementById('loading-state').style.display = 'none';
+            document.getElementById('product-container').style.display = 'grid';
+            document.getElementById('reviews-section').style.display = 'block';
+            
+            // Populate DOM
+            document.getElementById('breadcrumb-name').textContent = productData.name;
+            document.getElementById('product-title').textContent = productData.name;
+            document.getElementById('product-description').textContent = productData.description || "No description available.";
+            
+            if (productData.category_name) {
+                const catLink = document.getElementById('product-category');
+                catLink.textContent = productData.category_name;
+                catLink.href = "{% url 'frontend-products' %}?category=" + (productData.category || '');
+            }
+            
+            if (productData.brand_name) {
+                document.getElementById('brand-container').style.display = 'flex';
+                document.getElementById('product-brand').textContent = productData.brand_name;
+            }
+            
+            // Image
+            if (productData.image) {
+                document.getElementById('main-product-img').src = productData.image;
+            }
+            if (productData.discount_percent) {
+                const badge = document.getElementById('discount-badge');
+                badge.style.display = 'inline-block';
+                badge.textContent = `-${productData.discount_percent}% OFF`;
+            }
+            
+            // Price
+            const priceContainer = document.getElementById('product-price-container');
+            if (productData.old_price) {
+                priceContainer.innerHTML = `<span class="price-original-lg">$${productData.old_price}</span> <span class="price-current-lg">$${productData.price}</span>`;
+            } else {
+                priceContainer.innerHTML = `<span class="price-current-lg">$${productData.price}</span>`;
+            }
+            
+            // Rating
+            const rating = productData.average_rating || 0;
+            document.getElementById('product-rating-avg').textContent = rating.toFixed(1);
+            document.getElementById('product-review-count').textContent = `(${productData.review_count || 0} reviews)`;
+            
+            let starsHtml = '';
+            for(let i=1; i<=5; i++) {
+                starsHtml += `<i class="fas fa-star ${i <= rating ? 'filled' : ''}"></i>`;
+            }
+            document.getElementById('product-stars').innerHTML = starsHtml;
+            
+            // Stock
+            const stockContainer = document.getElementById('product-stock');
+            if (productData.stock && productData.stock > 0) {
+                stockContainer.className = "meta-value text-success";
+                stockContainer.innerHTML = `<i class="fas fa-check-circle"></i> In Stock (${productData.stock} available)`;
+            } else {
+                stockContainer.className = "meta-value text-danger";
+                stockContainer.innerHTML = `<i class="fas fa-times-circle"></i> Out of Stock`;
+            }
+            
+            // Actions
+            renderActions();
+            
+            // Reviews
+            loadReviews();
+            
+        } catch(e) {
+            console.error(e);
+            document.getElementById('loading-state').style.display = 'none';
+            document.getElementById('error-state').style.display = 'block';
+            if (e.message) {
+                document.getElementById('error-message').textContent = e.message;
+            }
+        }
+    }
+    
+    function renderActions() {
+        const container = document.getElementById('actions-container');
+        const inStock = productData.stock > 0;
+        
+        if (authAPI.isAuthenticated()) {
+            container.innerHTML = `
+                <form class="add-to-cart-form" onsubmit="event.preventDefault(); addToCart();">
+                    <div class="quantity-control">
+                        <label for="quantity" class="form-label">Quantity</label>
+                        <div class="qty-wrapper">
+                            <button type="button" class="qty-btn" onclick="changeQty(-1)"><i class="fas fa-minus"></i></button>
+                            <input type="number" id="quantity" name="quantity" class="qty-input" value="1" min="1" max="${productData.stock || 99}">
+                            <button type="button" class="qty-btn" onclick="changeQty(1)"><i class="fas fa-plus"></i></button>
+                        </div>
+                    </div>
+                    <div class="product-actions-row">
+                        <button type="submit" class="btn btn-primary btn-lg" style="flex:1;" id="add-btn" ${!inStock ? 'disabled' : ''}>
+                            <i class="fas fa-shopping-cart"></i> ${inStock ? 'Add to Cart' : 'Out of Stock'}
+                        </button>
+                        <button type="button" class="btn btn-outline btn-icon-lg" onclick="addToWishlist()" title="Add to Wishlist">
+                            <i class="fas fa-heart"></i>
+                        </button>
+                    </div>
+                </form>
+            `;
+            
+            // Render Review Form
+            document.getElementById('review-form-container').innerHTML = `
+                <div class="review-form-card card">
+                    <div class="card-content">
+                        <h3>Write a Review</h3>
+                        <form id="review-form" onsubmit="event.preventDefault(); submitReview();">
+                            <div class="rating-select" id="rating-select">
+                                <span class="form-label">Your Rating:</span>
+                                ${[1,2,3,4,5].map(i => `
+                                    <input type="radio" id="star${i}" name="rating" value="${i}" class="sr-only" required>
+                                    <label for="star${i}" class="star-label" onclick="selectStars(${i})"><i class="fas fa-star" id="star-icon-${i}"></i></label>
+                                `).join('')}
+                            </div>
+                            <div class="form-group mt-3">
+                                <label for="review-comment" class="form-label">Your Review</label>
+                                <textarea id="review-comment" class="form-control" rows="4" placeholder="Share your thoughts..." required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i> Submit Review
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div class="guest-actions">
+                    <a href="{% url 'frontend-login' %}?next=${window.location.pathname}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-sign-in-alt"></i> Login to Buy
+                    </a>
+                    <a href="{% url 'frontend-register' %}" class="btn btn-outline btn-lg">Create Account</a>
+                </div>
+            `;
+            
+            document.getElementById('review-form-container').innerHTML = `
+                <div class="alert alert-info">Please <a href="{% url 'frontend-login' %}?next=${window.location.pathname}">log in</a> to write a review.</div>
+            `;
+        }
+    }
+    
+    function changeQty(delta) {
+        const input = document.getElementById('quantity');
+        const newVal = parseInt(input.value) + delta;
+        const max = parseInt(input.max) || 99;
+        if (newVal >= 1 && newVal <= max) input.value = newVal;
+    }
+    
+    function selectStars(rating) {
+        for (let i=1; i<=5; i++) {
+            const icon = document.getElementById(`star-icon-${i}`);
+            if (i <= rating) icon.classList.add('filled');
+            else icon.classList.remove('filled');
+        }
+    }
+    
+    async function addToCart() {
+        const qty = document.getElementById('quantity').value;
+        const btn = document.getElementById('add-btn');
+        const oldHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+        btn.disabled = true;
+        
+        try {
+            const res = await authAPI.fetchWithAuth('/cart/items/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ product: productId, quantity: parseInt(qty) })
+            });
+            if (res.ok) {
+                alert('Added to cart!');
+                location.reload(); // Quick way to update nav cart count
+            } else {
+                const data = await res.json();
+                alert('Failed to add to cart: ' + JSON.stringify(data));
+            }
+        } catch (e) {
+            alert('Error adding to cart');
+        } finally {
+            btn.innerHTML = oldHtml;
+            btn.disabled = false;
+        }
+    }
+    
+    async function addToWishlist() {
+        try {
+            const res = await authAPI.fetchWithAuth('/wishlist/add/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ product: productId })
+            });
+            if (res.ok) {
+                alert('Added to wishlist!');
+            } else {
+                const data = await res.json();
+                const errorMsg = data.non_field_errors?.[0] || data.detail || data.product?.[0] || 'Unknown error occurred';
+                alert('Failed to add to wishlist: ' + errorMsg);
+            }
+        } catch (e) {
+            alert('Error adding to wishlist');
+        }
+    }
+    
+    async function loadReviews() {
+        const list = document.getElementById('reviews-list');
+        try {
+            const res = await fetch(`/api/v1/reviews/products/${productId}/reviews/`);
+            if (!res.ok) throw new Error();
+            const data = await res.json(); // May be paginated or list
+            const reviews = data.results || data;
+            
+            if (reviews.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-comment-slash empty-icon"></i>
+                        <h3>No reviews yet</h3>
+                        <p>Be the first to review this product!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            list.innerHTML = reviews.map(r => {
+                let rStars = '';
+                for(let i=1; i<=5; i++) {
+                    rStars += `<i class="fas fa-star ${i <= r.rating ? 'filled' : ''}"></i>`;
+                }
+                const date = new Date(r.created_at).toLocaleDateString();
+                const author = r.user_name || r.user || 'User';
+                
+                return `
+                    <div class="review-card card">
+                        <div class="card-content">
+                            <div class="review-header">
+                                <div class="reviewer-avatar">${author.charAt(0).toUpperCase()}</div>
+                                <div class="reviewer-info">
+                                    <strong class="reviewer-name">${author}</strong>
+                                    <div class="review-rating stars">${rStars}</div>
+                                </div>
+                                <span class="review-date">${date}</span>
+                            </div>
+                            <p class="review-text">${r.comment}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+        } catch(e) {
+            list.innerHTML = '<p class="text-danger">Failed to load reviews.</p>';
+        }
+    }
+    
+    async function submitReview() {
+        const ratingInput = document.querySelector('input[name="rating"]:checked');
+        if (!ratingInput) return alert('Please select a rating');
+        const comment = document.getElementById('review-comment').value;
+        
+        try {
+            const res = await authAPI.fetchWithAuth('/reviews/reviews/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    product: productId,
+                    rating: parseInt(ratingInput.value),
+                    comment: comment
+                })
+            });
+            
+            if (res.ok) {
+                alert('Review submitted successfully!');
+                document.getElementById('review-form').reset();
+                selectStars(0);
+                loadReviews();
+                loadProductDetails(); // refresh average
+            } else {
+                const data = await res.json();
+                alert('Failed to submit review: ' + (data.non_field_errors ? data.non_field_errors[0] : JSON.stringify(data)));
+            }
+        } catch(e) {
+            alert('Error submitting review');
+        }
+    }
+</script>
+{% endblock %}

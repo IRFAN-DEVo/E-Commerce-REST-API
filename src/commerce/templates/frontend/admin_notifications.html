@@ -1,0 +1,131 @@
+﻿{% extends 'frontend/admin_base.html' %}
+{% load static %}
+
+{% block title %}Notifications - DjangoMart Admin{% endblock %}
+{% block breadcrumb %}Notifications{% endblock %}
+
+{% block content %}
+<div class="admin-page-header">
+    <div>
+        <h1 class="admin-page-title">Notifications</h1>
+        <p class="admin-page-subtitle">System-wide notifications generated for all users.</p>
+    </div>
+    <div class="admin-header-actions">
+        <span id="notif-count-badge" style="font-size:.875rem;color:#64748b;"></span>
+    </div>
+</div>
+
+<div class="chart-card admin-table-card">
+    <div class="table-toolbar">
+        <div class="table-search" role="search">
+            <i class="fas fa-search" aria-hidden="true"></i>
+            <input type="text" id="notif-search" placeholder="Search notifications…" aria-label="Search notifications" oninput="filterNotifs(this.value)">
+        </div>
+        <div style="display:flex;gap:.5rem;align-items:center;">
+            <select class="form-control btn-sm" id="notif-type-filter" onchange="filterNotifs(document.getElementById('notif-search').value)" style="width:auto;">
+                <option value="">All Types</option>
+                <option value="WELCOME">Welcome</option>
+                <option value="ORDER_PLACED">Order Placed</option>
+                <option value="PAYMENT_SUCCESS">Payment Success</option>
+                <option value="ORDER_SHIPPED">Order Shipped</option>
+                <option value="ORDER_DELIVERED">Order Delivered</option>
+                <option value="COUPON">Coupon</option>
+            </select>
+            <select class="form-control btn-sm" id="notif-read-filter" onchange="filterNotifs(document.getElementById('notif-search').value)" style="width:auto;">
+                <option value="">All</option>
+                <option value="unread">Unread</option>
+                <option value="read">Read</option>
+            </select>
+        </div>
+    </div>
+    <div class="table-container">
+        <table aria-label="Notifications table">
+            <thead>
+                <tr>
+                    <th scope="col">Type</th>
+                    <th scope="col">Title</th>
+                    <th scope="col">Message</th>
+                    <th scope="col">User</th>
+                    <th scope="col">Order</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Date</th>
+                </tr>
+            </thead>
+            <tbody id="notifs-tbody">
+                <tr><td colspan="7" style="text-align:center;padding:3rem;color:#94a3b8;"><i class="fas fa-circle-notch fa-spin"></i> Loading notifications…</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+.status-chip{display:inline-block;padding:.2rem .65rem;border-radius:20px;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.03em;}
+.chip-green{background:#d1fae5;color:#065f46;} .chip-gray{background:#f1f5f9;color:#64748b;}
+.notif-icon{width:32px;height:32px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:.9rem;}
+.icon-welcome{background:#dbeafe;color:#1d4ed8;} .icon-order{background:#e0e7ff;color:#4338ca;}
+.icon-payment{background:#d1fae5;color:#065f46;} .icon-shipped{background:#fef3c7;color:#b45309;}
+.icon-delivered{background:#d1fae5;color:#065f46;} .icon-coupon{background:#fce7f3;color:#9d174d;}
+</style>
+<script>
+let allNotifs=[];
+
+const typeIcons={
+    WELCOME:'icon-welcome fas fa-hand-wave',
+    ORDER_PLACED:'icon-order fas fa-shopping-bag',
+    PAYMENT_SUCCESS:'icon-payment fas fa-check-circle',
+    ORDER_SHIPPED:'icon-shipped fas fa-truck',
+    ORDER_DELIVERED:'icon-delivered fas fa-box-check',
+    COUPON:'icon-coupon fas fa-ticket-alt',
+};
+const typeLabels={WELCOME:'Welcome',ORDER_PLACED:'Order Placed',PAYMENT_SUCCESS:'Payment',ORDER_SHIPPED:'Shipped',ORDER_DELIVERED:'Delivered',COUPON:'Coupon'};
+
+async function loadNotifications(){
+    const tbody=document.getElementById('notifs-tbody');
+    try {
+        const res=await authAPI.fetchWithAuth('/notifications/admin/notifications/');
+        if(!res.ok){if(res.status===401||res.status===403){authAPI.logout();return;}throw new Error('API error '+res.status);}
+        const data=await res.json();
+        allNotifs=Array.isArray(data)?data:(data.results||[]);
+        document.getElementById('notif-count-badge').textContent=`${allNotifs.length} notifications`;
+        filterNotifs('');
+    } catch(e){
+        tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;padding:2.5rem;color:#ef4444;"><i class="fas fa-exclamation-circle"></i> ${e.message}</td></tr>`;
+    }
+}
+
+function filterNotifs(query){
+    const tf=document.getElementById('notif-type-filter').value;
+    const rf=document.getElementById('notif-read-filter').value;
+    let f=allNotifs;
+    if(tf) f=f.filter(n=>n.notification_type===tf);
+    if(rf==='read') f=f.filter(n=>n.is_read);
+    if(rf==='unread') f=f.filter(n=>!n.is_read);
+    if(query.trim()){const q=query.toLowerCase();f=f.filter(n=>(n.title||'').toLowerCase().includes(q)||(n.message||'').toLowerCase().includes(q));}
+    renderNotifs(f);
+}
+
+function renderNotifs(notifs){
+    const tbody=document.getElementById('notifs-tbody');
+    if(!notifs.length){tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;padding:2.5rem;color:#94a3b8;"><i class="fas fa-bell-slash" style="font-size:2rem;display:block;margin-bottom:.5rem;"></i>No notifications found.</td></tr>`;return;}
+    tbody.innerHTML=notifs.map(n=>{
+        const iconCls=(typeIcons[n.notification_type]||'icon-order fas fa-bell').split(' ');
+        const iconDiv=`<div class="notif-icon ${iconCls[0]}"><i class="${iconCls.slice(1).join(' ')}"></i></div>`;
+        const date=n.created_at?new Date(n.created_at).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+        const userEmail=n.user&&typeof n.user==='object'?n.user.email:(n.user||'—');
+        return `<tr style="${n.is_read?'':'background:#fafafa;'}">
+            <td><div style="display:flex;align-items:center;gap:.5rem;">${iconDiv}<span style="font-size:.78rem;font-weight:600;color:#64748b;">${typeLabels[n.notification_type]||n.notification_type}</span></div></td>
+            <td style="font-weight:600;color:#0f172a;max-width:180px;">${n.title||'—'}</td>
+            <td style="color:#64748b;font-size:.8125rem;max-width:220px;white-space:normal;">${n.message||'—'}</td>
+            <td style="font-size:.8125rem;color:#64748b;">${userEmail}</td>
+            <td>${n.order?`<a href="/admin-panel/orders/" style="color:#4f46e5;font-weight:600;">#${n.order}</a>`:'—'}</td>
+            <td><span class="status-chip ${n.is_read?'chip-gray':'chip-green'}">${n.is_read?'Read':'Unread'}</span></td>
+            <td style="font-size:.75rem;color:#94a3b8;">${date}</td>
+        </tr>`;
+    }).join('');
+}
+
+document.addEventListener('DOMContentLoaded',loadNotifications);
+</script>
+{% endblock %}

@@ -1,0 +1,187 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}My Wishlist - DjangoMart{% endblock %}
+
+{% block content %}
+<div class="page-hero page-hero-sm">
+    <div class="container">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+            <a href="{% url 'frontend-home' %}">Home</a>
+            <i class="fas fa-chevron-right" aria-hidden="true"></i>
+            <span>Wishlist</span>
+        </nav>
+        <h1><i class="fas fa-heart" aria-hidden="true"></i> My Wishlist</h1>
+    </div>
+</div>
+
+<div class="section container">
+    <div class="empty-state text-center" id="wishlist-loading">
+        <i class="fas fa-spinner fa-spin empty-icon"></i>
+        <h2>Loading your wishlist...</h2>
+    </div>
+
+    <!-- Loaded State -->
+    <div id="wishlist-content" style="display: none;">
+        <div class="wishlist-header">
+            <p id="wishlist-count-text">You have <strong>0</strong> items saved</p>
+            <button class="btn btn-outline btn-danger-outline" onclick="clearWishlist()">
+                <i class="fas fa-trash" aria-hidden="true"></i> Clear Wishlist
+            </button>
+        </div>
+        
+        <div class="product-grid" id="wishlist-grid">
+            <!-- JS populated -->
+        </div>
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state text-center" id="wishlist-empty" style="display: none;">
+        <div class="empty-icon-wrap" aria-hidden="true">
+            <i class="fas fa-heart empty-icon"></i>
+        </div>
+        <h2>Your wishlist is empty</h2>
+        <p>Save your favorite products to your wishlist for easy access later.</p>
+        <a href="{% url 'frontend-products' %}" class="btn btn-primary btn-lg">
+            <i class="fas fa-shopping-bag" aria-hidden="true"></i> Browse Products
+        </a>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    if (!authAPI.isAuthenticated()) {
+        window.location.href = "{% url 'frontend-login' %}?next={% url 'frontend-wishlist' %}";
+    }
+
+    document.addEventListener('DOMContentLoaded', loadWishlist);
+
+    async function loadWishlist() {
+        try {
+            const res = await authAPI.fetchWithAuth('/wishlist/wishlist/');
+            if (!res.ok) {
+                const errText = await res.text();
+                throw new Error(`API error ${res.status}: ${errText.slice(0, 100)}`);
+            }
+            const data = await res.json();
+            const items = data.results || data;
+            
+            document.getElementById('wishlist-loading').style.display = 'none';
+            
+            if (!items || items.length === 0) {
+                document.getElementById('wishlist-empty').style.display = 'block';
+                document.getElementById('wishlist-content').style.display = 'none';
+            } else {
+                document.getElementById('wishlist-empty').style.display = 'none';
+                document.getElementById('wishlist-content').style.display = 'block';
+                renderWishlist(items);
+            }
+        } catch(e) {
+            document.getElementById('wishlist-loading').innerHTML = `<h2 class="text-danger">Failed to load wishlist</h2><p class="text-muted" style="margin-top:1rem">${e.message}</p>`;
+        }
+    }
+
+    function renderWishlist(items) {
+        document.getElementById('wishlist-count-text').innerHTML = `You have <strong>${items.length}</strong> item${items.length !== 1 ? 's' : ''} saved`;
+        
+        const grid = document.getElementById('wishlist-grid');
+        grid.innerHTML = items.map(item => {
+            const product = item?.product || {};
+            const img = product?.image || '/static/images/product_placeholder.png';
+            const badge = product?.discount_percent ? `<span class="badge badge-danger product-badge">-${product.discount_percent}%</span>` : '';
+            
+            const rating = product?.average_rating ?? 0;
+            let starsHtml = '';
+            for(let i=1; i<=5; i++) {
+                starsHtml += `<i class="fas fa-star ${i <= rating ? 'filled' : ''}"></i>`;
+            }
+
+            const categoryName = product?.category?.name || product?.category_name || 'Uncategorized';
+            const productName = product?.name || 'Unknown Product';
+            const productPrice = parseFloat(product?.price || 0).toFixed(2);
+            
+            return `
+                <div class="card product-card">
+                    <div class="product-image">
+                        <img src="${img}" alt="${productName}">
+                        ${badge}
+                        <div class="product-actions">
+                            <button class="icon-btn icon-btn-active" title="Remove from Wishlist" onclick="removeFromWishlist(${item?.id})">
+                                <i class="fas fa-heart"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="product-info">
+                        <span class="product-category">${categoryName}</span>
+                        <a href="/products/${product?.id}/" class="product-title">${productName}</a>
+                        <div class="product-rating">
+                            <span class="stars">${starsHtml}</span>
+                        </div>
+                        <div class="product-price">
+                            <span class="price-current">$${productPrice}</span>
+                        </div>
+                        <div class="wishlist-actions">
+                            <button class="btn btn-primary" style="width:100%;" onclick="moveToCart(${product?.id})">
+                                <i class="fas fa-shopping-cart"></i> Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    async function removeFromWishlist(wishlistItemId) {
+        try {
+            const res = await authAPI.fetchWithAuth(`/wishlist/remove/${wishlistItemId}/`, { method: 'DELETE' });
+            if (!res.ok) {
+                const errText = await res.text();
+                throw new Error(`API error ${res.status}: ${errText.slice(0, 100)}`);
+            }
+            loadWishlist();
+        } catch(e) {
+            alert('Error removing item: ' + e.message);
+        }
+    }
+
+    async function moveToCart(productId) {
+        try {
+            const res = await authAPI.fetchWithAuth('/cart/items/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ product: productId, quantity: 1 })
+            });
+            if (res.ok) {
+                // Optionally remove from wishlist after adding to cart
+                // await removeFromWishlist(productId); 
+                alert('Added to cart!');
+            } else {
+                const err = await res.json();
+                alert('Failed to add to cart: ' + JSON.stringify(err));
+            }
+        } catch(e) {
+            alert('Error moving to cart');
+        }
+    }
+
+    async function clearWishlist() {
+        if (!confirm('Clear entire wishlist?')) return;
+        try {
+            const res = await authAPI.fetchWithAuth('/wishlist/wishlist/');
+            if (!res.ok) throw new Error(await res.text());
+            const data = await res.json();
+            const items = data.results || data;
+            for (let item of items) {
+                if (item?.id) {
+                    await authAPI.fetchWithAuth(`/wishlist/remove/${item.id}/`, { method: 'DELETE' });
+                }
+            }
+            loadWishlist();
+        } catch(e) {
+            alert('Error clearing wishlist: ' + e.message);
+        }
+    }
+</script>
+{% endblock %}

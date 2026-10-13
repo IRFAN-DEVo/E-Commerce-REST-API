@@ -1,0 +1,153 @@
+{% extends 'frontend/admin_base.html' %}
+{% load static %}
+
+{% block title %}Export Products - DjangoMart Admin{% endblock %}
+{% block breadcrumb %}Export Products{% endblock %}
+
+{% block content %}
+<div class="admin-page-header">
+    <div>
+        <h1 class="admin-page-title">Export Products</h1>
+        <p class="admin-page-subtitle">Download your complete product catalog in your preferred format.</p>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 340px; gap:1.5rem; align-items:start;">
+
+    <!-- Export Options Card -->
+    <div class="card">
+        <div class="card-content">
+            <h3 style="font-size:0.9375rem; font-weight:600; color:#0f172a; margin:0 0 1.25rem;">Choose Export Format</h3>
+            <p style="color:#64748b; font-size:0.875rem; margin:0 0 1.5rem;">
+                The export file will contain: Product Name, Description, Category, Brand, Price, Stock, and Active status.
+            </p>
+            <div class="export-options">
+                <button class="export-option-btn" onclick="handleExport('csv')" id="btn-csv" aria-label="Export as CSV">
+                    <div class="export-option-icon csv">
+                        <i class="fas fa-file-csv" aria-hidden="true"></i>
+                    </div>
+                    <div class="export-option-info">
+                        <strong>Export as CSV</strong>
+                        <span>Comma-separated values — compatible with Excel, Google Sheets</span>
+                    </div>
+                    <i class="fas fa-arrow-right" style="margin-left:auto; color:#94a3b8; font-size:0.875rem;" aria-hidden="true"></i>
+                </button>
+
+                <button class="export-option-btn" onclick="handleExport('excel')" id="btn-excel" aria-label="Export as Excel">
+                    <div class="export-option-icon xlsx">
+                        <i class="fas fa-file-excel" aria-hidden="true"></i>
+                    </div>
+                    <div class="export-option-info">
+                        <strong>Export as Excel (.xlsx)</strong>
+                        <span>Native Excel format with formatting and multiple sheets</span>
+                    </div>
+                    <i class="fas fa-arrow-right" style="margin-left:auto; color:#94a3b8; font-size:0.875rem;" aria-hidden="true"></i>
+                </button>
+            </div>
+
+            <!-- Status Message -->
+            <div id="export-msg" style="margin-top:1.25rem; padding:0.875rem 1rem; border-radius:10px; display:none; font-size:0.875rem; font-weight:500; align-items:center; gap:0.5rem;" role="alert" aria-live="polite"></div>
+        </div>
+    </div>
+
+    <!-- Info Sidebar -->
+    <div style="display:flex; flex-direction:column; gap:1rem;">
+        <div class="card">
+            <div class="card-content">
+                <h3 style="font-size:0.9375rem; font-weight:600; color:#0f172a; margin:0 0 0.875rem; display:flex; align-items:center; gap:0.5rem;">
+                    <i class="fas fa-table" style="color:#6366f1;"></i> Export Columns
+                </h3>
+                <ul style="margin:0; padding:0 0 0 1.25rem; font-size:0.8125rem; color:#64748b; line-height:2;">
+                    <li>Product Name</li>
+                    <li>Description</li>
+                    <li>Category</li>
+                    <li>Brand</li>
+                    <li>Price</li>
+                    <li>Stock Quantity</li>
+                    <li>Active / Inactive</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-content">
+                <h3 style="font-size:0.9375rem; font-weight:600; color:#0f172a; margin:0 0 0.875rem; display:flex; align-items:center; gap:0.5rem;">
+                    <i class="fas fa-history" style="color:#f59e0b;"></i> Quick Stats
+                </h3>
+                <div style="font-size:0.8125rem; color:#64748b; line-height:2;" id="export-stats">
+                    <i class="fas fa-circle-notch fa-spin" style="margin-right:0.375rem;"></i> Loading…
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const res = await authAPI.fetchWithAuth('/dashboard/');
+            if (res.ok) {
+                const data = await res.json();
+                document.getElementById('export-stats').innerHTML = `
+                    <div>Total Products: <strong>${data.products.total_products}</strong></div>
+                    <div>Active Products: <strong>${data.products.active_products}</strong></div>
+                    <div>Categories: <strong>${data.products.total_categories}</strong></div>
+                    <div>Brands: <strong>${data.products.total_brands}</strong></div>
+                `;
+            }
+        } catch(e) {}
+    });
+
+    async function handleExport(format) {
+        const url = format === 'excel'
+            ? '/api/v1/products/export/excel/'
+            : '/api/v1/products/export/csv/';
+
+        const msgDiv = document.getElementById('export-msg');
+        const btnId = format === 'excel' ? 'btn-excel' : 'btn-csv';
+        const btn = document.getElementById(btnId);
+
+        btn.disabled = true;
+        msgDiv.style.display = 'flex';
+        msgDiv.style.background = '#eff6ff';
+        msgDiv.style.color = '#1d4ed8';
+        msgDiv.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Generating export file…';
+
+        try {
+            const res = await fetch(url, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${authAPI.getToken()}` }
+            });
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || 'Export failed');
+            }
+
+            const blob = await res.blob();
+            const downloadUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = format === 'excel' ? 'products_export.xlsx' : 'products_export.csv';
+            document.body.appendChild(a); a.click();
+            URL.revokeObjectURL(downloadUrl); a.remove();
+
+            msgDiv.style.background = '#f0fdf4';
+            msgDiv.style.color = '#15803d';
+            msgDiv.innerHTML = '<i class="fas fa-check-circle"></i> Export downloaded successfully!';
+            showToast('Export complete!', 'success');
+            setTimeout(() => { msgDiv.style.display = 'none'; }, 5000);
+
+        } catch(e) {
+            msgDiv.style.background = '#fff1f2';
+            msgDiv.style.color = '#b91c1c';
+            msgDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${e.message}`;
+            showToast('Export failed: ' + e.message, 'error');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+</script>
+{% endblock %}

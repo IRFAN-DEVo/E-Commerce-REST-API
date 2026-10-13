@@ -1,0 +1,119 @@
+﻿{% extends 'frontend/admin_base.html' %}
+{% load static %}
+
+{% block title %}Manage Customers - DjangoMart Admin{% endblock %}
+{% block breadcrumb %}Customers{% endblock %}
+
+{% block content %}
+<div class="admin-page-header">
+    <div>
+        <h1 class="admin-page-title">Manage Customers</h1>
+        <p class="admin-page-subtitle">View and search all registered customers.</p>
+    </div>
+    <div class="admin-header-actions">
+        <span id="customers-count-badge" style="font-size:.875rem;color:#64748b;"></span>
+    </div>
+</div>
+
+<div class="chart-card admin-table-card">
+    <div class="table-toolbar">
+        <div class="table-search" role="search">
+            <i class="fas fa-search" aria-hidden="true"></i>
+            <input type="text" id="customer-search" placeholder="Search by name, email or phone…" aria-label="Search customers" oninput="searchCustomers(this.value)">
+        </div>
+        <div style="display:flex;gap:.5rem;align-items:center;">
+            <select class="form-control btn-sm" id="user-type-filter" onchange="searchCustomers(document.getElementById('customer-search').value)" style="width:auto;">
+                <option value="">All Users</option>
+                <option value="customer">Customers</option>
+                <option value="owner">Owners</option>
+            </select>
+        </div>
+    </div>
+    <div class="table-container">
+        <table aria-label="Customers table">
+            <thead>
+                <tr>
+                    <th scope="col">Customer</th>
+                    <th scope="col">Email</th>
+                    <th scope="col">Phone</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">Joined</th>
+                </tr>
+            </thead>
+            <tbody id="customers-tbody">
+                <tr><td colspan="5" style="text-align:center;padding:3rem;color:#94a3b8;"><i class="fas fa-circle-notch fa-spin"></i> Loading customers…</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="table-pagination" id="customers-pagination" style="display:none;">
+        <span id="customers-page-info">Showing 0 customers</span>
+        <div class="pagination-btns" id="customers-page-btns"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+.status-chip{display:inline-block;padding:.2rem .65rem;border-radius:20px;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.03em;}
+.chip-blue{background:#dbeafe;color:#1d4ed8;} .chip-purple{background:#f3e8ff;color:#7c3aed;}
+</style>
+<script>
+let allCustomers=[];
+let searchDebounce=null;
+
+async function loadCustomers(query=''){
+    const tbody=document.getElementById('customers-tbody');
+    tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:2rem;color:#94a3b8;"><i class="fas fa-circle-notch fa-spin"></i> Loading…</td></tr>`;
+    try {
+        let url='/accounts/admin/customers/';
+        if(query.trim()) url+=`?search=${encodeURIComponent(query.trim())}`;
+        const res=await authAPI.fetchWithAuth(url);
+        if(!res.ok){if(res.status===401||res.status===403){authAPI.logout();return;}throw new Error('API error '+res.status);}
+        const data=await res.json();
+        allCustomers=Array.isArray(data)?data:(data.results||[]);
+        document.getElementById('customers-count-badge').textContent=`${allCustomers.length} customers`;
+        filterAndRender();
+    } catch(e){
+        tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:2.5rem;color:#ef4444;"><i class="fas fa-exclamation-circle"></i> ${e.message}</td></tr>`;
+    }
+}
+
+function searchCustomers(query){
+    clearTimeout(searchDebounce);
+    searchDebounce=setTimeout(()=>loadCustomers(query),350);
+}
+
+function filterAndRender(){
+    const typeFilter=document.getElementById('user-type-filter').value;
+    let f=allCustomers;
+    if(typeFilter) f=f.filter(c=>(c.user_type||'').toLowerCase()===typeFilter.toLowerCase());
+    renderCustomers(f);
+}
+
+function renderCustomers(customers){
+    const tbody=document.getElementById('customers-tbody');
+    if(!customers.length){tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:2.5rem;color:#94a3b8;"><i class="fas fa-users" style="font-size:2rem;display:block;margin-bottom:.5rem;"></i>No customers found.</td></tr>`;return;}
+    tbody.innerHTML=customers.map(c=>{
+        const name=c.name||'—';
+        const initial=name.charAt(0).toUpperCase();
+        const joined=c.date_joined?new Date(c.date_joined).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}):'—';
+        const typeClass=c.user_type==='owner'?'chip-purple':'chip-blue';
+        return `<tr>
+            <td>
+                <div class="table-user">
+                    <div class="table-user-avatar">${initial}</div>
+                    <div style="font-weight:600;color:#0f172a;">${name}</div>
+                </div>
+            </td>
+            <td style="color:#64748b;">${c.email||'—'}</td>
+            <td style="color:#64748b;">${c.phone||'—'}</td>
+            <td><span class="status-chip ${typeClass}">${c.user_type||'customer'}</span></td>
+            <td style="font-size:.8125rem;color:#64748b;">${joined}</td>
+        </tr>`;
+    }).join('');
+}
+
+document.addEventListener('DOMContentLoaded',()=>loadCustomers());
+document.getElementById('user-type-filter').addEventListener('change',filterAndRender);
+</script>
+{% endblock %}

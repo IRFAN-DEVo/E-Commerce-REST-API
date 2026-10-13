@@ -1,0 +1,290 @@
+{% extends 'frontend/admin_base.html' %}
+{% load static %}
+
+{% block title %}Add / Edit Brand - DjangoMart Admin{% endblock %}
+{% block breadcrumb %}
+<a href="{% url 'frontend-admin-brands' %}" style="color:inherit; text-decoration:none;">Brands</a>
+<i class="fas fa-chevron-right" aria-hidden="true" style="font-size:0.65rem; color:#cbd5e1; margin:0 0.5rem;"></i>
+<span id="breadcrumb-action">Add Brand</span>
+{% endblock %}
+
+{% block content %}
+<div class="admin-page-header">
+    <div>
+        <h1 class="admin-page-title" id="page-title">Add New Brand</h1>
+        <p class="admin-page-subtitle">Create a new product brand.</p>
+    </div>
+    <div class="admin-header-actions">
+        <a href="{% url 'frontend-admin-brands' %}" class="btn btn-outline btn-sm">Discard</a>
+        <button class="btn btn-primary btn-sm" id="save-btn" onclick="saveBrand()">
+            <i class="fas fa-save" aria-hidden="true"></i> <span id="save-btn-text">Save Brand</span>
+        </button>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 340px; gap:1.75rem; align-items:start;">
+    
+    <!-- MAIN COLUMN -->
+    <div style="display:flex; flex-direction:column; gap:1.75rem;">
+        
+        <!-- Basic Info -->
+        <div class="card">
+            <div class="card-content">
+                <h3 style="font-size:1rem; font-weight:600; color:#0f172a; margin:0 0 1.25rem;">Basic Information</h3>
+                
+                <div class="form-group">
+                    <label class="form-label" for="brand-name">Brand Name <span style="color:#ef4444;">*</span></label>
+                    <input type="text" id="brand-name" class="form-control" placeholder="e.g. Apple">
+                    <div class="form-error" id="error-name" style="color:#ef4444; font-size:0.8125rem; margin-top:0.25rem; display:none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Extra UI Fields (Visual Only) -->
+        <div class="card" style="opacity:0.8;">
+            <div class="card-content">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+                    <h3 style="font-size:1rem; font-weight:600; color:#0f172a; margin:0;">Additional Details (Visual Demo)</h3>
+                    <span class="badge badge-gray">Not synced</span>
+                </div>
+                
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.25rem;">
+                    <div class="form-group">
+                        <label class="form-label">Slug</label>
+                        <input type="text" class="form-control" placeholder="apple" readonly style="background:#f8fafc; cursor:not-allowed;">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Website URL</label>
+                        <input type="url" class="form-control" placeholder="https://...">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top:1.25rem;">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" rows="4" placeholder="Describe the brand..."></textarea>
+                </div>
+                <div style="margin-top:1rem; padding:1rem; background:#eff6ff; border-radius:8px; display:flex; gap:0.75rem; color:#1e40af; font-size:0.8125rem;">
+                    <i class="fas fa-info-circle" style="margin-top:0.125rem;"></i>
+                    <div>
+                        <strong>Note:</strong> Slug, Website URL, and Description are visual placeholders to match the prompt requirements. The current API backend only supports `name` and `image`.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- SIDEBAR COLUMN -->
+    <div style="display:flex; flex-direction:column; gap:1.75rem;">
+        
+        <!-- Status -->
+        <div class="card" style="opacity:0.8;">
+            <div class="card-content">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+                    <h3 style="font-size:1rem; font-weight:600; color:#0f172a; margin:0;">Status (Visual Demo)</h3>
+                    <span class="badge badge-gray">Not synced</span>
+                </div>
+                
+                <div class="form-group">
+                    <select class="form-control">
+                        <option value="true">Active (Visible)</option>
+                        <option value="false">Inactive (Hidden)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Image Upload -->
+        <div class="card">
+            <div class="card-content">
+                <h3 style="font-size:1rem; font-weight:600; color:#0f172a; margin:0 0 1.25rem;">Brand Logo</h3>
+                
+                <div class="file-upload-zone" id="image-upload-zone" style="text-align:center; padding:2rem 1rem; border:2px dashed #cbd5e1; border-radius:12px; background:#f8fafc; cursor:pointer; position:relative; transition:all 0.2s;">
+                    <input type="file" id="brand-image" accept="image/jpeg, image/png, image/webp" style="position:absolute; inset:0; opacity:0; cursor:pointer;" onchange="previewImage(this)">
+                    
+                    <div id="image-placeholder">
+                        <i class="fas fa-image" style="font-size:2.5rem; color:#94a3b8; margin-bottom:1rem;"></i>
+                        <div style="font-size:0.9375rem; font-weight:600; color:#334155;">Drag &amp; Drop or <span style="color:#6366f1;">Click to Upload</span></div>
+                        <div style="font-size:0.8125rem; color:#64748b; margin-top:0.25rem;">Supports JPG, PNG, WEBP (Max 5MB)</div>
+                    </div>
+
+                    <div id="image-preview-container" style="display:none; position:relative;">
+                        <img id="image-preview" src="" style="max-width:100%; max-height:200px; border-radius:8px; object-fit:contain; border:1px solid #e2e8f0; background:#fff;">
+                        <button type="button" onclick="removeImage(event)" style="position:absolute; top:-10px; right:-10px; width:28px; height:28px; background:#ef4444; color:#fff; border:none; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 2px 5px rgba(0,0,0,0.2);">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="form-error" id="error-image" style="color:#ef4444; font-size:0.8125rem; margin-top:0.5rem; display:none;"></div>
+            </div>
+        </div>
+        
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let itemId = null;
+    let imageFile = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const pathParts = window.location.pathname.split('/').filter(p => p);
+        if (pathParts.includes('edit')) {
+            itemId = pathParts[pathParts.indexOf('brands') + 1];
+            document.getElementById('page-title').textContent = 'Edit Brand';
+            document.getElementById('breadcrumb-action').textContent = 'Edit Brand';
+            await loadData(itemId);
+        }
+    });
+
+    async function loadData(id) {
+        try {
+            const res = await authAPI.fetchWithAuth(`/products/brands/${id}/`);
+            if (!res.ok) {
+                showToast("Brand not found", "error");
+                setTimeout(() => window.location.href = "{% url 'frontend-admin-brands' %}", 2000);
+                return;
+            }
+            const data = await res.json();
+            
+            document.getElementById('brand-name').value = data.name || '';
+            
+            if (data.image) {
+                document.getElementById('image-preview').src = data.image;
+                document.getElementById('image-placeholder').style.display = 'none';
+                document.getElementById('image-preview-container').style.display = 'block';
+            }
+        } catch (e) {
+            showToast("Failed to load brand data.", "error");
+        }
+    }
+
+    const dropZone = document.getElementById('image-upload-zone');
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#6366f1';
+        dropZone.style.background = '#eef2ff';
+    });
+    dropZone.addEventListener('dragleave', (e) => {
+        dropZone.style.borderColor = '#cbd5e1';
+        dropZone.style.background = '#f8fafc';
+    });
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#cbd5e1';
+        dropZone.style.background = '#f8fafc';
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            document.getElementById('brand-image').files = e.dataTransfer.files;
+            previewImage(document.getElementById('brand-image'));
+        }
+    });
+
+    function previewImage(input) {
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+            if (!validTypes.includes(file.type)) {
+                showError('image', 'Only JPG, PNG, and WEBP files are allowed.');
+                removeImage(new Event('click'));
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                showError('image', 'Image size must be less than 5MB.');
+                removeImage(new Event('click'));
+                return;
+            }
+            
+            hideError('image');
+            imageFile = file;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('image-preview').src = e.target.result;
+                document.getElementById('image-placeholder').style.display = 'none';
+                document.getElementById('image-preview-container').style.display = 'block';
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function removeImage(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        document.getElementById('brand-image').value = '';
+        imageFile = null;
+        document.getElementById('image-preview').src = '';
+        document.getElementById('image-preview-container').style.display = 'none';
+        document.getElementById('image-placeholder').style.display = 'block';
+    }
+
+    function showError(fieldId, msg) {
+        const errEl = document.getElementById(`error-${fieldId}`);
+        if (errEl) {
+            errEl.textContent = msg;
+            errEl.style.display = 'block';
+        }
+    }
+    
+    function hideError(fieldId) {
+        const errEl = document.getElementById(`error-${fieldId}`);
+        if (errEl) errEl.style.display = 'none';
+    }
+
+    async function saveBrand() {
+        hideError('name');
+        hideError('image');
+        
+        const name = document.getElementById('brand-name').value.trim();
+        if (!name) {
+            showError('name', 'Brand name is required.');
+            showToast('Please fix the errors in the form.', 'warning');
+            return;
+        }
+
+        const fd = new FormData();
+        fd.append('name', name);
+        if (imageFile) {
+            fd.append('image', imageFile);
+        }
+
+        const btn = document.getElementById('save-btn');
+        const originalText = document.getElementById('save-btn-text').textContent;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Saving...';
+
+        try {
+            let url = '/products/brands/create/';
+            let method = 'POST';
+            
+            if (itemId) {
+                url = `/products/brands/${itemId}/update/`;
+                method = 'PATCH';
+            }
+
+            const res = await authAPI.fetchWithAuth(url, {
+                method: method,
+                body: fd
+            });
+            
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                console.error("Backend errors:", errData);
+                for (const [key, msgs] of Object.entries(errData)) {
+                    if (Array.isArray(msgs)) showError(key, msgs[0]);
+                }
+                throw new Error(errData.detail || 'Failed to save brand.');
+            }
+
+            showToast(`Brand ${itemId ? 'updated' : 'created'} successfully!`, 'success');
+            setTimeout(() => {
+                window.location.href = "{% url 'frontend-admin-brands' %}";
+            }, 1000);
+
+        } catch (e) {
+            showToast(e.message, 'error');
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fas fa-save"></i> <span id="save-btn-text">${originalText}</span>`;
+        }
+    }
+</script>
+{% endblock %}

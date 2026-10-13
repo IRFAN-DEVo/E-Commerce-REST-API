@@ -1,0 +1,447 @@
+{% extends 'frontend/admin_base.html' %}
+{% load static %}
+
+{% block title %}Add / Edit Product - DjangoMart Admin{% endblock %}
+{% block breadcrumb %}
+<a href="{% url 'frontend-admin-products' %}" style="color:inherit; text-decoration:none;">Products</a>
+<i class="fas fa-chevron-right" aria-hidden="true" style="font-size:0.65rem; color:#cbd5e1; margin:0 0.5rem;"></i>
+<span id="breadcrumb-action">Add Product</span>
+{% endblock %}
+
+{% block content %}
+<div class="admin-page-header">
+    <div>
+        <h1 class="admin-page-title" id="page-title">Add New Product</h1>
+        <p class="admin-page-subtitle">Create a new product in your catalog.</p>
+    </div>
+    <div class="admin-header-actions">
+        <a href="{% url 'frontend-admin-products' %}" class="btn btn-outline btn-sm">Discard</a>
+        <button class="btn btn-primary btn-sm" id="save-product-btn" onclick="saveProduct()">
+            <i class="fas fa-save" aria-hidden="true"></i> <span id="save-btn-text">Save Product</span>
+        </button>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 340px; gap:1.75rem; align-items:start;">
+    
+    <!-- MAIN COLUMN -->
+    <div style="display:flex; flex-direction:column; gap:1.75rem;">
+        
+        <!-- Basic Info -->
+        <div class="card">
+            <div class="card-content">
+                <h3 style="font-size:1rem; font-weight:600; color:#0f172a; margin:0 0 1.25rem;">Basic Information</h3>
+                
+                <div class="form-group">
+                    <label class="form-label" for="product-name">Product Name <span style="color:#ef4444;">*</span></label>
+                    <input type="text" id="product-name" class="form-control" placeholder="e.g. Wireless Noise-Cancelling Headphones">
+                    <div class="form-error" id="error-name" style="color:#ef4444; font-size:0.8125rem; margin-top:0.25rem; display:none;"></div>
+                </div>
+
+                <div class="form-group" style="margin-top:1.25rem;">
+                    <label class="form-label" for="product-desc">Full Description</label>
+                    <textarea id="product-desc" class="form-control" rows="6" placeholder="Describe your product..."></textarea>
+                    <div class="form-error" id="error-desc" style="color:#ef4444; font-size:0.8125rem; margin-top:0.25rem; display:none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Media -->
+        <div class="card">
+            <div class="card-content">
+                <h3 style="font-size:1rem; font-weight:600; color:#0f172a; margin:0 0 1.25rem;">Media (Main Image)</h3>
+                
+                <div class="file-upload-zone" id="image-upload-zone" style="text-align:center; padding:2rem 1rem; border:2px dashed #cbd5e1; border-radius:12px; background:#f8fafc; cursor:pointer; position:relative; transition:all 0.2s;">
+                    <input type="file" id="product-image" accept="image/jpeg, image/png, image/webp" style="position:absolute; inset:0; opacity:0; cursor:pointer;" onchange="previewImage(this)">
+                    
+                    <div id="image-placeholder">
+                        <i class="fas fa-image" style="font-size:2.5rem; color:#94a3b8; margin-bottom:1rem;"></i>
+                        <div style="font-size:0.9375rem; font-weight:600; color:#334155;">Drag &amp; Drop or <span style="color:#6366f1;">Click to Upload</span></div>
+                        <div style="font-size:0.8125rem; color:#64748b; margin-top:0.25rem;">Supports JPG, PNG, WEBP (Max 5MB)</div>
+                    </div>
+
+                    <div id="image-preview-container" style="display:none; position:relative;">
+                        <img id="image-preview" src="" style="max-width:100%; max-height:200px; border-radius:8px; object-fit:contain; border:1px solid #e2e8f0; background:#fff;">
+                        <button type="button" onclick="removeImage(event)" style="position:absolute; top:-10px; right:-10px; width:28px; height:28px; background:#ef4444; color:#fff; border:none; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 2px 5px rgba(0,0,0,0.2);">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="form-error" id="error-image" style="color:#ef4444; font-size:0.8125rem; margin-top:0.5rem; display:none;"></div>
+                
+                <div style="margin-top:1rem; padding:1rem; background:#eff6ff; border-radius:8px; display:flex; gap:0.75rem; color:#1e40af; font-size:0.8125rem;">
+                    <i class="fas fa-info-circle" style="margin-top:0.125rem;"></i>
+                    <div>
+                        <strong>Gallery Images &amp; SEO Meta:</strong> For this demo, we are building UI for the main product fields supported by the current API backend. Extra fields will be added as the backend evolves!
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pricing -->
+        <div class="card">
+            <div class="card-content">
+                <h3 style="font-size:1rem; font-weight:600; color:#0f172a; margin:0 0 1.25rem;">Pricing</h3>
+                
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.25rem;">
+                    <div class="form-group">
+                        <label class="form-label" for="product-price">Regular Price <span style="color:#ef4444;">*</span></label>
+                        <div style="position:relative;">
+                            <span style="position:absolute; left:1rem; top:50%; transform:translateY(-50%); color:#64748b; font-weight:500;">$</span>
+                            <input type="number" id="product-price" class="form-control" style="padding-left:2.25rem;" placeholder="0.00" step="0.01" min="0">
+                        </div>
+                        <div class="form-error" id="error-price" style="color:#ef4444; font-size:0.8125rem; margin-top:0.25rem; display:none;"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="product-discount">Discount Price</label>
+                        <div style="position:relative;">
+                            <span style="position:absolute; left:1rem; top:50%; transform:translateY(-50%); color:#64748b; font-weight:500;">$</span>
+                            <input type="number" id="product-discount" class="form-control" style="padding-left:2.25rem;" placeholder="0.00" step="0.01" min="0">
+                        </div>
+                        <div class="form-error" id="error-discount" style="color:#ef4444; font-size:0.8125rem; margin-top:0.25rem; display:none;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Extra UI Fields (Visual Only per Prompt) -->
+        <div class="card" style="opacity:0.8;">
+            <div class="card-content">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+                    <h3 style="font-size:1rem; font-weight:600; color:#0f172a; margin:0;">Shipping &amp; SKU (Visual Demo)</h3>
+                    <span class="badge badge-gray">Not synced</span>
+                </div>
+                
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:1.25rem;">
+                    <div class="form-group">
+                        <label class="form-label">SKU</label>
+                        <input type="text" class="form-control" placeholder="SKU-12345">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Weight (kg)</label>
+                        <input type="number" class="form-control" placeholder="0.0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Barcode</label>
+                        <input type="text" class="form-control" placeholder="UPC / EAN">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- SIDEBAR COLUMN -->
+    <div style="display:flex; flex-direction:column; gap:1.75rem;">
+        
+        <!-- Status -->
+        <div class="card">
+            <div class="card-content">
+                <h3 style="font-size:1rem; font-weight:600; color:#0f172a; margin:0 0 1.25rem;">Status</h3>
+                
+                <div class="form-group">
+                    <label class="form-label" for="product-available">Product Status</label>
+                    <select id="product-available" class="form-control">
+                        <option value="true">Active (Visible)</option>
+                        <option value="false">Inactive (Draft/Hidden)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Organization -->
+        <div class="card">
+            <div class="card-content">
+                <h3 style="font-size:1rem; font-weight:600; color:#0f172a; margin:0 0 1.25rem;">Organization</h3>
+                
+                <div class="form-group">
+                    <label class="form-label" for="product-category">Category <span style="color:#ef4444;">*</span></label>
+                    <select id="product-category" class="form-control">
+                        <option value="">Select a category...</option>
+                    </select>
+                    <div class="form-error" id="error-category" style="color:#ef4444; font-size:0.8125rem; margin-top:0.25rem; display:none;"></div>
+                </div>
+
+                <div class="form-group" style="margin-top:1.25rem;">
+                    <label class="form-label" for="product-brand">Brand <span style="color:#ef4444;">*</span></label>
+                    <select id="product-brand" class="form-control">
+                        <option value="">Select a brand...</option>
+                    </select>
+                    <div class="form-error" id="error-brand" style="color:#ef4444; font-size:0.8125rem; margin-top:0.25rem; display:none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inventory -->
+        <div class="card">
+            <div class="card-content">
+                <h3 style="font-size:1rem; font-weight:600; color:#0f172a; margin:0 0 1.25rem;">Inventory</h3>
+                
+                <div class="form-group">
+                    <label class="form-label" for="product-stock">Stock Quantity <span style="color:#ef4444;">*</span></label>
+                    <input type="number" id="product-stock" class="form-control" placeholder="0" min="0" step="1">
+                    <div class="form-error" id="error-stock" style="color:#ef4444; font-size:0.8125rem; margin-top:0.25rem; display:none;"></div>
+                </div>
+
+                <div class="form-group" style="margin-top:1.25rem;">
+                    <label class="form-label" for="product-stock-status">Stock Status</label>
+                    <select id="product-stock-status" class="form-control">
+                        <option value="IN_STOCK">In Stock</option>
+                        <option value="OUT_OF_STOCK">Out of Stock</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let productId = null;
+    let imageFile = null;
+    let existingImageUrl = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Extract product ID from URL if edit mode
+        const pathParts = window.location.pathname.split('/').filter(p => p);
+        if (pathParts.includes('edit')) {
+            productId = pathParts[pathParts.indexOf('products') + 1];
+            document.getElementById('page-title').textContent = 'Edit Product';
+            document.getElementById('breadcrumb-action').textContent = 'Edit Product';
+        }
+
+        // Load Categories and Brands
+        await loadOptions();
+
+        // If Edit mode, load product data
+        if (productId) {
+            await loadProductData(productId);
+        }
+    });
+
+    async function loadOptions() {
+        try {
+            const [catRes, brandRes] = await Promise.all([
+                authAPI.fetchWithAuth('/products/categories/'),
+                authAPI.fetchWithAuth('/products/brands/')
+            ]);
+            
+            if (catRes.ok) {
+                const cats = await catRes.json();
+                const sel = document.getElementById('product-category');
+                cats.forEach(c => sel.add(new Option(c.name, c.id)));
+            }
+            if (brandRes.ok) {
+                const brands = await brandRes.json();
+                const sel = document.getElementById('product-brand');
+                brands.forEach(b => sel.add(new Option(b.name, b.id)));
+            }
+        } catch (e) {
+            console.error("Failed to load options", e);
+        }
+    }
+
+    async function loadProductData(id) {
+        try {
+            const res = await authAPI.fetchWithAuth(`/products/products/${id}/`);
+            if (!res.ok) {
+                showToast("Product not found", "error");
+                setTimeout(() => window.location.href = "{% url 'frontend-admin-products' %}", 2000);
+                return;
+            }
+            const data = await res.json();
+            
+            document.getElementById('product-name').value = data.name || '';
+            document.getElementById('product-desc').value = data.description || '';
+            document.getElementById('product-price').value = data.price || '';
+            document.getElementById('product-discount').value = data.discount_price || '';
+            document.getElementById('product-category').value = data.category?.id || data.category_id || '';
+            document.getElementById('product-brand').value = data.brand?.id || data.brand_id || '';
+            document.getElementById('product-stock').value = data.stock || 0;
+            document.getElementById('product-stock-status').value = data.stock_status || 'IN_STOCK';
+            document.getElementById('product-available').value = data.is_available !== false ? 'true' : 'false';
+
+            if (data.image) {
+                existingImageUrl = data.image;
+                document.getElementById('image-preview').src = data.image;
+                document.getElementById('image-placeholder').style.display = 'none';
+                document.getElementById('image-preview-container').style.display = 'block';
+            }
+        } catch (e) {
+            showToast("Failed to load product data.", "error");
+        }
+    }
+
+    /* --- Image Handling --- */
+    const dropZone = document.getElementById('image-upload-zone');
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#6366f1';
+        dropZone.style.background = '#eef2ff';
+    });
+    dropZone.addEventListener('dragleave', (e) => {
+        dropZone.style.borderColor = '#cbd5e1';
+        dropZone.style.background = '#f8fafc';
+    });
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#cbd5e1';
+        dropZone.style.background = '#f8fafc';
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            document.getElementById('product-image').files = e.dataTransfer.files;
+            previewImage(document.getElementById('product-image'));
+        }
+    });
+
+    function previewImage(input) {
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            
+            // Validate type & size
+            const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+            if (!validTypes.includes(file.type)) {
+                showError('image', 'Only JPG, PNG, and WEBP files are allowed.');
+                removeImage(new Event('click'));
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) { // 5MB
+                showError('image', 'Image size must be less than 5MB.');
+                removeImage(new Event('click'));
+                return;
+            }
+            
+            hideError('image');
+            imageFile = file;
+            existingImageUrl = null;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('image-preview').src = e.target.result;
+                document.getElementById('image-placeholder').style.display = 'none';
+                document.getElementById('image-preview-container').style.display = 'block';
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function removeImage(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        document.getElementById('product-image').value = '';
+        imageFile = null;
+        existingImageUrl = null;
+        document.getElementById('image-preview').src = '';
+        document.getElementById('image-preview-container').style.display = 'none';
+        document.getElementById('image-placeholder').style.display = 'block';
+    }
+
+    /* --- Validation & Save --- */
+    function showError(fieldId, msg) {
+        const errEl = document.getElementById(`error-${fieldId}`);
+        if (errEl) {
+            errEl.textContent = msg;
+            errEl.style.display = 'block';
+        }
+    }
+    
+    function hideError(fieldId) {
+        const errEl = document.getElementById(`error-${fieldId}`);
+        if (errEl) errEl.style.display = 'none';
+    }
+
+    function hideAllErrors() {
+        ['name', 'desc', 'price', 'discount', 'category', 'brand', 'stock', 'image'].forEach(hideError);
+    }
+
+    async function saveProduct() {
+        hideAllErrors();
+        
+        // Gather data
+        const name = document.getElementById('product-name').value.trim();
+        const desc = document.getElementById('product-desc').value.trim();
+        const price = document.getElementById('product-price').value;
+        const discount = document.getElementById('product-discount').value;
+        const categoryId = document.getElementById('product-category').value;
+        const brandId = document.getElementById('product-brand').value;
+        const stock = document.getElementById('product-stock').value;
+        const stockStatus = document.getElementById('product-stock-status').value;
+        const isAvailable = document.getElementById('product-available').value === 'true';
+
+        // Validate
+        let hasError = false;
+        if (!name) { showError('name', 'Product name is required.'); hasError = true; }
+        if (!price || parseFloat(price) < 0) { showError('price', 'Valid positive price is required.'); hasError = true; }
+        if (discount && parseFloat(discount) < 0) { showError('discount', 'Discount must be positive.'); hasError = true; }
+        if (!categoryId) { showError('category', 'Please select a category.'); hasError = true; }
+        if (!brandId) { showError('brand', 'Please select a brand.'); hasError = true; }
+        if (!stock || parseInt(stock) < 0) { showError('stock', 'Valid positive stock quantity is required.'); hasError = true; }
+
+        if (hasError) {
+            showToast('Please fix the errors in the form.', 'warning');
+            return;
+        }
+
+        // Prepare FormData for upload
+        const fd = new FormData();
+        fd.append('name', name);
+        fd.append('description', desc);
+        fd.append('price', parseFloat(price).toFixed(2));
+        if (discount) fd.append('discount_price', parseFloat(discount).toFixed(2));
+        fd.append('category_id', categoryId);
+        fd.append('brand_id', brandId);
+        fd.append('stock', parseInt(stock));
+        fd.append('stock_status', stockStatus);
+        fd.append('is_available', isAvailable);
+
+        if (imageFile) {
+            fd.append('image', imageFile);
+        }
+
+        // Button State
+        const btn = document.getElementById('save-product-btn');
+        const originalText = document.getElementById('save-btn-text').textContent;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Saving...';
+
+        try {
+            let url = '/products/products/create/';
+            let method = 'POST';
+            
+            if (productId) {
+                url = `/products/products/${productId}/update/`;
+                method = 'PATCH'; // DRF UpdateAPIView supports PATCH for partial
+            }
+
+            const res = await authAPI.fetchWithAuth(url, {
+                method: method,
+                body: fd
+            });
+            
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                console.error("Backend errors:", errData);
+                // Try to map errors to fields
+                for (const [key, msgs] of Object.entries(errData)) {
+                    if (Array.isArray(msgs)) showError(key.replace('_id',''), msgs[0]);
+                }
+                throw new Error(errData.detail || 'Failed to save product. Check field errors.');
+            }
+
+            showToast(`Product ${productId ? 'updated' : 'created'} successfully!`, 'success');
+            
+            // Redirect to products list
+            setTimeout(() => {
+                window.location.href = "{% url 'frontend-admin-products' %}";
+            }, 1000);
+
+        } catch (e) {
+            showToast(e.message, 'error');
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fas fa-save"></i> <span id="save-btn-text">${originalText}</span>`;
+        }
+    }
+</script>
+{% endblock %}

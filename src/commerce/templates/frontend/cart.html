@@ -1,0 +1,324 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}Shopping Cart - DjangoMart{% endblock %}
+
+{% block content %}
+<div class="page-hero page-hero-sm">
+    <div class="container">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+            <a href="{% url 'frontend-home' %}">Home</a>
+            <i class="fas fa-chevron-right" aria-hidden="true"></i>
+            <span>Shopping Cart</span>
+        </nav>
+        <h1>Shopping Cart</h1>
+    </div>
+</div>
+
+<div class="section container" id="cart-container">
+    <div class="empty-state text-center" id="cart-loading">
+        <i class="fas fa-spinner fa-spin empty-icon"></i>
+        <h2>Loading your cart...</h2>
+    </div>
+
+    <!-- Loaded State -->
+    <div class="cart-layout" id="cart-content" style="display: none;">
+        <!-- Cart Items Column -->
+        <div class="cart-items-col">
+            <div class="cart-header">
+                <span>Product</span>
+                <span>Price</span>
+                <span>Quantity</span>
+                <span>Total</span>
+                <span></span>
+            </div>
+            
+            <div id="cart-items-list"></div>
+
+            <div class="cart-actions">
+                <a href="{% url 'frontend-products' %}" class="btn btn-outline" id="continue-shopping-btn">
+                    <i class="fas fa-arrow-left" aria-hidden="true"></i> Continue Shopping
+                </a>
+                <button type="button" class="btn btn-outline btn-danger-outline" onclick="clearCart()">
+                    <i class="fas fa-trash" aria-hidden="true"></i> Clear Cart
+                </button>
+            </div>
+        </div>
+
+        <!-- Order Summary Column -->
+        <div class="cart-summary-col">
+            <div class="card order-summary">
+                <div class="card-content">
+                    <h3 class="summary-title">Order Summary</h3>
+
+                    <div class="summary-row">
+                        <span id="summary-items-count">Subtotal (0 items)</span>
+                        <span><strong id="summary-subtotal">$0.00</strong></span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Shipping</span>
+                        <span><span class="text-success"><strong>FREE</strong></span></span>
+                    </div>
+                    
+                    <div class="summary-total">
+                        <span>Total</span>
+                        <span class="total-amount" id="summary-total">$0.00</span>
+                    </div>
+
+                    <button class="btn btn-primary btn-lg" style="width:100%;" onclick="proceedToCheckout()">
+                        <i class="fas fa-lock" aria-hidden="true"></i> Proceed to Checkout
+                    </button>
+
+                    <div class="payment-methods" aria-label="Accepted payment methods">
+                        <i class="fab fa-cc-visa" aria-hidden="true" title="Visa"></i>
+                        <i class="fab fa-cc-mastercard" aria-hidden="true" title="Mastercard"></i>
+                        <i class="fab fa-cc-paypal" aria-hidden="true" title="PayPal"></i>
+                        <i class="fab fa-cc-stripe" aria-hidden="true" title="Stripe"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Empty Cart -->
+    <div class="empty-cart text-center" id="cart-empty" style="display: none;">
+        <div class="empty-cart-icon" aria-hidden="true">
+            <i class="fas fa-shopping-cart"></i>
+        </div>
+        <h2>Your cart is empty</h2>
+        <p>Looks like you haven't added anything to your cart yet.</p>
+        <a href="{% url 'frontend-products' %}" class="btn btn-primary btn-lg">
+            <i class="fas fa-shopping-bag" aria-hidden="true"></i> Start Shopping
+        </a>
+    </div>
+</div>
+
+<!-- Checkout Modal -->
+<div class="modal-overlay" id="checkout-modal">
+    <div class="modal">
+        <button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+        <h2 class="modal-title">Checkout</h2>
+        <form id="checkout-form" onsubmit="event.preventDefault(); submitOrder();">
+            <div class="form-group">
+                <label class="form-label">Full Name</label>
+                <input type="text" id="ship-name" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Phone</label>
+                <input type="text" id="ship-phone" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Address</label>
+                <input type="text" id="ship-address" class="form-control" required>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <div class="form-group" style="flex:1;">
+                    <label class="form-label">City</label>
+                    <input type="text" id="ship-city" class="form-control" required>
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label class="form-label">Postal Code</label>
+                    <input type="text" id="ship-postal" class="form-control" required>
+                </div>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <div class="form-group" style="flex:1;">
+                    <label class="form-label">State</label>
+                    <input type="text" id="ship-state" class="form-control" required>
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label class="form-label">Country</label>
+                    <input type="text" id="ship-country" class="form-control" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Payment Method</label>
+                <select id="payment-method" class="form-control">
+                    <option value="COD">Cash on Delivery (COD)</option>
+                    <option value="STRIPE" disabled>Stripe (Coming Soon)</option>
+                    <option value="RAZORPAY" disabled>Razorpay (Coming Soon)</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="place-order-btn">Place Order</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    if (!authAPI.isAuthenticated()) {
+        window.location.href = "{% url 'frontend-login' %}?next={% url 'frontend-cart' %}";
+    }
+
+    document.addEventListener('DOMContentLoaded', loadCart);
+
+    async function loadCart() {
+        try {
+            const res = await authAPI.fetchWithAuth('/cart/');
+            if (!res.ok) throw new Error();
+            const data = await res.json();
+            
+            document.getElementById('cart-loading').style.display = 'none';
+            
+            if (!data.cart_items || data.cart_items.length === 0) {
+                document.getElementById('cart-empty').style.display = 'block';
+                document.getElementById('cart-content').style.display = 'none';
+            } else {
+                document.getElementById('cart-empty').style.display = 'none';
+                document.getElementById('cart-content').style.display = 'flex';
+                renderCart(data);
+            }
+        } catch(e) {
+            document.getElementById('cart-loading').innerHTML = '<h2 class="text-danger">Failed to load cart</h2>';
+        }
+    }
+
+    function renderCart(data) {
+        const list = document.getElementById('cart-items-list');
+        let html = '';
+        let subtotal = 0;
+        let count = 0;
+        
+        data.cart_items.forEach(item => {
+            const price = parseFloat(item.product.price);
+            const total = price * item.quantity;
+            subtotal += total;
+            count += item.quantity;
+            
+            const img = item.product.image || '/static/images/product_placeholder.png';
+            
+            html += `
+                <div class="card cart-item">
+                    <div class="cart-item-product">
+                        <div class="cart-item-image">
+                            <img src="${img}" alt="${item.product.name}">
+                        </div>
+                        <div class="cart-item-details">
+                            <a href="/products/${item.product.id}/" class="cart-item-name">${item.product.name}</a>
+                            <span class="cart-item-category">${item.product.category_name || ''}</span>
+                        </div>
+                    </div>
+                    <div class="cart-item-price">$${price.toFixed(2)}</div>
+                    <div class="cart-item-qty">
+                        <div class="qty-wrapper">
+                            <button type="button" class="qty-btn" onclick="updateItemQty(${item.id}, ${item.quantity - 1})"><i class="fas fa-minus"></i></button>
+                            <input type="number" class="qty-input" value="${item.quantity}" readonly>
+                            <button type="button" class="qty-btn" onclick="updateItemQty(${item.id}, ${item.quantity + 1})"><i class="fas fa-plus"></i></button>
+                        </div>
+                    </div>
+                    <div class="cart-item-total"><strong>$${total.toFixed(2)}</strong></div>
+                    <div class="cart-item-remove">
+                        <button type="button" class="icon-btn icon-btn-danger" onclick="removeItem(${item.id})"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        list.innerHTML = html;
+        document.getElementById('summary-items-count').textContent = `Subtotal (${count} items)`;
+        document.getElementById('summary-subtotal').textContent = `$${subtotal.toFixed(2)}`;
+        document.getElementById('summary-total').textContent = `$${subtotal.toFixed(2)}`;
+    }
+
+    async function updateItemQty(itemId, newQty) {
+        if (newQty < 1) return removeItem(itemId);
+        try {
+            await authAPI.fetchWithAuth(`/cart/items/${itemId}/`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ quantity: newQty })
+            });
+            loadCart();
+        } catch(e) {
+            alert('Error updating quantity');
+        }
+    }
+
+    async function removeItem(itemId) {
+        if (!confirm('Remove this item?')) return;
+        try {
+            await authAPI.fetchWithAuth(`/cart/items/${itemId}/delete/`, { method: 'DELETE' });
+            loadCart();
+        } catch(e) {
+            alert('Error removing item');
+        }
+    }
+
+    async function clearCart() {
+        if (!confirm('Clear entire cart?')) return;
+        try {
+            // Need to fetch cart items, then delete all. Or maybe there's a clear endpoint?
+            // Assuming no clear endpoint, loop delete
+            const res = await authAPI.fetchWithAuth('/cart/');
+            const data = await res.json();
+            for (let item of data.cart_items) {
+                await authAPI.fetchWithAuth(`/cart/items/${item.id}/delete/`, { method: 'DELETE' });
+            }
+            loadCart();
+        } catch(e) {
+            alert('Error clearing cart');
+        }
+    }
+    
+    function proceedToCheckout() {
+        document.getElementById('checkout-modal').classList.add('open');
+    }
+    
+    function closeModal() {
+        document.getElementById('checkout-modal').classList.remove('open');
+    }
+    
+    async function submitOrder() {
+        const btn = document.getElementById('place-order-btn');
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        btn.disabled = true;
+        
+        const addressData = {
+            full_name: document.getElementById('ship-name').value,
+            phone: document.getElementById('ship-phone').value,
+            address: document.getElementById('ship-address').value,
+            city: document.getElementById('ship-city').value,
+            state: document.getElementById('ship-state').value,
+            postal_code: document.getElementById('ship-postal').value,
+            country: document.getElementById('ship-country').value,
+        };
+        
+        try {
+            // 1. Create order
+            const checkoutRes = await authAPI.fetchWithAuth('/orders/checkout/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ shipping_address: addressData })
+            });
+            
+            if (!checkoutRes.ok) {
+                const err = await checkoutRes.json();
+                throw new Error(JSON.stringify(err));
+            }
+            const orderData = await checkoutRes.json();
+            
+            // 2. Add payment method (always COD for now)
+            const paymentRes = await authAPI.fetchWithAuth(`/payments/orders/${orderData.id}/payments/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ payment_method: 'COD' })
+            });
+            
+            if (!paymentRes.ok) throw new Error("Payment initialization failed");
+            
+            alert('Order placed successfully!');
+            window.location.href = "{% url 'frontend-orders' %}";
+            
+        } catch(e) {
+            alert('Failed to place order: ' + e.message);
+            btn.innerHTML = 'Place Order';
+            btn.disabled = false;
+        }
+    }
+</script>
+{% endblock %}

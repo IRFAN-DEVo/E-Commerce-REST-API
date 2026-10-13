@@ -1,0 +1,61 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}Categories - DjangoMart{% endblock %}
+
+{% block content %}
+<div class="page-hero page-hero-sm">
+    <div class="container">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+            <a href="{% url 'frontend-home' %}">Home</a>
+            <i class="fas fa-chevron-right" aria-hidden="true"></i>
+            <span>Categories</span>
+        </nav>
+        <h1>Shop by Category</h1>
+        <p class="page-subtitle">Find exactly what you're looking for</p>
+    </div>
+</div>
+
+<div class="section container">
+    <div class="empty-state text-center" id="categories-loading">
+        <i class="fas fa-spinner fa-spin empty-icon"></i>
+        <h2>Loading categories...</h2>
+    </div>
+
+    <div class="product-grid" id="categories-grid" style="display:none; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));">
+        <!-- JS populated -->
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const res = await fetch('/api/v1/products/categories/');
+            if (!res.ok) throw new Error();
+            const categories = await res.json();
+            
+            document.getElementById('categories-loading').style.display = 'none';
+            
+            const grid = document.getElementById('categories-grid');
+            grid.style.display = 'grid';
+            
+            grid.innerHTML = categories.map(cat => {
+                const img = cat.image || '/static/images/product_placeholder.png';
+                return `
+                    <div class="card category-card" style="text-align:center; padding: 20px; transition: transform 0.2s;">
+                        <a href="{% url 'frontend-products' %}?category=${cat.id}" style="text-decoration:none; color:inherit;">
+                            <img src="${img}" alt="${cat.name}" style="width:100%; height:200px; object-fit:cover; border-radius:8px; margin-bottom:15px;">
+                            <h3>${cat.name}</h3>
+                            <p class="text-muted">${cat.description || ''}</p>
+                        </a>
+                    </div>
+                `;
+            }).join('');
+        } catch(e) {
+            document.getElementById('categories-loading').innerHTML = '<h2 class="text-danger">Failed to load categories</h2>';
+        }
+    });
+</script>
+{% endblock %}

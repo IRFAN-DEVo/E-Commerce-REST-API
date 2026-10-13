@@ -1,0 +1,178 @@
+{% extends 'frontend/admin_base.html' %}
+{% load static %}
+
+{% block title %}Manage Categories - DjangoMart Admin{% endblock %}
+{% block breadcrumb %}Categories{% endblock %}
+
+{% block content %}
+<div class="admin-page-header">
+    <div>
+        <h1 class="admin-page-title">Manage Categories</h1>
+        <p class="admin-page-subtitle">View and manage all product categories.</p>
+    </div>
+    <div class="admin-header-actions">
+        <a href="{% url 'frontend-admin-category-create' %}" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus" aria-hidden="true"></i> Add Category
+        </a>
+    </div>
+</div>
+
+<!-- Custom Delete Confirmation Modal -->
+<div id="delete-modal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.6); backdrop-filter:blur(2px); z-index:2000; align-items:center; justify-content:center;">
+    <div style="background:#fff; width:100%; max-width:400px; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.1); overflow:hidden;">
+        <div style="padding:1.5rem 1.5rem 1rem;">
+            <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1rem;">
+                <div style="width:40px; height:40px; border-radius:50%; background:#fee2e2; color:#ef4444; display:flex; align-items:center; justify-content:center; font-size:1.25rem;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div>
+                    <h3 style="margin:0; font-size:1.125rem; font-weight:600; color:#0f172a;">Delete Category</h3>
+                </div>
+            </div>
+            <p style="margin:0; color:#64748b; font-size:0.875rem;">Are you sure you want to delete <strong id="delete-item-name">this category</strong>? This action cannot be undone.</p>
+        </div>
+        <div style="padding:1rem 1.5rem; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end; gap:0.75rem;">
+            <button class="btn btn-outline" onclick="closeDeleteModal()">Cancel</button>
+            <button class="btn btn-danger" id="confirm-delete-btn">
+                <i class="fas fa-trash"></i> Delete
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="chart-card admin-table-card">
+    <div class="table-toolbar">
+        <div class="table-search" role="search">
+            <i class="fas fa-search" aria-hidden="true"></i>
+            <input type="text" id="cat-search" placeholder="Search categories…" aria-label="Search categories" oninput="filterTable(this.value)">
+        </div>
+        <span id="cat-count" style="font-size:0.8125rem; color:#94a3b8;"></span>
+    </div>
+    <div class="table-container">
+        <table aria-label="Categories management table">
+            <thead>
+                <tr>
+                    <th scope="col">ID</th>
+                    <th scope="col">Category Name</th>
+                    <th scope="col">Slug</th>
+                    <th scope="col">Products</th>
+                    <th scope="col">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="categories-tbody">
+                <tr>
+                    <td colspan="5" style="text-align:center; padding:3rem; color:#94a3b8;">
+                        <i class="fas fa-circle-notch fa-spin" style="margin-right:0.5rem;"></i> Loading categories…
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let allCats = [];
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            await loadCategories();
+        } catch(e) {
+            document.getElementById('categories-tbody').innerHTML =
+                `<tr><td colspan="5" style="text-align:center; padding:2.5rem; color:#ef4444;">
+                    <i class="fas fa-exclamation-circle"></i> Failed to load categories.
+                </td></tr>`;
+        }
+    });
+
+    async function loadCategories() {
+        const res = await authAPI.fetchWithAuth('/products/categories/?page_size=200');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        
+        allCats = data.results || data || [];
+        document.getElementById('cat-count').textContent = `${allCats.length} categories`;
+        renderCats(allCats);
+    }
+
+    function renderCats(cats) {
+        const tbody = document.getElementById('categories-tbody');
+        if (!cats.length) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:2.5rem; color:#94a3b8;">No categories found.</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = cats.map(c => `
+            <tr>
+                <td><span class="badge badge-gray">#${c.id}</span></td>
+                <td>
+                    <div style="display:flex; align-items:center; gap:0.625rem;">
+                        <div style="width:32px; height:32px; background:linear-gradient(135deg,#e0e7ff,#c7d2fe); border-radius:8px; display:flex; align-items:center; justify-content:center; color:#6366f1; font-weight:700; font-size:0.8125rem;">
+                            ${(c.name||'?').charAt(0)}
+                        </div>
+                        <strong>${c.name || '—'}</strong>
+                    </div>
+                </td>
+                <td><code style="font-size:0.8rem; color:#64748b; background:#f1f5f9; padding:0.2rem 0.5rem; border-radius:4px;">${c.slug || '—'}</code></td>
+                <td><span class="badge badge-blue">${c.product_count ?? '—'} products</span></td>
+                <td>
+                    <div class="table-actions">
+                        <a href="/admin-panel/categories/${c.id}/edit/" class="btn btn-outline btn-icon btn-xs" title="Edit category">
+                            <i class="fas fa-pen" aria-hidden="true"></i>
+                        </a>
+                        <button class="btn btn-danger btn-icon btn-xs" onclick="openDeleteModal(${c.id}, '${(c.name || '').replace(/'/g, "\\'")}', ${c.product_count || 0})" title="Delete category">
+                            <i class="fas fa-trash" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function filterTable(q) {
+        const filtered = allCats.filter(c => (c.name||'').toLowerCase().includes(q.toLowerCase()));
+        renderCats(filtered);
+        document.getElementById('cat-count').textContent = `${filtered.length} of ${allCats.length} categories`;
+    }
+
+    let itemToDelete = null;
+    
+    function openDeleteModal(id, name, productCount) {
+        if (productCount > 0) {
+            showToast(`Cannot delete category "${name}" because it has ${productCount} products.`, 'warning');
+            return;
+        }
+        itemToDelete = id;
+        document.getElementById('delete-item-name').textContent = name || 'this category';
+        const modal = document.getElementById('delete-modal');
+        modal.style.display = 'flex';
+        
+        document.getElementById('confirm-delete-btn').onclick = async function() {
+            if (!itemToDelete) return;
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Deleting...';
+            
+            try {
+                const res = await authAPI.fetchWithAuth(`/products/categories/${itemToDelete}/delete/`, {
+                    method: 'DELETE'
+                });
+                if (!res.ok) throw new Error('Failed to delete category');
+                showToast('Category deleted successfully', 'success');
+                closeDeleteModal();
+                await loadCategories();
+            } catch (e) {
+                showToast(e.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-trash"></i> Delete';
+            }
+        };
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('delete-modal').style.display = 'none';
+        itemToDelete = null;
+    }
+</script>
+{% endblock %}

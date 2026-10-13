@@ -1,0 +1,333 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}DjangoMart Admin{% endblock %}</title>
+    <meta name="description" content="DjangoMart Admin Panel — Manage your store">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <!-- Admin CSS -->
+    <link rel="stylesheet" href="{% static 'css/admin.css' %}?v=2.1">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+    <!-- ========== AUTH GUARD ========== -->
+    <div id="admin-auth-guard" style="display:none; width:100%;">
+
+        <!-- Mobile overlay -->
+        <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeMobileSidebar()"></div>
+
+        <!-- ========== SIDEBAR ========== -->
+        <aside class="admin-sidebar" id="admin-sidebar" aria-label="Admin navigation">
+
+            <!-- Brand -->
+            <a href="{% url 'frontend-home' %}" class="sidebar-brand" aria-label="DjangoMart Home">
+                <div class="sidebar-brand-icon"><i class="fas fa-store" aria-hidden="true"></i></div>
+                <span class="sidebar-brand-text">DjangoMart</span>
+            </a>
+
+            <!-- Nav -->
+            <nav class="admin-nav" role="navigation" aria-label="Primary admin navigation">
+
+                <!-- Analytics -->
+                <span class="nav-section-label">Analytics</span>
+                <a href="{% url 'frontend-admin-dashboard' %}"
+                   class="nav-item {% if request.resolver_match.url_name == 'frontend-admin-dashboard' %}active{% endif %}"
+                   aria-current="{% if request.resolver_match.url_name == 'frontend-admin-dashboard' %}page{% endif %}">
+                    <i class="fas fa-chart-pie" aria-hidden="true"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="{% url 'frontend-admin-fluctuations' %}"
+                   class="nav-item {% if request.resolver_match.url_name == 'frontend-admin-fluctuations' %}active{% endif %}">
+                    <i class="fas fa-chart-line" aria-hidden="true"></i>
+                    <span>Fluctuations</span>
+                </a>
+
+                <!-- Catalog -->
+                <span class="nav-section-label">Catalog</span>
+                <a href="{% url 'frontend-admin-products' %}"
+                   class="nav-item {% if request.resolver_match.url_name == 'frontend-admin-products' %}active{% endif %}">
+                    <i class="fas fa-box-open" aria-hidden="true"></i>
+                    <span>Products</span>
+                </a>
+                <a href="{% url 'frontend-admin-categories' %}"
+                   class="nav-item {% if request.resolver_match.url_name == 'frontend-admin-categories' %}active{% endif %}">
+                    <i class="fas fa-layer-group" aria-hidden="true"></i>
+                    <span>Categories</span>
+                </a>
+                <a href="{% url 'frontend-admin-brands' %}"
+                   class="nav-item {% if request.resolver_match.url_name == 'frontend-admin-brands' %}active{% endif %}">
+                    <i class="fas fa-copyright" aria-hidden="true"></i>
+                    <span>Brands</span>
+                </a>
+
+                <!-- Sales -->
+                <span class="nav-section-label">Sales</span>
+                <a href="{% url 'frontend-admin-orders' %}" 
+                   class="nav-item {% if request.resolver_match.url_name == 'frontend-admin-orders' %}active{% endif %}">
+                    <i class="fas fa-receipt" aria-hidden="true"></i>
+                    <span>Orders</span>
+                </a>
+                <a href="{% url 'frontend-admin-payments' %}" 
+                   class="nav-item {% if request.resolver_match.url_name == 'frontend-admin-payments' %}active{% endif %}">
+                    <i class="fas fa-credit-card" aria-hidden="true"></i>
+                    <span>Payments</span>
+                </a>
+                <a href="{% url 'frontend-admin-coupons' %}" 
+                   class="nav-item {% if request.resolver_match.url_name == 'frontend-admin-coupons' %}active{% endif %}">
+                    <i class="fas fa-ticket-alt" aria-hidden="true"></i>
+                    <span>Coupons</span>
+                </a>
+
+                <!-- Customers -->
+                <span class="nav-section-label">Customers</span>
+                <a href="{% url 'frontend-admin-customers' %}" 
+                   class="nav-item {% if request.resolver_match.url_name == 'frontend-admin-customers' %}active{% endif %}">
+                    <i class="fas fa-users" aria-hidden="true"></i>
+                    <span>Customers</span>
+                </a>
+                <a href="{% url 'frontend-admin-notifications' %}" 
+                   class="nav-item {% if request.resolver_match.url_name == 'frontend-admin-notifications' %}active{% endif %}">
+                    <i class="fas fa-bell" aria-hidden="true"></i>
+                    <span>Notifications</span>
+                </a>
+
+                <!-- Data Management -->
+                <span class="nav-section-label">Data Management</span>
+                <a href="{% url 'frontend-admin-products-import' %}"
+                   class="nav-item {% if request.resolver_match.url_name == 'frontend-admin-products-import' %}active{% endif %}">
+                    <i class="fas fa-file-import" aria-hidden="true"></i>
+                    <span>Import Products</span>
+                </a>
+                <a href="{% url 'frontend-admin-products-export' %}"
+                   class="nav-item {% if request.resolver_match.url_name == 'frontend-admin-products-export' %}active{% endif %}">
+                    <i class="fas fa-file-export" aria-hidden="true"></i>
+                    <span>Export Products</span>
+                </a>
+
+            </nav>
+
+            <!-- Footer -->
+            <div class="sidebar-footer">
+                <a href="{% url 'frontend-home' %}" class="nav-item">
+                    <i class="fas fa-store" aria-hidden="true"></i>
+                    <span>View Store</span>
+                </a>
+                <a href="#" class="nav-item"
+                   style="color:#f87171;"
+                   onclick="authAPI.logout(); return false;"
+                   aria-label="Logout">
+                    <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+
+        </aside>
+
+        <!-- ========== MAIN AREA ========== -->
+        <div class="admin-main" id="admin-main">
+
+            <!-- Top Header -->
+            <header class="admin-header" role="banner">
+                <div class="header-left">
+                    <!-- Sidebar Toggle -->
+                    <button class="toggle-btn" id="sidebar-toggle"
+                            onclick="toggleSidebar()"
+                            aria-label="Toggle sidebar"
+                            aria-expanded="true"
+                            aria-controls="admin-sidebar">
+                        <i class="fas fa-bars" aria-hidden="true"></i>
+                    </button>
+
+                    <!-- Breadcrumb -->
+                    <nav class="breadcrumb" aria-label="Breadcrumb">
+                        <a href="{% url 'frontend-admin-dashboard' %}" style="color: inherit;">Admin</a>
+                        <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                        <span>{% block breadcrumb %}Dashboard{% endblock %}</span>
+                    </nav>
+                </div>
+
+                <div class="header-right">
+                    <!-- Current Date -->
+                    <span class="header-date" id="admin-header-date" aria-live="polite"></span>
+
+                    <!-- Notifications -->
+                    <button class="header-icon-btn" aria-label="Notifications">
+                        <i class="fas fa-bell" aria-hidden="true"></i>
+                        <span class="header-badge" id="notif-badge" style="display:none;">0</span>
+                    </button>
+
+                    <!-- Quick Nav -->
+                    <div class="dots-menu" id="dots-menu">
+                        <button class="dots-btn" id="dots-btn"
+                                onclick="toggleDotsMenu()"
+                                aria-label="Quick navigation"
+                                aria-expanded="false"
+                                aria-haspopup="true">
+                            <i class="fas fa-th" aria-hidden="true"></i>
+                        </button>
+                        <div class="dots-dropdown" id="dots-dropdown" role="menu">
+                            <div class="dots-dropdown-header">Quick Access</div>
+                            <a href="{% url 'frontend-admin-dashboard' %}" role="menuitem">
+                                <i class="fas fa-chart-pie" aria-hidden="true"></i> Dashboard
+                            </a>
+                            <a href="{% url 'frontend-admin-fluctuations' %}" role="menuitem">
+                                <i class="fas fa-chart-line" aria-hidden="true"></i> Fluctuations
+                            </a>
+                            <div class="divider"></div>
+                            <a href="{% url 'frontend-admin-products' %}" role="menuitem">
+                                <i class="fas fa-box-open" aria-hidden="true"></i> Products
+                            </a>
+                            <a href="{% url 'frontend-admin-categories' %}" role="menuitem">
+                                <i class="fas fa-layer-group" aria-hidden="true"></i> Categories
+                            </a>
+                            <a href="{% url 'frontend-admin-brands' %}" role="menuitem">
+                                <i class="fas fa-copyright" aria-hidden="true"></i> Brands
+                            </a>
+                            <div class="divider"></div>
+                            <a href="{% url 'frontend-admin-products-import' %}" role="menuitem">
+                                <i class="fas fa-file-import" aria-hidden="true"></i> Import Products
+                            </a>
+                            <a href="{% url 'frontend-admin-products-export' %}" role="menuitem">
+                                <i class="fas fa-file-export" aria-hidden="true"></i> Export Products
+                            </a>
+                            <div class="divider"></div>
+                            <a href="{% url 'frontend-home' %}" role="menuitem">
+                                <i class="fas fa-store" aria-hidden="true"></i> View Store
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- User Chip -->
+                    <div class="user-chip" id="admin-user-chip" aria-label="Admin user">
+                        <div class="user-avatar" id="admin-user-avatar" aria-hidden="true">A</div>
+                        <span class="user-name" id="admin-user-name">Admin</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Toast Messages -->
+            <div class="messages-container" id="messages-container" role="alert" aria-live="polite"></div>
+
+            <!-- Page Content -->
+            <div class="admin-content">
+                {% block content %}{% endblock %}
+            </div>
+
+        </div><!-- /admin-main -->
+    </div><!-- /admin-auth-guard -->
+
+    <!-- ========== ACCESS DENIED ========== -->
+    <div id="access-denied" class="access-denied" style="display:none;">
+        <i class="fas fa-shield-alt access-denied-icon" aria-hidden="true"></i>
+        <h1 style="font-size:1.875rem; color:#0f172a; margin-bottom:0.5rem;">Access Denied</h1>
+        <p style="color:#64748b; margin-bottom:2rem; max-width:380px;">
+            You don't have permission to access the admin panel. Please log in as a Shop Owner.
+        </p>
+        <a href="{% url 'frontend-home' %}" class="btn btn-primary">
+            <i class="fas fa-home" aria-hidden="true"></i> Return to Store
+        </a>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{% static 'js/api.js' %}"></script>
+    <script src="{% static 'js/admin.js' %}"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const isAuthenticated = authAPI.isAuthenticated();
+            const userType = authAPI.getUserType();
+
+            if (isAuthenticated && userType === 'owner') {
+                document.getElementById('admin-auth-guard').style.display = 'flex';
+
+                // Set date
+                const now = new Date();
+                document.getElementById('admin-header-date').textContent = now.toLocaleDateString('en-US', {
+                    weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
+                });
+
+                // Set user info
+                const userInfo = authAPI.getUserInfo();
+                if (userInfo) {
+                    const initial = userInfo.name ? userInfo.name.charAt(0).toUpperCase() : 'A';
+                    document.getElementById('admin-user-avatar').textContent = initial;
+                    document.getElementById('admin-user-name').textContent = userInfo.name || 'Admin';
+                }
+
+                // Sidebar state from localStorage
+                const savedCollapsed = localStorage.getItem('adminSidebarCollapsed') === 'true';
+                if (savedCollapsed) {
+                    document.getElementById('admin-sidebar').classList.add('collapsed');
+                    document.getElementById('admin-main').classList.add('collapsed');
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', 'false');
+                }
+            } else {
+                document.getElementById('access-denied').style.display = 'flex';
+            }
+        });
+
+        /* ── Sidebar toggle (desktop collapse / mobile drawer) ── */
+        function toggleSidebar() {
+            const sidebar = document.getElementById('admin-sidebar');
+            const main    = document.getElementById('admin-main');
+            const toggle  = document.getElementById('sidebar-toggle');
+            const overlay = document.getElementById('sidebar-overlay');
+            const isMobile = window.innerWidth <= 768;
+
+            if (isMobile) {
+                const isOpen = sidebar.classList.toggle('mobile-open');
+                overlay.classList.toggle('show', isOpen);
+                toggle.setAttribute('aria-expanded', String(isOpen));
+            } else {
+                const isCollapsed = sidebar.classList.toggle('collapsed');
+                main.classList.toggle('collapsed', isCollapsed);
+                toggle.setAttribute('aria-expanded', String(!isCollapsed));
+                localStorage.setItem('adminSidebarCollapsed', isCollapsed);
+            }
+        }
+
+        function closeMobileSidebar() {
+            document.getElementById('admin-sidebar').classList.remove('mobile-open');
+            document.getElementById('sidebar-overlay').classList.remove('show');
+            document.getElementById('sidebar-toggle').setAttribute('aria-expanded', 'false');
+        }
+
+        /* ── Quick Nav Dropdown ── */
+        function toggleDotsMenu() {
+            const menu = document.getElementById('dots-menu');
+            const btn  = document.getElementById('dots-btn');
+            const isOpen = menu.classList.toggle('open');
+            btn.setAttribute('aria-expanded', String(isOpen));
+        }
+
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('dots-menu');
+            if (menu && !menu.contains(e.target)) {
+                menu.classList.remove('open');
+                const btn = document.getElementById('dots-btn');
+                if (btn) btn.setAttribute('aria-expanded', 'false');
+            }
+        });
+
+        /* ── Close sidebar on ESC ── */
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeMobileSidebar();
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

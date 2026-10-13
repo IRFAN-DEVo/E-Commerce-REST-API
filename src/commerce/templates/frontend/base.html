@@ -1,0 +1,322 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}DjangoMart - Premium E-Commerce{% endblock %}</title>
+    <meta name="description" content="Discover premium products at DjangoMart. Shop electronics, fashion, accessories and more.">
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=3">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+    <!-- ========== HEADER / NAVBAR ========== -->
+    <header class="header" id="main-header">
+        <div class="container nav-container">
+
+            <!-- Logo -->
+            <a href="{% url 'frontend-home' %}" class="logo" aria-label="DjangoMart Home">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <path d="M16 10a4 4 0 0 1-8 0"></path>
+                </svg>
+                DjangoMart
+            </a>
+
+            <!-- Primary Navigation Links (desktop + mobile drawer) -->
+            <nav class="nav-links" id="primary-nav" role="navigation" aria-label="Primary navigation">
+                <a href="{% url 'frontend-home' %}" class="nav-link {% if request.resolver_match.url_name == 'frontend-home' %}active{% endif %}">Home</a>
+                <a href="{% url 'frontend-products' %}" class="nav-link {% if request.resolver_match.url_name == 'frontend-products' %}active{% endif %}">Products</a>
+                <a href="{% url 'frontend-contact' %}" class="nav-link {% if request.resolver_match.url_name == 'frontend-contact' %}active{% endif %}">Contact Us</a>
+
+                <div id="auth-nav-links" style="display: none;">
+                    <a href="{% url 'frontend-orders' %}" class="nav-link {% if request.resolver_match.url_name == 'frontend-orders' %}active{% endif %}">Orders</a>
+                </div>
+
+                <!-- ─── Mobile-only auth sections ─── -->
+                <div class="mobile-nav-section" id="mobile-auth-section" style="display: none;">
+                    <span class="mobile-nav-section-label">My Account</span>
+                    <a href="{% url 'frontend-orders' %}" class="mobile-nav-link">
+                        <i class="fas fa-box-open" aria-hidden="true"></i> Orders
+                    </a>
+                    <a href="{% url 'frontend-wishlist' %}" class="mobile-nav-link">
+                        <i class="fas fa-heart" aria-hidden="true"></i> Wishlist
+                    </a>
+                    <a href="{% url 'frontend-cart' %}" class="mobile-nav-link">
+                        <i class="fas fa-shopping-cart" aria-hidden="true"></i> Cart
+                    </a>
+                    <a href="{% url 'frontend-profile' %}" class="mobile-nav-link">
+                        <i class="fas fa-user-circle" aria-hidden="true"></i> My Profile
+                    </a>
+                    <div id="mobile-admin-link" style="display: none;">
+                        <a href="{% url 'frontend-admin-dashboard' %}" class="mobile-nav-link" style="color: var(--primary);">
+                            <i class="fas fa-tachometer-alt" aria-hidden="true"></i> Admin Panel
+                        </a>
+                    </div>
+                    <a href="#" class="mobile-nav-link mobile-nav-link-danger" onclick="authAPI.logout(); return false;">
+                        <i class="fas fa-sign-out-alt" aria-hidden="true"></i> Logout
+                    </a>
+                </div>
+
+                <div class="mobile-nav-section" id="mobile-guest-section" style="display: none;">
+                    <div class="mobile-nav-guest">
+                        <a href="{% url 'frontend-login' %}" class="btn btn-outline">Login</a>
+                        <a href="{% url 'frontend-register' %}" class="btn btn-primary">Sign Up</a>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Mobile nav overlay backdrop -->
+            <div class="mobile-nav-overlay" id="mobile-nav-overlay" onclick="closeMobileNav()"></div>
+
+            <!-- Nav Icons & Auth Controls -->
+            <div class="nav-icons">
+                <div id="auth-nav-icons" style="display: none;">
+                    <!-- Wishlist Icon -->
+                    <a href="{% url 'frontend-wishlist' %}" class="nav-icon" title="Wishlist" aria-label="Wishlist">
+                        <i class="fas fa-heart" aria-hidden="true"></i>
+                    </a>
+
+                    <!-- Cart Icon -->
+                    <a href="{% url 'frontend-cart' %}" class="nav-icon" title="Shopping Cart" aria-label="Shopping Cart">
+                        <i class="fas fa-shopping-cart" aria-hidden="true"></i>
+                        <span class="cart-count" id="nav-cart-count" style="display:none;">0</span>
+                    </a>
+
+                    <!-- User Dropdown Menu -->
+                    <div class="user-menu" id="user-menu">
+                        <button class="user-menu-trigger" id="user-menu-btn"
+                                aria-expanded="false"
+                                aria-haspopup="true"
+                                aria-controls="user-dropdown"
+                                title="My Account">
+                            <span class="user-avatar" id="nav-user-avatar" aria-hidden="true">U</span>
+                            <i class="fas fa-chevron-down user-menu-chevron" aria-hidden="true"></i>
+                        </button>
+                        <div class="user-dropdown" id="user-dropdown" role="menu" aria-label="User account menu">
+                            <div class="dropdown-header">
+                                <div class="dropdown-avatar" id="dropdown-user-avatar">U</div>
+                                <div>
+                                    <strong class="dropdown-name" id="dropdown-user-name">User</strong>
+                                    <small class="dropdown-email" id="dropdown-user-email">user@example.com</small>
+                                </div>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            <a href="{% url 'frontend-profile' %}" class="dropdown-item" role="menuitem">
+                                <i class="fas fa-user-circle" aria-hidden="true"></i> My Profile
+                            </a>
+                            <a href="{% url 'frontend-orders' %}" class="dropdown-item" role="menuitem">
+                                <i class="fas fa-box-open" aria-hidden="true"></i> My Orders
+                            </a>
+                            <a href="{% url 'frontend-wishlist' %}" class="dropdown-item" role="menuitem">
+                                <i class="fas fa-heart" aria-hidden="true"></i> Wishlist
+                            </a>
+                            <a href="{% url 'frontend-cart' %}" class="dropdown-item" role="menuitem">
+                                <i class="fas fa-shopping-cart" aria-hidden="true"></i> Cart
+                            </a>
+                            <div id="dropdown-admin-link" style="display: none;">
+                                <div class="dropdown-divider"></div>
+                                <a href="{% url 'frontend-admin-dashboard' %}" class="dropdown-item dropdown-item-admin" role="menuitem">
+                                    <i class="fas fa-tachometer-alt" aria-hidden="true"></i> Admin Panel
+                                </a>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            <a href="#" class="dropdown-item dropdown-item-danger" role="menuitem" onclick="authAPI.logout(); return false;">
+                                <i class="fas fa-sign-out-alt" aria-hidden="true"></i> Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="guest-nav-icons" style="display: none;">
+                    <!-- Guest: Cart + Login + Sign Up -->
+                    <a href="{% url 'frontend-cart' %}" class="nav-icon" title="Shopping Cart" aria-label="Shopping Cart">
+                        <i class="fas fa-shopping-cart" aria-hidden="true"></i>
+                    </a>
+                    <a href="{% url 'frontend-login' %}" class="nav-link" id="nav-login-link">Login</a>
+                    <a href="{% url 'frontend-register' %}" class="btn btn-primary" id="nav-signup-btn">Sign Up</a>
+                </div>
+
+                <!-- Mobile Hamburger -->
+                <button class="mobile-menu-btn" id="mobile-menu-btn"
+                        aria-label="Toggle mobile menu"
+                        aria-expanded="false"
+                        aria-controls="primary-nav">
+                    <i class="fas fa-bars" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="messages-container" id="messages-container" role="alert" aria-live="polite"></div>
+
+    <!-- ========== MAIN CONTENT AREA ========== -->
+    <main id="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- ========== FOOTER ========== -->
+    <footer class="footer" role="contentinfo">
+        <div class="container">
+            <div class="footer-grid">
+
+                <!-- Brand Column -->
+                <div class="footer-brand">
+                    <a href="{% url 'frontend-home' %}" class="logo footer-logo" aria-label="DjangoMart Home">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <path d="M16 10a4 4 0 0 1-8 0"></path>
+                        </svg>
+                        DjangoMart
+                    </a>
+                    <p>The premium destination for all your shopping needs. Quality products, guaranteed satisfaction.</p>
+                    <div class="footer-social">
+                        <a href="#" class="social-link" aria-label="Twitter"><i class="fab fa-twitter" aria-hidden="true"></i></a>
+                        <a href="#" class="social-link" aria-label="Instagram"><i class="fab fa-instagram" aria-hidden="true"></i></a>
+                        <a href="#" class="social-link" aria-label="Facebook"><i class="fab fa-facebook-f" aria-hidden="true"></i></a>
+                        <a href="#" class="social-link" aria-label="LinkedIn"><i class="fab fa-linkedin-in" aria-hidden="true"></i></a>
+                    </div>
+                </div>
+
+                <!-- Shop Column -->
+                <div>
+                    <h4 class="footer-title">Shop</h4>
+                    <nav class="footer-links" aria-label="Shop links">
+                        <a href="{% url 'frontend-products' %}" class="footer-link">All Products</a>
+                        <a href="{% url 'frontend-contact' %}" class="footer-link">Contact Us</a>
+                        <a href="{% url 'frontend-products' %}?ordering=-created_at" class="footer-link">New Arrivals</a>
+                    </nav>
+                </div>
+
+                <!-- Account Column -->
+                <div>
+                    <h4 class="footer-title">Account</h4>
+                    <nav class="footer-links" aria-label="Account links">
+                        <div id="footer-auth-links" style="display: none;">
+                            <a href="{% url 'frontend-profile' %}" class="footer-link">My Profile</a>
+                            <a href="{% url 'frontend-orders' %}" class="footer-link">My Orders</a>
+                            <a href="{% url 'frontend-wishlist' %}" class="footer-link">Wishlist</a>
+                            <a href="#" class="footer-link" onclick="authAPI.logout(); return false;">Logout</a>
+                        </div>
+                        <div id="footer-guest-links" style="display: none;">
+                            <a href="{% url 'frontend-login' %}" class="footer-link">Login</a>
+                            <a href="{% url 'frontend-register' %}" class="footer-link">Create Account</a>
+                        </div>
+                    </nav>
+                </div>
+
+                <!-- Support Column -->
+                <div>
+                    <h4 class="footer-title">Support</h4>
+                    <nav class="footer-links" aria-label="Support links">
+                        <a href="{% url 'frontend-contact' %}" class="footer-link">Contact Us</a>
+                        <a href="#" class="footer-link">Shipping Policy</a>
+                        <a href="#" class="footer-link">Returns &amp; Exchanges</a>
+                        <a href="#" class="footer-link">FAQ</a>
+                    </nav>
+                </div>
+
+            </div>
+
+            <div class="footer-bottom">
+                <span>&copy; 2026 DjangoMart. All rights reserved.</span>
+                <div class="footer-bottom-links">
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Terms of Service</a>
+                    <a href="#">Cookies</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Main Scripts -->
+    <script src="{% static 'js/api.js' %}"></script>
+    <script src="{% static 'js/script.js' %}"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const isAuthenticated = authAPI.isAuthenticated();
+            
+            if (isAuthenticated) {
+                document.getElementById('auth-nav-links').style.display = 'contents';
+                document.getElementById('auth-nav-icons').style.display = 'flex';
+                document.getElementById('footer-auth-links').style.display = 'flex';
+                document.getElementById('footer-auth-links').style.flexDirection = 'column';
+                
+                // We add a class instead of inline style.display = 'flex' to allow CSS media queries to hide it on desktop.
+                document.getElementById('mobile-auth-section').classList.add('mobile-nav-visible');
+                
+                const userType = authAPI.getUserType();
+                if (userType === 'owner') {
+                    document.getElementById('dropdown-admin-link').style.display = 'block';
+                    document.getElementById('mobile-admin-link').style.display = 'block';
+                }
+                
+                const userInfo = authAPI.getUserInfo();
+                if (userInfo) {
+                    const initial = userInfo.name ? userInfo.name.charAt(0).toUpperCase() : 'U';
+                    document.getElementById('nav-user-avatar').textContent = initial;
+                    document.getElementById('dropdown-user-avatar').textContent = initial;
+                    document.getElementById('dropdown-user-name').textContent = userInfo.name || 'User';
+                    document.getElementById('dropdown-user-email').textContent = userInfo.email || '';
+                }
+                
+                // Fetch cart count
+                fetchCartCount();
+            } else {
+                document.getElementById('guest-nav-icons').style.display = 'flex';
+                document.getElementById('footer-guest-links').style.display = 'flex';
+                document.getElementById('footer-guest-links').style.flexDirection = 'column';
+                
+                // We add a class instead of inline style.display = 'flex'
+                document.getElementById('mobile-guest-section').classList.add('mobile-nav-visible');
+            }
+            
+            async function fetchCartCount() {
+                try {
+                    const res = await authAPI.fetchWithAuth('/cart/');
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.cart_items && data.cart_items.length > 0) {
+                            const countEl = document.getElementById('nav-cart-count');
+                            let total = 0;
+                            data.cart_items.forEach(item => total += item.quantity);
+                            countEl.textContent = total;
+                            countEl.style.display = 'inline-flex';
+                        }
+                    }
+                } catch(e) {}
+            }
+        });
+
+        /* ── Global mobile nav close helper ── */
+        function closeMobileNav() {
+            const nav = document.getElementById('primary-nav');
+            const overlay = document.getElementById('mobile-nav-overlay');
+            const btn = document.getElementById('mobile-menu-btn');
+            if (nav) nav.classList.remove('show');
+            if (overlay) overlay.classList.remove('show');
+            if (btn) {
+                btn.innerHTML = '<i class="fas fa-bars" aria-hidden="true"></i>';
+                btn.setAttribute('aria-expanded', 'false');
+            }
+            document.body.style.overflow = '';
+        }
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

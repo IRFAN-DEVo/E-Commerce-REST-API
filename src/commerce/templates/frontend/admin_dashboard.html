@@ -1,0 +1,322 @@
+{% extends 'frontend/admin_base.html' %}
+{% load static %}
+
+{% block title %}Dashboard - DjangoMart Admin{% endblock %}
+{% block breadcrumb %}Dashboard{% endblock %}
+
+{% block content %}
+
+<!-- Page Header -->
+<div class="admin-page-header">
+    <div>
+        <h1 class="admin-page-title">Dashboard Overview</h1>
+        <p class="admin-page-subtitle">Welcome back! Here's what's happening in your store.</p>
+    </div>
+    <div class="admin-header-actions">
+        <span class="admin-date-badge">
+            <i class="fas fa-calendar-alt" aria-hidden="true"></i>
+            <span id="current-date"></span>
+        </span>
+        <button class="btn btn-outline btn-sm" onclick="window.print()" id="export-report-btn">
+            <i class="fas fa-download" aria-hidden="true"></i> Export Report
+        </button>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="quick-actions" role="toolbar" aria-label="Quick actions">
+    <a href="{% url 'frontend-admin-products-import' %}" class="quick-action-btn">
+        <i class="fas fa-file-import" aria-hidden="true"></i> Import Products
+    </a>
+    <a href="{% url 'frontend-admin-products-export' %}" class="quick-action-btn">
+        <i class="fas fa-file-export" aria-hidden="true"></i> Export Products
+    </a>
+    <a href="{% url 'frontend-admin-products' %}" class="quick-action-btn">
+        <i class="fas fa-box-open" aria-hidden="true"></i> Manage Products
+    </a>
+    <a href="{% url 'frontend-home' %}" class="quick-action-btn" target="_blank" rel="noopener noreferrer">
+        <i class="fas fa-external-link-alt" aria-hidden="true"></i> View Store
+    </a>
+    <a href="{% url 'frontend-admin-fluctuations' %}" class="quick-action-btn">
+        <i class="fas fa-chart-line" aria-hidden="true"></i> Analytics
+    </a>
+</div>
+
+<!-- ========== STAT CARDS ========== -->
+<div class="stats-grid" role="list" aria-label="Dashboard statistics">
+    <div class="stat-card" role="listitem">
+        <div class="stat-icon stat-icon-blue"><i class="fas fa-box-open" aria-hidden="true"></i></div>
+        <div class="stat-info">
+            <h3>Total Products</h3>
+            <p class="stat-value" id="stat-products">—</p>
+            <span class="stat-trend trend-neutral" id="trend-products">
+                <i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i> Loading
+            </span>
+        </div>
+    </div>
+
+    <div class="stat-card" role="listitem">
+        <div class="stat-icon stat-icon-green"><i class="fas fa-layer-group" aria-hidden="true"></i></div>
+        <div class="stat-info">
+            <h3>Categories</h3>
+            <p class="stat-value" id="stat-categories">—</p>
+            <span class="stat-trend trend-neutral" id="trend-categories">
+                <i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i> Loading
+            </span>
+        </div>
+    </div>
+
+    <div class="stat-card" role="listitem">
+        <div class="stat-icon stat-icon-purple"><i class="fas fa-copyright" aria-hidden="true"></i></div>
+        <div class="stat-info">
+            <h3>Brands</h3>
+            <p class="stat-value" id="stat-brands">—</p>
+            <span class="stat-trend trend-neutral" id="trend-brands">
+                <i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i> Loading
+            </span>
+        </div>
+    </div>
+
+    <div class="stat-card" role="listitem">
+        <div class="stat-icon stat-icon-orange"><i class="fas fa-shopping-bag" aria-hidden="true"></i></div>
+        <div class="stat-info">
+            <h3>Total Orders</h3>
+            <p class="stat-value" id="stat-orders">—</p>
+            <span class="stat-trend trend-neutral" id="trend-orders">
+                <i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i> Loading
+            </span>
+        </div>
+    </div>
+
+    <div class="stat-card stat-card-highlight" role="listitem">
+        <div class="stat-icon stat-icon-indigo"><i class="fas fa-dollar-sign" aria-hidden="true"></i></div>
+        <div class="stat-info">
+            <h3>Total Revenue</h3>
+            <p class="stat-value" id="stat-revenue">—</p>
+            <span class="stat-trend" id="trend-revenue">
+                <i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i> Loading
+            </span>
+        </div>
+    </div>
+
+    <div class="stat-card" role="listitem">
+        <div class="stat-icon stat-icon-cyan"><i class="fas fa-users" aria-hidden="true"></i></div>
+        <div class="stat-info">
+            <h3>Customers</h3>
+            <p class="stat-value" id="stat-customers">—</p>
+            <span class="stat-trend trend-neutral" id="trend-customers">
+                <i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i> Loading
+            </span>
+        </div>
+    </div>
+
+    <div class="stat-card" role="listitem">
+        <div class="stat-icon stat-icon-yellow"><i class="fas fa-clock" aria-hidden="true"></i></div>
+        <div class="stat-info">
+            <h3>Pending Orders</h3>
+            <p class="stat-value" id="stat-pending">—</p>
+            <span class="stat-trend trend-neutral" id="trend-pending">
+                <i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i> Loading
+            </span>
+        </div>
+    </div>
+
+    <div class="stat-card" role="listitem">
+        <div class="stat-icon stat-icon-teal"><i class="fas fa-check-circle" aria-hidden="true"></i></div>
+        <div class="stat-info">
+            <h3>Delivered Orders</h3>
+            <p class="stat-value" id="stat-delivered">—</p>
+            <span class="stat-trend trend-neutral" id="trend-delivered">
+                <i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i> Loading
+            </span>
+        </div>
+    </div>
+
+    <div class="stat-card" role="listitem">
+        <div class="stat-icon stat-icon-red"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i></div>
+        <div class="stat-info">
+            <h3>Low Stock</h3>
+            <p class="stat-value" id="stat-lowstock">—</p>
+            <span class="stat-trend trend-neutral" id="trend-lowstock">
+                <i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i> Loading
+            </span>
+        </div>
+    </div>
+
+    <div class="stat-card" role="listitem">
+        <div class="stat-icon stat-icon-blue"><i class="fas fa-dollar-sign" aria-hidden="true"></i></div>
+        <div class="stat-info">
+            <h3>Today's Revenue</h3>
+            <p class="stat-value" id="stat-today-revenue">—</p>
+            <span class="stat-trend trend-neutral" id="trend-today-revenue">
+                <i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i> Loading
+            </span>
+        </div>
+    </div>
+
+    <div class="stat-card" role="listitem">
+        <div class="stat-icon stat-icon-yellow"><i class="fas fa-star" aria-hidden="true"></i></div>
+        <div class="stat-info">
+            <h3>Reviews</h3>
+            <p class="stat-value" id="stat-reviews">—</p>
+            <span class="stat-trend trend-neutral" id="trend-reviews">
+                <i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i> Loading
+            </span>
+        </div>
+    </div>
+
+    <div class="stat-card" role="listitem">
+        <div class="stat-icon stat-icon-red"><i class="fas fa-ticket-alt" aria-hidden="true"></i></div>
+        <div class="stat-info">
+            <h3>Active Coupons</h3>
+            <p class="stat-value" id="stat-coupons">—</p>
+            <span class="stat-trend trend-neutral" id="trend-coupons">
+                <i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i> Loading
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- ========== CHARTS ROW 1 ========== -->
+<div class="charts-grid charts-grid-2">
+    <div class="chart-card">
+        <div class="chart-card-header">
+            <h3><i class="fas fa-chart-area" aria-hidden="true"></i> Revenue Trend
+                <span class="chart-subtitle">Last 7 days</span>
+            </h3>
+        </div>
+        <div class="chart-container">
+            <canvas id="revenueChart" aria-label="Revenue trend chart" role="img"></canvas>
+        </div>
+    </div>
+    <div class="chart-card">
+        <div class="chart-card-header">
+            <h3><i class="fas fa-chart-pie" aria-hidden="true"></i> Order Status
+                <span class="chart-subtitle">Breakdown</span>
+            </h3>
+        </div>
+        <div class="chart-container">
+            <canvas id="categoryChart" aria-label="Order status breakdown" role="img"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- ========== CHARTS ROW 2 ========== -->
+<div class="charts-grid charts-grid-3">
+    <div class="chart-card">
+        <div class="chart-card-header">
+            <h3><i class="fas fa-shopping-bag" aria-hidden="true"></i> Orders
+                <span class="chart-subtitle">Last 7 days</span>
+            </h3>
+        </div>
+        <div class="chart-container">
+            <canvas id="ordersChart" aria-label="Orders chart" role="img"></canvas>
+        </div>
+    </div>
+    <div class="chart-card">
+        <div class="chart-card-header">
+            <h3><i class="fas fa-calendar-alt" aria-hidden="true"></i> Monthly Revenue
+                <span class="chart-subtitle">Full year</span>
+            </h3>
+        </div>
+        <div class="chart-container">
+            <canvas id="monthlyRevenueChart" aria-label="Monthly revenue chart" role="img"></canvas>
+        </div>
+    </div>
+    <div class="chart-card">
+        <div class="chart-card-header">
+            <h3><i class="fas fa-credit-card" aria-hidden="true"></i> Payments
+                <span class="chart-subtitle">By status</span>
+            </h3>
+        </div>
+        <div class="chart-container">
+            <canvas id="customerGrowthChart" aria-label="Payment status chart" role="img"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- ========== RECENT ORDERS TABLE ========== -->
+<div class="chart-card admin-table-card">
+    <div class="chart-card-header">
+        <h3><i class="fas fa-receipt" aria-hidden="true"></i> Recent Orders</h3>
+        <span class="chart-subtitle">Latest 10 transactions</span>
+    </div>
+    <div class="table-toolbar">
+        <div class="table-search" role="search">
+            <i class="fas fa-search" aria-hidden="true"></i>
+            <input type="text" placeholder="Filter by customer or ID…" aria-label="Search orders" id="orders-search-input" oninput="filterOrdersTable(this.value)">
+        </div>
+    </div>
+    <div class="table-container">
+        <table aria-label="Recent orders">
+            <thead>
+                <tr>
+                    <th scope="col">Order</th>
+                    <th scope="col">Customer</th>
+                    <th scope="col">Date</th>
+                    <th scope="col">Amount</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Action</th>
+                </tr>
+            </thead>
+            <tbody id="recent-orders-tbody">
+                <tr>
+                    <td colspan="6" style="text-align:center; padding:2.5rem; color:#94a3b8;">
+                        <i class="fas fa-circle-notch fa-spin" style="margin-right:0.5rem;"></i> Loading orders…
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ========== TOP SELLING PRODUCTS ========== -->
+<div class="chart-card admin-table-card">
+    <div class="chart-card-header">
+        <h3><i class="fas fa-trophy" aria-hidden="true"></i> Top Selling Products</h3>
+        <span class="chart-subtitle">By revenue contribution</span>
+    </div>
+    <div class="table-container">
+        <table aria-label="Top selling products">
+            <thead>
+                <tr>
+                    <th scope="col">Rank</th>
+                    <th scope="col">Product</th>
+                    <th scope="col">Category</th>
+                    <th scope="col">Sales</th>
+                    <th scope="col">Revenue</th>
+                    <th scope="col">Rating</th>
+                </tr>
+            </thead>
+            <tbody id="top-products-tbody">
+                <tr>
+                    <td colspan="6" style="text-align:center; padding:2.5rem; color:#94a3b8;">
+                        <i class="fas fa-circle-notch fa-spin" style="margin-right:0.5rem;"></i> Loading products…
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        fetchDashboardData();
+    });
+
+    function filterOrdersTable(query) {
+        const rows = document.querySelectorAll('#recent-orders-tbody tr');
+        const q = query.toLowerCase();
+        rows.forEach(row => {
+            row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+        });
+    }
+</script>
+{% endblock %}

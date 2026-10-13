@@ -1,0 +1,103 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}My Profile - DjangoMart{% endblock %}
+
+{% block content %}
+<div class="page-hero page-hero-sm">
+    <div class="container">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+            <a href="{% url 'frontend-home' %}">Home</a>
+            <i class="fas fa-chevron-right" aria-hidden="true"></i>
+            <span>My Profile</span>
+        </nav>
+        <h1><i class="fas fa-user-circle" aria-hidden="true"></i> My Profile</h1>
+    </div>
+</div>
+
+<div class="section container">
+    <div class="profile-layout">
+        <!-- Sidebar -->
+        <aside class="profile-sidebar">
+            <div class="card">
+                <div class="card-content text-center">
+                    <div class="profile-avatar-lg" id="sidebar-avatar">U</div>
+                    <h3 id="sidebar-name">Loading...</h3>
+                    <p class="text-muted" id="sidebar-email"></p>
+                    <span class="badge badge-primary mt-2" id="sidebar-role" style="display:none;"></span>
+                </div>
+                <div class="profile-nav">
+                    <a href="{% url 'frontend-profile' %}" class="active"><i class="fas fa-user"></i> Personal Info</a>
+                    <a href="{% url 'frontend-orders' %}"><i class="fas fa-box"></i> My Orders</a>
+                    <a href="{% url 'frontend-wishlist' %}"><i class="fas fa-heart"></i> Wishlist</a>
+                    <a href="javascript:void(0)" onclick="authAPI.logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="profile-main">
+            <div class="card">
+                <div class="card-content">
+                    <h3>Personal Information</h3>
+                    <form id="profile-form" onsubmit="event.preventDefault(); updateProfile();">
+                        <div class="form-group">
+                            <label class="form-label">Full Name</label>
+                            <input type="text" id="profile-name" class="form-control" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email</label>
+                            <input type="email" id="profile-email" class="form-control" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Phone Number</label>
+                            <input type="tel" id="profile-phone" class="form-control" readonly>
+                        </div>
+                        <!-- Profile update not supported by backend currently, just display -->
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-content">
+                    <h3>Security</h3>
+                    <p>To change your password, please use the <a href="{% url 'frontend-login' %}">forgot password</a> functionality.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    if (!authAPI.isAuthenticated()) {
+        window.location.href = "{% url 'frontend-login' %}?next={% url 'frontend-profile' %}";
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const res = await authAPI.fetchWithAuth('/accounts/profile/');
+            if (!res.ok) throw new Error("Failed to load profile");
+            const data = await res.json();
+            
+            document.getElementById('sidebar-name').textContent = data.name;
+            document.getElementById('sidebar-email').textContent = data.email;
+            document.getElementById('sidebar-avatar').textContent = data.name ? data.name.charAt(0).toUpperCase() : 'U';
+            
+            if (data.user_type === 'owner') {
+                const roleBadge = document.getElementById('sidebar-role');
+                roleBadge.textContent = 'Shop Owner';
+                roleBadge.style.display = 'inline-block';
+            }
+            
+            document.getElementById('profile-name').value = data.name;
+            document.getElementById('profile-email').value = data.email;
+            document.getElementById('profile-phone').value = data.phone || '';
+            
+        } catch(e) {
+            alert('Error loading profile information');
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,733 @@
+{% extends 'frontend/admin_base.html' %}
+{% load static %}
+
+{% block title %}Import Products - DjangoMart Admin{% endblock %}
+{% block breadcrumb %}Import Products{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ── Page header ────────────────────────────────── */
+  .import-header-actions { display:flex; gap:.75rem; flex-wrap:wrap; align-items:center; }
+
+  /* ── Upload grid ───────────────────────────────── */
+  .upload-grid {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:1.25rem;
+  }
+  @media(max-width:768px){ .upload-grid{ grid-template-columns:1fr; } }
+
+  /* ── Drop zone ─────────────────────────────────── */
+  .drop-zone {
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:.625rem;
+    padding:2.25rem 1.5rem;
+    border:2px dashed #cbd5e1;
+    border-radius:12px;
+    background:#f8fafc;
+    cursor:pointer;
+    transition:border-color .2s, background .2s, transform .15s;
+    text-align:center;
+    min-height:160px;
+  }
+  .drop-zone:hover,
+  .drop-zone.drag-over {
+    border-color:#6366f1;
+    background:#eef2ff;
+    transform:translateY(-2px);
+  }
+  .drop-zone input[type=file] {
+    position:absolute;
+    inset:0;
+    opacity:0;
+    cursor:pointer;
+    width:100%;
+    height:100%;
+  }
+  .drop-zone .dz-icon {
+    font-size:2rem;
+    color:#6366f1;
+    pointer-events:none;
+  }
+  .drop-zone .dz-title {
+    font-size:.9375rem;
+    font-weight:600;
+    color:#0f172a;
+    pointer-events:none;
+  }
+  .drop-zone .dz-title span { color:#6366f1; text-decoration:underline; }
+  .drop-zone .dz-sub {
+    font-size:.8125rem;
+    color:#94a3b8;
+    pointer-events:none;
+  }
+  .drop-zone.dz-optional .dz-icon { color:#f59e0b; }
+  .drop-zone.dz-optional:hover,
+  .drop-zone.dz-optional.drag-over { border-color:#f59e0b; background:#fffbeb; }
+
+  /* ── File preview pill ──────────────────────────── */
+  .file-preview {
+    display:none;
+    align-items:center;
+    gap:.625rem;
+    padding:.625rem .875rem;
+    background:#f1f5f9;
+    border-radius:8px;
+    margin-top:.625rem;
+    font-size:.8125rem;
+    color:#334155;
+  }
+  .file-preview.active { display:flex; }
+  .file-preview .fp-icon { color:#6366f1; font-size:1rem; }
+  .file-preview .fp-name { flex:1; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .file-preview .fp-size { color:#94a3b8; white-space:nowrap; }
+  .file-preview .fp-remove {
+    background:none; border:none; color:#94a3b8;
+    cursor:pointer; padding:.25rem; border-radius:4px;
+    transition:color .15s;
+  }
+  .file-preview .fp-remove:hover { color:#ef4444; }
+
+  /* ── Import mode radios ─────────────────────────── */
+  .mode-option {
+    display:flex;
+    align-items:center;
+    gap:.75rem;
+    padding:.75rem 1rem;
+    border:1px solid #e2e8f0;
+    border-radius:8px;
+    cursor:pointer;
+    transition:background .15s, border-color .15s;
+  }
+  .mode-option:hover { background:#f8fafc; }
+  .mode-option input[type=radio] { accent-color:#6366f1; width:16px; height:16px; }
+  .mode-option.selected { border-color:#6366f1; background:#eef2ff; }
+  .mode-option-label strong { display:block; font-size:.875rem; color:#0f172a; }
+  .mode-option-label span { font-size:.8rem; color:#64748b; }
+
+  /* ── Progress bar ───────────────────────────────── */
+  .progress-wrap {
+    display:none;
+    flex-direction:column;
+    gap:.5rem;
+    margin-top:1rem;
+  }
+  .progress-wrap.active { display:flex; }
+  .progress-label { font-size:.8125rem; color:#64748b; display:flex; justify-content:space-between; }
+  .progress-track {
+    height:8px;
+    background:#e2e8f0;
+    border-radius:99px;
+    overflow:hidden;
+  }
+  .progress-bar {
+    height:100%;
+    background:linear-gradient(90deg,#6366f1,#8b5cf6);
+    border-radius:99px;
+    width:0%;
+    transition:width .3s ease;
+  }
+
+  /* ── Summary grid ───────────────────────────────── */
+  .summary-grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+    gap:1rem;
+  }
+  .summary-stat {
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:1rem;
+    background:#f8fafc;
+    border-radius:10px;
+    border:1px solid #e2e8f0;
+    text-align:center;
+  }
+  .summary-stat .stat-value {
+    font-size:1.75rem;
+    font-weight:800;
+    color:#0f172a;
+    line-height:1;
+    margin-bottom:.25rem;
+  }
+  .summary-stat .stat-label { font-size:.75rem; color:#64748b; font-weight:500; }
+  .summary-stat.s-success .stat-value { color:#10b981; }
+  .summary-stat.s-info    .stat-value { color:#6366f1; }
+  .summary-stat.s-warn    .stat-value { color:#f59e0b; }
+  .summary-stat.s-error   .stat-value { color:#ef4444; }
+  .summary-stat.s-img     .stat-value { color:#8b5cf6; }
+  .summary-stat.s-time    .stat-value { color:#0ea5e9; font-size:1.25rem; }
+
+  /* ── Error log ──────────────────────────────────── */
+  .error-log {
+    background:#fef2f2;
+    border:1px solid #fecaca;
+    border-radius:8px;
+    padding:.875rem 1rem;
+    font-size:.8125rem;
+    color:#991b1b;
+    max-height:220px;
+    overflow-y:auto;
+    line-height:1.7;
+  }
+
+  /* ── Badges on sidebar ──────────────────────────── */
+  .req-badge {
+    display:inline-block;
+    padding:.15rem .45rem;
+    border-radius:4px;
+    font-size:.7rem;
+    font-weight:600;
+  }
+  .req-badge.required { background:#fee2e2; color:#dc2626; }
+  .req-badge.optional { background:#d1fae5; color:#065f46; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-page-header">
+  <div>
+    <h1 class="admin-page-title">Import Products</h1>
+    <p class="admin-page-subtitle">Bulk-import products with main and gallery images using a CSV/Excel file and an optional ZIP archive.</p>
+  </div>
+  <div class="import-header-actions">
+    <button onclick="downloadTemplate()" class="btn btn-outline btn-sm" id="template-btn">
+      <i class="fas fa-download" aria-hidden="true"></i> Download Template
+    </button>
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 340px; gap:1.5rem; align-items:start;">
+
+  <!-- ════════════════════ Upload Card ════════════════════ -->
+  <div class="card">
+    <div class="card-content">
+      <form id="import-form" onsubmit="event.preventDefault(); handleImport();">
+
+        <!-- ── Step 1: File Uploads ── -->
+        <div class="form-group">
+          <label class="form-label" style="font-size:.9375rem; font-weight:700; color:#0f172a;">
+            Step 1 — Upload Files
+          </label>
+          <div class="upload-grid">
+
+            <!-- Products file -->
+            <div>
+              <p style="font-size:.8125rem; font-weight:600; color:#334155; margin:0 0 .5rem;">
+                <i class="fas fa-table" style="color:#6366f1;"></i>&nbsp;
+                Products File <span class="req-badge required">Required</span>
+              </p>
+              <div class="drop-zone" id="products-zone" onclick="document.getElementById('import-file').click()">
+                <input type="file" id="import-file" accept=".csv,.xlsx" aria-label="Choose products file" onchange="onProductsFileChange(this)" onclick="event.stopPropagation()">
+                <i class="fas fa-file-spreadsheet dz-icon" aria-hidden="true"></i>
+                <div class="dz-title">Drag &amp; Drop or <span>Browse</span></div>
+                <div class="dz-sub">CSV or Excel (.xlsx)</div>
+              </div>
+              <div class="file-preview" id="products-preview">
+                <i class="fas fa-file-csv fp-icon"></i>
+                <span class="fp-name" id="products-name"></span>
+                <span class="fp-size" id="products-size"></span>
+                <button type="button" class="fp-remove" onclick="clearProducts()" title="Remove file" aria-label="Remove products file">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Images ZIP -->
+            <div>
+              <p style="font-size:.8125rem; font-weight:600; color:#334155; margin:0 0 .5rem;">
+                <i class="fas fa-file-zipper" style="color:#f59e0b;"></i>&nbsp;
+                Images ZIP <span class="req-badge optional">Optional</span>
+              </p>
+              <div class="drop-zone dz-optional" id="zip-zone" onclick="document.getElementById('images-zip').click()">
+                <input type="file" id="images-zip" accept=".zip" aria-label="Choose images ZIP" onchange="onZipFileChange(this)" onclick="event.stopPropagation()">
+                <i class="fas fa-file-zipper dz-icon" aria-hidden="true"></i>
+                <div class="dz-title">Drag &amp; Drop or <span>Browse</span></div>
+                <div class="dz-sub">ZIP archive of product images</div>
+              </div>
+              <div class="file-preview" id="zip-preview">
+                <i class="fas fa-file-zipper fp-icon" style="color:#f59e0b;"></i>
+                <span class="fp-name" id="zip-name"></span>
+                <span class="fp-size" id="zip-size"></span>
+                <button type="button" class="fp-remove" onclick="clearZip()" title="Remove ZIP" aria-label="Remove ZIP file">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+
+          </div><!-- /upload-grid -->
+        </div>
+
+        <!-- ── Step 2: Import Mode ── -->
+        <div class="form-group">
+          <label class="form-label" style="font-size:.9375rem; font-weight:700; color:#0f172a;">
+            Step 2 — If Product Already Exists
+          </label>
+          <div style="display:flex; flex-direction:column; gap:.5rem;" id="mode-options">
+            <label class="mode-option selected" data-mode="skip">
+              <input type="radio" name="import_mode" value="skip" checked>
+              <div class="mode-option-label">
+                <strong>Skip</strong>
+                <span>Keep existing products unchanged</span>
+              </div>
+            </label>
+            <label class="mode-option" data-mode="update">
+              <input type="radio" name="import_mode" value="update">
+              <div class="mode-option-label">
+                <strong>Update</strong>
+                <span>Update fields; add new images without removing old ones</span>
+              </div>
+            </label>
+            <label class="mode-option" data-mode="replace">
+              <input type="radio" name="import_mode" value="replace">
+              <div class="mode-option-label">
+                <strong>Replace</strong>
+                <span>Delete old images and replace all product data</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- ── Progress bar ── -->
+        <div class="progress-wrap" id="progress-wrap">
+          <div class="progress-label">
+            <span id="progress-label-text">Uploading…</span>
+            <span id="progress-pct">0%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-bar" id="progress-bar"></div>
+          </div>
+        </div>
+
+        <!-- ── Actions ── -->
+        <div style="display:flex; gap:.75rem; margin-top:.5rem;">
+          <button type="submit" class="btn btn-primary" style="flex:1; justify-content:center; padding:.875rem;" id="import-btn">
+            <i class="fas fa-file-import" id="import-icon" aria-hidden="true"></i>
+            <span id="btn-text">Import Products</span>
+            <i class="fas fa-circle-notch fa-spin" id="btn-spinner" style="display:none;" aria-hidden="true"></i>
+          </button>
+          <button type="button" class="btn btn-outline" style="padding:.875rem 1.25rem;" onclick="resetForm()" title="Cancel and reset">
+            <i class="fas fa-xmark"></i> Cancel
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- ════════════════════ Sidebar ════════════════════ -->
+  <div style="display:flex; flex-direction:column; gap:1rem;">
+
+    <!-- File requirements -->
+    <div class="card">
+      <div class="card-content">
+        <h3 style="font-size:.9375rem; font-weight:600; color:#0f172a; margin:0 0 .875rem; display:flex; align-items:center; gap:.5rem;">
+          <i class="fas fa-info-circle" style="color:#6366f1;"></i> File Requirements
+        </h3>
+        <ul style="margin:0; padding:0 0 0 1.25rem; font-size:.8125rem; color:#64748b; line-height:1.9;">
+          <li>Products file max: <strong>50 MB</strong></li>
+          <li>ZIP file max: <strong>500 MB</strong></li>
+          <li>Formats: <strong>CSV, XLSX</strong></li>
+          <li>Required columns: <strong>Name, Price</strong></li>
+          <li>Optional: Category, Brand, Stock, Description</li>
+          <li>Image columns: <strong>Main Image, Gallery Images</strong></li>
+          <li>ZIP images max per file: <strong>10 MB</strong></li>
+          <li>Allowed image types: <strong>JPG, PNG, WebP</strong></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ZIP format -->
+    <div class="card">
+      <div class="card-content">
+        <h3 style="font-size:.9375rem; font-weight:600; color:#0f172a; margin:0 0 .875rem; display:flex; align-items:center; gap:.5rem;">
+          <i class="fas fa-file-zipper" style="color:#f59e0b;"></i> ZIP Structure
+        </h3>
+        <p style="font-size:.8125rem; color:#64748b; margin:0 0 .625rem;">Place all images at the root of the ZIP (no sub-folders):</p>
+        <div style="background:#f1f5f9; border-radius:8px; padding:.75rem 1rem; font-family:monospace; font-size:.8rem; color:#334155; line-height:1.8;">
+          images.zip<br>
+          &nbsp;├─ iphone.jpg<br>
+          &nbsp;├─ iphone1.jpg<br>
+          &nbsp;├─ iphone2.jpg<br>
+          &nbsp;└─ galaxy.jpg
+        </div>
+        <p style="font-size:.8125rem; color:#64748b; margin:.625rem 0 0;">Reference them in the <strong>Main Image</strong> and <strong>Gallery Images</strong> columns by filename.</p>
+      </div>
+    </div>
+
+    <!-- Tips -->
+    <div class="card">
+      <div class="card-content">
+        <h3 style="font-size:.9375rem; font-weight:600; color:#0f172a; margin:0 0 .875rem; display:flex; align-items:center; gap:.5rem;">
+          <i class="fas fa-lightbulb" style="color:#f59e0b;"></i> Tips
+        </h3>
+        <ul style="margin:0; padding:0 0 0 1.25rem; font-size:.8125rem; color:#64748b; line-height:1.9;">
+          <li>Download the template to see the correct format</li>
+          <li>Gallery images are <strong>comma-separated</strong></li>
+          <li>Leave Gallery Images blank for products with no gallery</li>
+          <li>Use <strong>Skip</strong> for safe first-time imports</li>
+          <li>Use <strong>Replace</strong> to fully refresh product images</li>
+          <li>Missing images in the ZIP are logged as warnings, not errors</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /main grid -->
+
+<!-- ════════════════════ Import Summary ════════════════════ -->
+<div id="import-summary" class="card" style="margin-top:1.5rem; display:none;">
+  <div class="card-content">
+
+    <!-- Header -->
+    <div style="display:flex; align-items:center; gap:.75rem; margin-bottom:1.25rem;">
+      <div style="width:40px; height:40px; background:#d1fae5; border-radius:10px; display:flex; align-items:center; justify-content:center;">
+        <i class="fas fa-check-circle" style="color:#10b981; font-size:1.25rem;"></i>
+      </div>
+      <div>
+        <h3 style="margin:0; font-size:1.0625rem; font-weight:700; color:#0f172a;">Import Complete</h3>
+        <p style="margin:0; font-size:.8125rem; color:#64748b;" id="summary-subtitle"></p>
+      </div>
+    </div>
+
+    <!-- Stats grid -->
+    <div class="summary-grid" id="summary-grid">
+      <div class="summary-stat s-success">
+        <div class="stat-value" id="stat-imported">0</div>
+        <div class="stat-label">Imported</div>
+      </div>
+      <div class="summary-stat s-info">
+        <div class="stat-value" id="stat-updated">0</div>
+        <div class="stat-label">Updated</div>
+      </div>
+      <div class="summary-stat s-warn">
+        <div class="stat-value" id="stat-skipped">0</div>
+        <div class="stat-label">Skipped</div>
+      </div>
+      <div class="summary-stat s-error">
+        <div class="stat-value" id="stat-failed">0</div>
+        <div class="stat-label">Failed</div>
+      </div>
+      <!-- Image stats — shown only when ZIP was used -->
+      <div class="summary-stat s-img" id="stat-main-wrap" style="display:none;">
+        <div class="stat-value" id="stat-main-images">0</div>
+        <div class="stat-label">Main Images</div>
+      </div>
+      <div class="summary-stat s-img" id="stat-gallery-wrap" style="display:none;">
+        <div class="stat-value" id="stat-gallery-images">0</div>
+        <div class="stat-label">Gallery Images</div>
+      </div>
+      <div class="summary-stat s-time">
+        <div class="stat-value" id="stat-time">—</div>
+        <div class="stat-label">Exec Time (s)</div>
+      </div>
+    </div>
+
+    <!-- Error log -->
+    <div id="error-log-container" style="display:none; margin-top:1.25rem;">
+      <h4 style="font-size:.875rem; font-weight:600; color:#dc2626; margin:0 0 .625rem; display:flex; align-items:center; gap:.5rem;">
+        <i class="fas fa-triangle-exclamation"></i> Warnings &amp; Errors
+      </h4>
+      <div class="error-log" id="error-log"></div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ═══════════════════════════════════════════════════════════
+// Drag & Drop — generic helper
+// ═══════════════════════════════════════════════════════════
+function setupDropZone(zoneId, inputId, onFile) {
+  const zone = document.getElementById(zoneId);
+  zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', ()  => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f) {
+      // Inject file into the hidden input via DataTransfer
+      const dt = new DataTransfer();
+      dt.items.add(f);
+      document.getElementById(inputId).files = dt.files;
+      onFile(f);
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// Format bytes helper
+// ═══════════════════════════════════════════════════════════
+function fmtBytes(b) {
+  if (b < 1024)       return b + ' B';
+  if (b < 1048576)    return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+// ═══════════════════════════════════════════════════════════
+// Products file
+// ═══════════════════════════════════════════════════════════
+function onProductsFileChange(input) {
+  if (input.files && input.files[0]) showProductsFile(input.files[0]);
+}
+
+function showProductsFile(f) {
+  document.getElementById('products-name').textContent = f.name;
+  document.getElementById('products-size').textContent = fmtBytes(f.size);
+  document.getElementById('products-preview').classList.add('active');
+}
+
+function clearProducts() {
+  document.getElementById('import-file').value = '';
+  document.getElementById('products-preview').classList.remove('active');
+}
+
+setupDropZone('products-zone', 'import-file', showProductsFile);
+
+// ═══════════════════════════════════════════════════════════
+// ZIP file
+// ═══════════════════════════════════════════════════════════
+function onZipFileChange(input) {
+  if (input.files && input.files[0]) showZipFile(input.files[0]);
+}
+
+function showZipFile(f) {
+  document.getElementById('zip-name').textContent = f.name;
+  document.getElementById('zip-size').textContent  = fmtBytes(f.size);
+  document.getElementById('zip-preview').classList.add('active');
+}
+
+function clearZip() {
+  document.getElementById('images-zip').value = '';
+  document.getElementById('zip-preview').classList.remove('active');
+}
+
+setupDropZone('zip-zone', 'images-zip', showZipFile);
+
+// ═══════════════════════════════════════════════════════════
+// Mode radio highlight
+// ═══════════════════════════════════════════════════════════
+document.querySelectorAll('.mode-option input[type=radio]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    document.querySelectorAll('.mode-option').forEach(l => l.classList.remove('selected'));
+    radio.closest('.mode-option').classList.add('selected');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+// Template download (unchanged)
+// ═══════════════════════════════════════════════════════════
+async function downloadTemplate() {
+  const btn = document.getElementById('template-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Downloading…';
+  try {
+    const token = authAPI.getToken();
+    const res = await fetch('/api/v1/products/products/template/', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Failed to download');
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'product_import_template.csv';
+    document.body.appendChild(a); a.click();
+    URL.revokeObjectURL(url); a.remove();
+    showToast('Template downloaded!', 'success');
+  } catch(e) {
+    showToast('Failed to download template: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-download"></i> Download Template';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Reset form
+// ═══════════════════════════════════════════════════════════
+function resetForm() {
+  clearProducts();
+  clearZip();
+  document.getElementById('import-summary').style.display = 'none';
+  document.querySelector('input[name="import_mode"][value="skip"]').checked = true;
+  document.querySelectorAll('.mode-option').forEach(l => l.classList.remove('selected'));
+  document.querySelector('.mode-option[data-mode="skip"]').classList.add('selected');
+}
+
+// ═══════════════════════════════════════════════════════════
+// Import handler (XHR for upload progress)
+// ═══════════════════════════════════════════════════════════
+function handleImport() {
+  const fileInput = document.getElementById('import-file');
+  const zipInput  = document.getElementById('images-zip');
+  const hasZip    = zipInput.files && zipInput.files.length > 0;
+
+  if (!fileInput.files || !fileInput.files.length) {
+    showToast('Please select a products file first.', 'warning');
+    return;
+  }
+
+  const mode    = document.querySelector('input[name="import_mode"]:checked').value;
+  const btn     = document.getElementById('import-btn');
+  const icon    = document.getElementById('import-icon');
+  const text    = document.getElementById('btn-text');
+  const spinner = document.getElementById('btn-spinner');
+  const summary = document.getElementById('import-summary');
+  const progWrap= document.getElementById('progress-wrap');
+  const progBar = document.getElementById('progress-bar');
+  const progPct = document.getElementById('progress-pct');
+  const progLbl = document.getElementById('progress-label-text');
+
+  // Disable UI
+  btn.disabled = true;
+  icon.style.display = 'none';
+  spinner.style.display = 'inline-block';
+  text.textContent = 'Importing…';
+  summary.style.display = 'none';
+  progWrap.classList.add('active');
+  progBar.style.width = '0%';
+  progPct.textContent = '0%';
+  progLbl.textContent = 'Uploading…';
+
+  const fd = new FormData();
+  fd.append('file', fileInput.files[0]);
+  fd.append('import_mode', mode);
+  if (hasZip) fd.append('images_zip', zipInput.files[0]);
+
+  const xhr = new XMLHttpRequest();
+
+  // Upload progress
+  xhr.upload.onprogress = (e) => {
+    if (e.lengthComputable) {
+      const pct = Math.round((e.loaded / e.total) * 100);
+      progBar.style.width = pct + '%';
+      progPct.textContent = pct + '%';
+      if (pct === 100) progLbl.textContent = 'Processing on server…';
+    }
+  };
+
+  xhr.onload = () => {
+    try {
+      // ── Safe parse: detect HTML before calling JSON.parse ──
+      const raw = xhr.responseText || '';
+      if (raw.trimStart().startsWith('<')) {
+        // Server returned HTML — decode status into a meaningful message
+        const statusMessages = {
+          400: '400 — Bad request (check your file format)',
+          401: '401 — Authentication required. Please log in again.',
+          403: '403 — Permission denied. Only shop owners can import.',
+          404: '404 — Import API not found. Check the server URL.',
+          405: '405 — Method not allowed.',
+          500: '500 — Internal server error. Check the server logs.',
+        };
+        const msg = statusMessages[xhr.status] ||
+                    `HTTP ${xhr.status} — Server returned HTML instead of JSON.`;
+        console.error('[Import] HTML response received (status', xhr.status, '):\n', raw.slice(0, 500));
+        throw new Error(msg);
+      }
+
+      let data;
+      try {
+        data = JSON.parse(raw);
+      } catch (parseErr) {
+        console.error('[Import] JSON parse error. Raw response:', raw.slice(0, 500));
+        throw new Error('Server returned an unrecognised response. Check the browser console.');
+      }
+
+      if (xhr.status < 200 || xhr.status >= 300) {
+        throw new Error(data.error || `Import failed (HTTP ${xhr.status})`);
+      }
+
+      renderSummary(data, hasZip, mode);
+      showToast(
+        `Import complete — ${data.imported || 0} imported, ${data.updated || 0} updated.`,
+        'success'
+      );
+      // Reset files
+      fileInput.value = '';
+      document.getElementById('products-preview').classList.remove('active');
+      if (hasZip) {
+        zipInput.value = '';
+        document.getElementById('zip-preview').classList.remove('active');
+      }
+    } catch(e) {
+      showToast('Import failed: ' + e.message, 'error');
+    } finally {
+      restoreBtn();
+    }
+  };
+
+  xhr.onerror = () => {
+    showToast('Network error — please try again.', 'error');
+    restoreBtn();
+  };
+
+  // Correct API endpoint: prefix is api/v1/products/ + route is products/import/
+  xhr.open('POST', '/api/v1/products/products/import/');
+  xhr.setRequestHeader('Authorization', 'Bearer ' + authAPI.getToken());
+  xhr.send(fd);
+
+  function restoreBtn() {
+    btn.disabled = false;
+    icon.style.display = 'inline-block';
+    spinner.style.display = 'none';
+    text.textContent = 'Import Products';
+    progWrap.classList.remove('active');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Render import summary
+// ═══════════════════════════════════════════════════════════
+function renderSummary(data, hadZip, mode) {
+  const summary = document.getElementById('import-summary');
+
+  document.getElementById('stat-imported').textContent = data.imported  ?? 0;
+  document.getElementById('stat-updated').textContent  = data.updated   ?? 0;
+  document.getElementById('stat-skipped').textContent  = data.skipped   ?? 0;
+  document.getElementById('stat-failed').textContent   = data.failed    ?? 0;
+  document.getElementById('stat-time').textContent     = data.execution_time != null
+                                                          ? data.execution_time + 's'
+                                                          : '—';
+
+  const total = (data.imported ?? 0) + (data.updated ?? 0) + (data.skipped ?? 0);
+  document.getElementById('summary-subtitle').textContent =
+    `${total} rows processed in ${data.execution_time ?? '?'}s · mode: ${mode}`;
+
+  // Image stats
+  const mainWrap    = document.getElementById('stat-main-wrap');
+  const galleryWrap = document.getElementById('stat-gallery-wrap');
+  if (hadZip && data.main_images_imported != null) {
+    document.getElementById('stat-main-images').textContent    = data.main_images_imported;
+    document.getElementById('stat-gallery-images').textContent = data.gallery_images_imported ?? 0;
+    mainWrap.style.display    = '';
+    galleryWrap.style.display = '';
+  } else {
+    mainWrap.style.display    = 'none';
+    galleryWrap.style.display = 'none';
+  }
+
+  // Errors / warnings
+  const errContainer = document.getElementById('error-log-container');
+  if (data.errors && data.errors.length) {
+    document.getElementById('error-log').innerHTML =
+      data.errors.map(e => `<div>• ${e}</div>`).join('');
+    errContainer.style.display = 'block';
+  } else {
+    errContainer.style.display = 'none';
+  }
+
+  summary.style.display = 'block';
+  summary.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+</script>
+{% endblock %}

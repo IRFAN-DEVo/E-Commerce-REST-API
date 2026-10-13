@@ -1,0 +1,148 @@
+{% extends 'frontend/base.html' %}
+
+{% block title %}DjangoMart - Premium E-Commerce{% endblock %}
+
+{% block content %}
+<!-- ========== HERO SECTION ========== -->
+<section class="hero" style="position: relative; overflow: hidden; background: none;">
+    <!-- Background Video -->
+    <video autoplay loop muted playsinline style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2;">
+        <source src="/static/videos/hero_video.mp4" type="video/mp4">
+        <!-- Fallback image -->
+        <img src="/static/images/hero_banner.png" alt="Hero Background">
+    </video>
+    
+    <!-- Dark gradient overlay to ensure text readability over the video -->
+    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, rgba(15,23,42,0.60) 0%, rgba(79,70,229,0.40) 100%); z-index: -1;"></div>
+    
+    <div class="container" style="position: relative; z-index: 1;">
+        <div class="hero-content">
+            <div class="hero-badge">
+                <i class="fas fa-bolt" aria-hidden="true"></i> New Arrivals Just Dropped
+            </div>
+            <h1 class="hero-title">Discover <span class="hero-title-accent">Premium</span><br>Tech &amp; Lifestyle</h1>
+            <p class="hero-subtitle">Elevate your lifestyle with our curated collection of high-end electronics, fashion, and premium accessories — delivered to your door.</p>
+            <div class="hero-actions">
+                <a href="{% url 'frontend-products' %}" class="btn btn-primary btn-lg" id="hero-shop-btn">
+                    <i class="fas fa-shopping-bag" aria-hidden="true"></i> Shop Now
+                </a>
+                <a href="{% url 'frontend-contact' %}" class="btn btn-outline btn-lg btn-light" id="hero-contact-btn">
+                    Contact Us
+                </a>
+            </div>
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <strong>10k+</strong>
+                    <span>Products</span>
+                </div>
+                <div class="hero-stat-divider"></div>
+                <div class="hero-stat">
+                    <strong>50k+</strong>
+                    <span>Happy Customers</span>
+                </div>
+                <div class="hero-stat-divider"></div>
+                <div class="hero-stat">
+                    <strong>4.9★</strong>
+                    <span>Avg Rating</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ========== FEATURE STRIPS ========== -->
+<section class="features-strip">
+    <div class="container">
+        <div class="features-grid">
+            <div class="feature-item">
+                <div class="feature-icon"><i class="fas fa-shipping-fast" aria-hidden="true"></i></div>
+                <div>
+                    <h4>Free Shipping</h4>
+                    <p>On orders over $50</p>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon"><i class="fas fa-undo-alt" aria-hidden="true"></i></div>
+                <div>
+                    <h4>Easy Returns</h4>
+                    <p>30-day return policy</p>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon"><i class="fas fa-shield-alt" aria-hidden="true"></i></div>
+                <div>
+                    <h4>Secure Payment</h4>
+                    <p>256-bit SSL encryption</p>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon"><i class="fas fa-headset" aria-hidden="true"></i></div>
+                <div>
+                    <h4>24/7 Support</h4>
+                    <p>Always here to help</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ========== API PRODUCTS SHOWCASE ========== -->
+<section class="section section-alt">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Latest Products</h2>
+            <p class="section-subtitle">Loaded securely via REST API</p>
+        </div>
+        <div class="product-grid" id="api-products-grid">
+            <!-- Products will be injected here via JavaScript consuming the DRF API -->
+            <div class="empty-state" style="grid-column: 1/-1;">
+                <i class="fas fa-spinner fa-spin empty-icon" aria-hidden="true"></i>
+                <h3>Loading Products...</h3>
+                <p>Connecting to Django REST Framework APIs.</p>
+            </div>
+        </div>
+        <div class="section-cta">
+            <a href="{% url 'frontend-products' %}" class="btn btn-outline" id="view-all-products-btn">
+                View All Products <i class="fas fa-arrow-right" aria-hidden="true"></i>
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- ========== PROMOTIONAL BANNER ========== -->
+<section class="promo-banner">
+    <div class="container">
+        <div class="promo-content">
+            <div class="promo-text">
+                <span class="promo-eyebrow">Limited Time Offer</span>
+                <h2>Get 20% Off Your First Order</h2>
+                <p>Sign up today and use code <strong>WELCOME20</strong> at checkout to enjoy your exclusive discount.</p>
+                <div id="promo-action-container">
+                    <!-- Action button rendered by JS based on auth state -->
+                </div>
+            </div>
+            <div class="promo-visual" aria-hidden="true">
+                <div class="promo-icon-stack">
+                    <div class="promo-circle promo-circle-1"></div>
+                    <div class="promo-circle promo-circle-2"></div>
+                    <i class="fas fa-tag promo-main-icon"></i>
+                    <span class="promo-percent">20%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const promoContainer = document.getElementById('promo-action-container');
+        if (authAPI.isAuthenticated()) {
+            promoContainer.innerHTML = '<a href="{% url "frontend-products" %}" class="btn btn-primary btn-lg">Shop Now</a>';
+        } else {
+            promoContainer.innerHTML = '<a href="{% url "frontend-register" %}" class="btn btn-primary btn-lg">Create Free Account</a>';
+        }
+    });
+</script>
+{% endblock %}

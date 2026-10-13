@@ -1,0 +1,139 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - DjangoMart</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    
+    <style>
+        .auth-page { background: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; font-family: 'Inter', sans-serif; }
+        .auth-container { width: 100%; max-width: 450px; }
+        .auth-card { background: #fff; padding: 2.5rem 2rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        .auth-header { text-align: center; margin-bottom: 2rem; }
+        .auth-logo { font-size: 1.5rem; font-weight: 700; color: #0f172a; text-decoration: none; margin-bottom: 0.5rem; display: inline-block; }
+        .auth-header p { color: #64748b; font-size: 0.875rem; }
+        .form-row { display: flex; gap: 1rem; }
+        .form-row .form-group { flex: 1; }
+        .form-group { margin-bottom: 1.25rem; }
+        .form-label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.875rem; color: #334155; }
+        .form-control { width: 100%; padding: 0.65rem 1rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.875rem; transition: border-color 0.2s; }
+        .form-control:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+        .btn-block { width: 100%; display: flex; justify-content: center; }
+        .spinner { border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 2px solid #fff; width: 20px; height: 20px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .auth-footer { text-align: center; margin-top: 1.5rem; font-size: 0.875rem; color: #64748b; }
+        .auth-footer a { color: #4f46e5; text-decoration: none; font-weight: 500; }
+        .auth-footer a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body class="auth-page">
+
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <a href="{% url 'frontend-home' %}" class="auth-logo">DjangoMart</a>
+                <p>Create your account and start shopping.</p>
+            </div>
+
+            <div id="auth-error-msg" style="display:none; color:#ef4444; background: #fee2e2; padding: 0.75rem; border-radius: 8px; margin-bottom: 15px; text-align: center; font-size: 0.875rem;"></div>
+
+            <form id="register-form" class="auth-form" onsubmit="event.preventDefault(); handleRegister();">
+                <div class="form-group">
+                    <label for="name" class="form-label">Full Name</label>
+                    <input type="text" id="name" class="form-control" placeholder="John Doe" required autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label for="email" class="form-label">Email Address</label>
+                    <input type="email" id="email" class="form-control" placeholder="you@example.com" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" id="password" class="form-control" placeholder="••••••••" required minlength="8">
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm_password" class="form-label">Confirm Password</label>
+                        <input type="password" id="confirm_password" class="form-control" placeholder="••••••••" required minlength="8">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="phone" class="form-label">Phone (Optional)</label>
+                    <input type="tel" id="phone" class="form-control" placeholder="+1234567890">
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block btn-lg" id="register-btn" style="padding: 0.75rem;">
+                    <span id="btn-text">Create Account</span>
+                    <div class="spinner" id="btn-spinner" style="display: none;"></div>
+                </button>
+            </form>
+            
+            <div class="auth-footer">
+                Already have an account? <a href="{% url 'frontend-login' %}">Sign in</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'js/api.js' %}"></script>
+    <script>
+        // Redirect if already logged in
+        if (authAPI.isAuthenticated()) {
+            window.location.href = "{% url 'frontend-home' %}";
+        }
+
+        async function handleRegister() {
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const confirm_password = document.getElementById('confirm_password').value;
+            const phone = document.getElementById('phone').value;
+            const errorMsg = document.getElementById('auth-error-msg');
+            
+            errorMsg.style.display = 'none';
+            document.getElementById('btn-text').style.display = 'none';
+            document.getElementById('btn-spinner').style.display = 'inline-block';
+
+            if (password !== confirm_password) {
+                errorMsg.textContent = "Passwords do not match.";
+                errorMsg.style.display = 'block';
+                document.getElementById('btn-text').style.display = 'inline-block';
+                document.getElementById('btn-spinner').style.display = 'none';
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/v1/accounts/register/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, password, confirm_password, phone })
+                });
+
+                if (!res.ok) {
+                    const errorData = await res.json();
+                    let errMsg = "Registration failed.";
+                    if (errorData.email) errMsg = `Email: ${errorData.email[0]}`;
+                    else if (errorData.name) errMsg = `Name: ${errorData.name[0]}`;
+                    else if (errorData.password) errMsg = `Password: ${errorData.password[0]}`;
+                    else if (errorData.confirm_password) errMsg = `Confirm Password: ${errorData.confirm_password[0]}`;
+                    throw new Error(errMsg);
+                }
+                
+                // Login automatically after successful registration
+                await authAPI.login(email, password);
+                window.location.href = "{% url 'frontend-home' %}";
+
+            } catch (error) {
+                errorMsg.textContent = error.message;
+                errorMsg.style.display = 'block';
+                document.getElementById('btn-text').style.display = 'inline-block';
+                document.getElementById('btn-spinner').style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

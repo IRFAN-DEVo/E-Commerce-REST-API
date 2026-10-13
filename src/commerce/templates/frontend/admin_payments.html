@@ -1,0 +1,173 @@
+﻿{% extends 'frontend/admin_base.html' %}
+{% load static %}
+
+{% block title %}Manage Payments - DjangoMart Admin{% endblock %}
+{% block breadcrumb %}Payments{% endblock %}
+
+{% block content %}
+<div class="admin-page-header">
+    <div>
+        <h1 class="admin-page-title">Manage Payments</h1>
+        <p class="admin-page-subtitle">View all payment transactions across the store.</p>
+    </div>
+    <div class="admin-header-actions">
+        <span id="payments-count-badge" style="font-size:.875rem;color:#64748b;"></span>
+    </div>
+</div>
+
+<!-- Update Payment Status Modal -->
+<div id="pay-status-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.65);backdrop-filter:blur(3px);z-index:3000;align-items:center;justify-content:center;">
+    <div style="background:#fff;width:100%;max-width:420px;border-radius:16px;box-shadow:0 25px 60px rgba(0,0,0,.18);overflow:hidden;">
+        <div style="padding:1.25rem 1.5rem;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;">
+            <h3 style="margin:0;font-size:1rem;font-weight:700;color:#0f172a;">Update Payment Status</h3>
+            <button onclick="closePayModal()" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:1.1rem;"><i class="fas fa-times"></i></button>
+        </div>
+        <div style="padding:1.5rem;">
+            <p style="margin:0 0 1rem;font-size:.875rem;color:#64748b;">Payment ID: <strong id="pay-modal-id">—</strong></p>
+            <label style="font-size:.875rem;font-weight:500;color:#334155;display:block;margin-bottom:.5rem;">New Status</label>
+            <select id="pay-status-select" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:.5rem .75rem;font-size:.875rem;margin-bottom:1rem;">
+                <option value="SUCCESS">Success</option>
+                <option value="FAILED">Failed</option>
+                <option value="REFUNDED">Refunded</option>
+            </select>
+            <label style="font-size:.875rem;font-weight:500;color:#334155;display:block;margin-bottom:.5rem;">Transaction ID <span style="color:#94a3b8;font-weight:400;">(optional)</span></label>
+            <input type="text" id="pay-txn-input" placeholder="e.g. TXN123456" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:.5rem .75rem;font-size:.875rem;box-sizing:border-box;">
+        </div>
+        <div style="padding:.75rem 1.5rem;background:#f8fafc;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:.75rem;">
+            <button class="btn btn-outline btn-sm" onclick="closePayModal()">Cancel</button>
+            <button class="btn btn-primary btn-sm" onclick="submitPaymentStatus()">Update</button>
+        </div>
+    </div>
+</div>
+
+<div class="chart-card admin-table-card">
+    <div class="table-toolbar">
+        <div class="table-search" role="search">
+            <i class="fas fa-search" aria-hidden="true"></i>
+            <input type="text" id="pay-search" placeholder="Search by payment ID or order ID…" aria-label="Search payments" oninput="filterPayments(this.value)">
+        </div>
+        <div style="display:flex;gap:.5rem;align-items:center;">
+            <select class="form-control btn-sm" id="pay-status-filter" onchange="filterPayments(document.getElementById('pay-search').value)" style="width:auto;" aria-label="Filter by status">
+                <option value="">All Statuses</option>
+                <option value="PENDING">Pending</option>
+                <option value="SUCCESS">Success</option>
+                <option value="FAILED">Failed</option>
+                <option value="REFUNDED">Refunded</option>
+            </select>
+        </div>
+    </div>
+    <div class="table-container">
+        <table aria-label="Payments table">
+            <thead>
+                <tr>
+                    <th scope="col">Payment ID</th>
+                    <th scope="col">Order</th>
+                    <th scope="col">Method</th>
+                    <th scope="col">Amount</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Transaction ID</th>
+                    <th scope="col">Date</th>
+                    <th scope="col">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="payments-tbody">
+                <tr><td colspan="8" style="text-align:center;padding:3rem;color:#94a3b8;"><i class="fas fa-circle-notch fa-spin"></i> Loading payments…</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+.status-chip{display:inline-block;padding:.2rem .65rem;border-radius:20px;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.03em;}
+.pay-success{background:#d1fae5;color:#065f46;} .pay-pending{background:#fef9c3;color:#a16207;}
+.pay-failed{background:#fee2e2;color:#b91c1c;} .pay-refunded{background:#f3e8ff;color:#7c3aed;}
+</style>
+<script>
+let allPayments=[];
+let currentPayId=null;
+
+async function loadPayments(){
+    const tbody=document.getElementById('payments-tbody');
+    try {
+        const res=await authAPI.fetchWithAuth('/payments/admin/payments/');
+        if(!res.ok){if(res.status===401||res.status===403){authAPI.logout();return;}throw new Error('API error '+res.status);}
+        const data=await res.json();
+        allPayments=Array.isArray(data)?data:(data.results||[]);
+        document.getElementById('payments-count-badge').textContent=`${allPayments.length} total payments`;
+        filterPayments('');
+    } catch(e){
+        tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;padding:2.5rem;color:#ef4444;"><i class="fas fa-exclamation-circle"></i> ${e.message}</td></tr>`;
+    }
+}
+
+function payChip(s){const m={'SUCCESS':'pay-success','PENDING':'pay-pending','FAILED':'pay-failed','REFUNDED':'pay-refunded'};return `<span class="status-chip ${m[s]||'pay-pending'}">${s||'—'}</span>`;}
+
+function filterPayments(query){
+    const sf=document.getElementById('pay-status-filter').value;
+    let f=allPayments;
+    if(sf) f=f.filter(p=>p.payment_status===sf);
+    if(query.trim()){const q=query.toLowerCase();f=f.filter(p=>String(p.id).includes(q)||String(p.order).includes(q)||(p.transaction_id||'').toLowerCase().includes(q));}
+    renderPayments(f);
+}
+
+function renderPayments(payments){
+    const tbody=document.getElementById('payments-tbody');
+    if(!payments.length){tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;padding:2.5rem;color:#94a3b8;"><i class="fas fa-inbox" style="font-size:2rem;display:block;margin-bottom:.5rem;"></i>No payments found.</td></tr>`;return;}
+    tbody.innerHTML=payments.map(p=>{
+        const date=p.created_at?new Date(p.created_at).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}):'—';
+        return `<tr>
+            <td><strong>#${p.id}</strong></td>
+            <td><a href="/admin-panel/orders/" style="color:#4f46e5;font-weight:600;">#${p.order||'—'}</a></td>
+            <td><span style="background:#f1f5f9;padding:.2rem .5rem;border-radius:6px;font-size:.8rem;font-weight:500;">${p.payment_method||'—'}</span></td>
+            <td><strong>$${parseFloat(p.amount||0).toFixed(2)}</strong></td>
+            <td>${payChip(p.payment_status)}</td>
+            <td style="font-size:.8rem;color:#64748b;font-family:monospace;">${p.transaction_id||'—'}</td>
+            <td style="font-size:.8125rem;color:#64748b;">${date}</td>
+            <td><button class="btn btn-outline btn-icon btn-xs" onclick="openPayModal(${p.id})" title="Update status"><i class="fas fa-pen"></i></button></td>
+        </tr>`;
+    }).join('');
+}
+
+function openPayModal(payId){
+    currentPayId=payId;
+    document.getElementById('pay-modal-id').textContent='#'+payId;
+    document.getElementById('pay-txn-input').value='';
+    document.getElementById('pay-status-modal').style.display='flex';
+    document.body.style.overflow='hidden';
+}
+function closePayModal(){
+    document.getElementById('pay-status-modal').style.display='none';
+    document.body.style.overflow='';
+    currentPayId=null;
+}
+
+async function submitPaymentStatus(){
+    if(!currentPayId) return;
+    const newStatus=document.getElementById('pay-status-select').value;
+    const txn=document.getElementById('pay-txn-input').value;
+    const body={payment_status:newStatus};
+    if(txn) body.transaction_id=txn;
+    try {
+        const res=await authAPI.fetchWithAuth(`/payments/admin/payments/${currentPayId}/status/`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        if(!res.ok){const err=await res.json();showToast('Error: '+(err.detail||JSON.stringify(err)),'error');return;}
+        const p=allPayments.find(x=>x.id===currentPayId);
+        if(p){p.payment_status=newStatus;if(txn)p.transaction_id=txn;}
+        showToast('Payment status updated!','success');
+        closePayModal();
+        filterPayments(document.getElementById('pay-search').value);
+    } catch(e){showToast('Error: '+e.message,'error');}
+}
+
+function showToast(msg,type='success'){
+    const t=document.createElement('div');
+    t.style.cssText=`position:fixed;bottom:1.5rem;right:1.5rem;padding:.75rem 1.25rem;border-radius:10px;font-size:.875rem;font-weight:500;z-index:9999;color:#fff;background:${type==='error'?'#ef4444':'#10b981'};box-shadow:0 4px 20px rgba(0,0,0,.15);`;
+    t.textContent=msg;document.body.appendChild(t);
+    setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),400);},3000);
+}
+
+document.addEventListener('DOMContentLoaded',loadPayments);
+document.getElementById('pay-status-modal').addEventListener('click',function(e){if(e.target===this)closePayModal();});
+</script>
+{% endblock %}

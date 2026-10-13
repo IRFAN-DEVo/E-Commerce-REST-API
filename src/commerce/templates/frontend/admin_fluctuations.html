@@ -1,0 +1,151 @@
+{% extends 'frontend/admin_base.html' %}
+{% load static %}
+
+{% block title %}Fluctuations &amp; Analytics - DjangoMart Admin{% endblock %}
+{% block breadcrumb %}Fluctuations{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="admin-page-header">
+    <div>
+        <h1 class="admin-page-title">Fluctuations &amp; Analytics</h1>
+        <p class="admin-page-subtitle">Monitor revenue trends, growth patterns, and performance indicators in real time.</p>
+    </div>
+    <div class="admin-header-actions">
+        <span class="admin-date-badge" id="fluct-date"></span>
+        <button class="btn btn-outline btn-sm" onclick="window.print()" id="export-analytics-btn">
+            <i class="fas fa-download" aria-hidden="true"></i> Export
+        </button>
+    </div>
+</div>
+
+<!-- ========== FLUCTUATION STAT CARDS ========== -->
+<div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);" role="list" aria-label="Fluctuation analytics">
+
+    <!-- Today's Revenue -->
+    <div class="stat-card fluct-card stat-card-highlight" role="listitem">
+        <div style="width:100%;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem;">
+                <div class="stat-icon stat-icon-indigo"><i class="fas fa-dollar-sign" aria-hidden="true"></i></div>
+                <span class="stat-trend" id="fluct-daily-growth" aria-live="polite">
+                    <i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i> Loading…
+                </span>
+            </div>
+            <h3 style="color:rgba(255,255,255,0.7); font-size:0.78rem; text-transform:uppercase; letter-spacing:0.06em; margin:0 0 0.25rem;">Today's Revenue</h3>
+            <p class="stat-value" id="fluct-today-sales">—</p>
+            <div class="fluct-spark" aria-hidden="true">
+                <canvas id="sparkRevenue" width="120" height="44"></canvas>
+            </div>
+            <span style="font-size:0.8rem; opacity:0.75;" id="fluct-yesterday-sales">vs — yesterday</span>
+        </div>
+    </div>
+
+    <!-- Weekly Revenue -->
+    <div class="stat-card fluct-card" role="listitem">
+        <div style="width:100%;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem;">
+                <div class="stat-icon stat-icon-orange"><i class="fas fa-calendar-week" aria-hidden="true"></i></div>
+                <span class="badge badge-blue" style="align-self:flex-start;">7 days</span>
+            </div>
+            <h3 class="stat-info" style="margin:0 0 0.25rem;">
+                <span style="font-size:0.78rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.05em;">Weekly Revenue</span>
+            </h3>
+            <p class="stat-value" id="fluct-weekly-sales">—</p>
+            <div class="fluct-spark" aria-hidden="true">
+                <canvas id="sparkOrders" width="120" height="44"></canvas>
+            </div>
+            <span style="font-size:0.8rem; color:#94a3b8;">Last 7 days total</span>
+        </div>
+    </div>
+
+    <!-- Monthly Revenue -->
+    <div class="stat-card fluct-card" role="listitem">
+        <div style="width:100%;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem;">
+                <div class="stat-icon stat-icon-green"><i class="fas fa-calendar-alt" aria-hidden="true"></i></div>
+                <span class="badge badge-green" style="align-self:flex-start;">This month</span>
+            </div>
+            <h3 class="stat-info" style="margin:0 0 0.25rem;">
+                <span style="font-size:0.78rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.05em;">Monthly Revenue</span>
+            </h3>
+            <p class="stat-value" id="fluct-monthly-sales">—</p>
+            <div class="fluct-spark" aria-hidden="true">
+                <canvas id="sparkCustomers" width="120" height="44"></canvas>
+            </div>
+            <span style="font-size:0.8rem; color:#94a3b8;">Month-to-date total</span>
+        </div>
+    </div>
+
+</div>
+
+<!-- ========== TREND CHARTS ROW 1 ========== -->
+<div class="charts-grid charts-grid-2">
+    <div class="chart-card">
+        <div class="chart-card-header">
+            <h3><i class="fas fa-chart-bar" aria-hidden="true"></i> Sales Overview
+                <span class="chart-subtitle">Today vs Yesterday vs This Week vs This Month</span>
+            </h3>
+        </div>
+        <div class="chart-container chart-container-lg">
+            <canvas id="revenueTrendChart" aria-label="Sales overview comparison chart" role="img"></canvas>
+        </div>
+    </div>
+    <div class="chart-card">
+        <div class="chart-card-header">
+            <h3><i class="fas fa-tachometer-alt" aria-hidden="true"></i> Daily Growth
+                <span class="chart-subtitle">Today vs Yesterday comparison</span>
+            </h3>
+        </div>
+        <div class="chart-container chart-container-lg">
+            <canvas id="ordersTrendChart" aria-label="Daily growth gauge" role="img"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- ========== TREND CHARTS ROW 2 ========== -->
+<div class="charts-grid charts-grid-2">
+    <div class="chart-card">
+        <div class="chart-card-header">
+            <h3><i class="fas fa-chart-area" aria-hidden="true"></i> Daily Revenue
+                <span class="chart-subtitle">Last 7 days</span>
+            </h3>
+        </div>
+        <div class="chart-container chart-container-lg">
+            <canvas id="customerTrendChart" aria-label="Daily revenue last 7 days" role="img"></canvas>
+        </div>
+    </div>
+    <div class="chart-card">
+        <div class="chart-card-header">
+            <h3><i class="fas fa-shopping-bag" aria-hidden="true"></i> Daily Orders
+                <span class="chart-subtitle">Last 7 days</span>
+            </h3>
+        </div>
+        <div class="chart-container chart-container-lg">
+            <canvas id="weeklyTrendChart" aria-label="Orders last 7 days" role="img"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- ========== MONTHLY TREND FULL WIDTH ========== -->
+<div class="chart-card" style="margin-bottom:1.75rem;">
+    <div class="chart-card-header">
+        <h3><i class="fas fa-chart-bar" aria-hidden="true"></i> Monthly Revenue Trend
+            <span class="chart-subtitle">Full year overview</span>
+        </h3>
+    </div>
+    <div class="chart-container" style="height:320px;">
+        <canvas id="monthlyTrendChart" aria-label="Monthly revenue full year chart" role="img"></canvas>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('fluct-date').textContent = new Date().toLocaleDateString('en-US', {
+            weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
+        });
+        fetchFluctuationData();
+    });
+</script>
+{% endblock %}

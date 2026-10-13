@@ -1,0 +1,329 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}All Products - DjangoMart{% endblock %}
+
+{% block content %}
+<div class="page-hero page-hero-sm">
+    <div class="container">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+            <a href="{% url 'frontend-home' %}">Home</a>
+            <i class="fas fa-chevron-right" aria-hidden="true"></i>
+            <span>Products</span>
+        </nav>
+        <h1>All Products</h1>
+        <p class="page-subtitle">Discover our curated collection of premium items</p>
+    </div>
+</div>
+
+<div class="section container">
+    <div class="products-layout">
+
+        <!-- ===== SIDEBAR FILTERS ===== -->
+        <aside class="filters-sidebar card" id="filters-sidebar" aria-label="Product filters">
+            <div class="filters-header">
+                <h3><i class="fas fa-sliders-h" aria-hidden="true"></i> Filters</h3>
+                <button type="button" class="filters-clear-btn" id="clear-filters-btn" onclick="clearAllFilters()">Clear All</button>
+            </div>
+
+            <form id="filters-form" onsubmit="event.preventDefault(); applyFilters();">
+                <!-- Search -->
+                <div class="filter-group">
+                    <label for="search-input" class="filter-title">Search</label>
+                    <div class="search-input-wrap">
+                        <i class="fas fa-search" aria-hidden="true"></i>
+                        <input type="text" id="search-input" name="search" class="form-control" placeholder="Search products…">
+                    </div>
+                </div>
+
+                <!-- Price Range -->
+                <div class="filter-group">
+                    <h4 class="filter-title">Price Range</h4>
+                    <div class="price-range-wrap" style="display:flex; flex-direction:column; gap:1rem;">
+                        <div>
+                            <label for="price-min" style="display:block; margin-bottom:0.25rem; font-size:0.875rem;">Minimum Price</label>
+                            <input type="number" id="price-min" name="min_price" class="form-control" placeholder="0" min="0">
+                        </div>
+                        <div>
+                            <label for="price-max" style="display:block; margin-bottom:0.25rem; font-size:0.875rem;">Maximum Price</label>
+                            <input type="number" id="price-max" name="max_price" class="form-control" placeholder="50000" min="0">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sort -->
+                <div class="filter-group">
+                    <h4 class="filter-title">Sort By</h4>
+                    <select name="ordering" class="form-control" id="sort-select">
+                        <option value="">Featured</option>
+                        <option value="price">Price: Low to High</option>
+                        <option value="-price">Price: High to Low</option>
+                        <option value="-created_at">Newest Arrivals</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width:100%;" id="apply-filters-btn">
+                    Apply Filters
+                </button>
+            </form>
+        </aside>
+
+        <!-- ===== PRODUCT AREA ===== -->
+        <div class="products-main">
+            <!-- Top Bar -->
+            <div class="products-topbar">
+                <div class="results-count" id="results-count">
+                    Loading products...
+                </div>
+                <div class="products-controls">
+                    <!-- Sort (mobile) -->
+                    <select class="form-control" style="width:auto;" id="sort-select-top" aria-label="Sort products" onchange="document.getElementById('sort-select').value=this.value; applyFilters();">
+                        <option value="">Sort: Featured</option>
+                        <option value="price">Price: Low to High</option>
+                        <option value="-price">Price: High to Low</option>
+                        <option value="-created_at">Newest Arrivals</option>
+                    </select>
+                    <!-- View Toggle -->
+                    <div class="view-toggle" role="group" aria-label="View toggle">
+                        <button class="view-btn active" id="grid-view-btn" onclick="setView('grid')" aria-pressed="true" title="Grid view">
+                            <i class="fas fa-th" aria-hidden="true"></i>
+                        </button>
+                        <button class="view-btn" id="list-view-btn" onclick="setView('list')" aria-pressed="false" title="List view">
+                            <i class="fas fa-list" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    <!-- Mobile filter toggle -->
+                    <button class="btn btn-outline filter-toggle-btn" id="filter-toggle-btn" onclick="toggleFilters()" aria-controls="filters-sidebar" aria-expanded="false">
+                        <i class="fas fa-sliders-h" aria-hidden="true"></i> Filters
+                    </button>
+                </div>
+            </div>
+
+            <!-- Product Grid -->
+            <div class="product-grid" id="product-grid">
+                <div class="empty-state" style="grid-column: 1/-1;">
+                    <i class="fas fa-spinner fa-spin empty-icon" aria-hidden="true"></i>
+                    <h3>Loading Products...</h3>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            <nav class="pagination" id="pagination-container" aria-label="Product pagination" style="display:none;">
+            </nav>
+
+        </div><!-- /products-main -->
+    </div><!-- /products-layout -->
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentPage = 1;
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        // Parse URL params to set initial filters
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('search')) document.getElementById('search-input').value = params.get('search');
+        if (params.has('min_price')) document.getElementById('price-min').value = params.get('min_price');
+        if (params.has('max_price')) document.getElementById('price-max').value = params.get('max_price');
+        if (params.has('ordering')) {
+            document.getElementById('sort-select').value = params.get('ordering');
+            document.getElementById('sort-select-top').value = params.get('ordering');
+        }
+        if (params.has('page')) currentPage = parseInt(params.get('page'));
+        
+        loadProducts();
+    });
+    
+    async function loadProducts() {
+        const grid = document.getElementById('product-grid');
+        grid.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><i class="fas fa-spinner fa-spin empty-icon"></i><h3>Loading Products...</h3></div>';
+        
+        try {
+            const params = new URLSearchParams(window.location.search);
+            if (!params.has('page')) params.set('page', currentPage);
+            
+            const res = await fetch('/api/v1/products/products/?' + params.toString());
+            if (!res.ok) throw new Error("Failed to fetch products");
+            const data = await res.json();
+            
+            // Render count
+            document.getElementById('results-count').innerHTML = `Showing <strong>${data.results.length}</strong> of <strong>${data.total_products || data.count}</strong> products`;
+            
+            // Render grid
+            if (data.results.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1/-1;">
+                        <i class="fas fa-search empty-icon"></i>
+                        <h3>No products found</h3>
+                        <p>Try adjusting your filters.</p>
+                    </div>
+                `;
+            } else {
+                grid.innerHTML = data.results.map(product => {
+                    const imageUrl = product.image || '/static/images/product_placeholder.png';
+                    const rating = product.average_rating || 0;
+                    let starsHtml = '';
+                    for(let i=1; i<=5; i++) {
+                        starsHtml += `<i class="fas fa-star ${i <= rating ? 'filled' : ''}" aria-hidden="true"></i>`;
+                    }
+                    
+                    const priceContent = product.old_price 
+                        ? `<span class="price-original">$${product.old_price}</span> <span class="price-current">$${product.price}</span>` 
+                        : `<span class="price-current">$${product.price}</span>`;
+                        
+                    const badge = product.discount_percent 
+                        ? `<span class="badge badge-danger product-badge">-${product.discount_percent}%</span>`
+                        : '';
+                    
+                    return `
+                        <div class="card product-card">
+                            <div class="product-image">
+                                <img src="${imageUrl}" alt="${product.name}" loading="lazy">
+                                ${badge}
+                                <div class="product-actions">
+                                    <button class="icon-btn" title="Add to Wishlist" onclick="addToWishlist(${product.id})"><i class="fas fa-heart"></i></button>
+                                    <a href="/products/${product.id}/" class="icon-btn" title="View Product"><i class="fas fa-eye"></i></a>
+                                </div>
+                            </div>
+                            <div class="product-info">
+                                <span class="product-category">${product.category_name || 'Uncategorized'}</span>
+                                <a href="/products/${product.id}/" class="product-title">${product.name}</a>
+                                <div class="product-rating">
+                                    <span class="stars">${starsHtml}</span>
+                                    <span class="rating-count">(${product.review_count || 0})</span>
+                                </div>
+                                <div class="product-price">
+                                    <div>${priceContent}</div>
+                                    <button class="icon-btn btn-cart" title="Add to Cart" onclick="addToCart(${product.id})"><i class="fas fa-plus"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            
+            // Render pagination
+            renderPagination(data);
+            
+        } catch(e) {
+            console.error(e);
+            grid.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><i class="fas fa-exclamation-triangle empty-icon" style="color:var(--danger);"></i><h3>Error loading products</h3></div>';
+        }
+    }
+    
+    function renderPagination(data) {
+        const container = document.getElementById('pagination-container');
+        // DRF paginator has total_pages or we can calculate from count and length
+        const totalPages = data.total_pages || Math.ceil((data.count || 0) / 10) || 1;
+        if (totalPages <= 1) {
+            container.style.display = 'none';
+            return;
+        }
+        
+        container.style.display = 'flex';
+        let html = '';
+        
+        if (data.previous) {
+            html += `<button class="page-btn" onclick="goToPage(${currentPage - 1})"><i class="fas fa-chevron-left"></i></button>`;
+        }
+        
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === currentPage) {
+                html += `<span class="page-btn page-btn-active">${i}</span>`;
+            } else {
+                html += `<button class="page-btn" onclick="goToPage(${i})">${i}</button>`;
+            }
+        }
+        
+        if (data.next) {
+            html += `<button class="page-btn" onclick="goToPage(${currentPage + 1})"><i class="fas fa-chevron-right"></i></button>`;
+        }
+        container.innerHTML = html;
+    }
+    
+    function goToPage(page) {
+        currentPage = page;
+        applyFilters(true);
+    }
+    
+    function applyFilters(preservePage = false) {
+        if (!preservePage) currentPage = 1;
+        
+        const minPrice = document.getElementById('price-min').value;
+        const maxPrice = document.getElementById('price-max').value;
+        
+        if (minPrice && maxPrice && parseFloat(minPrice) > parseFloat(maxPrice)) {
+            alert('Minimum price cannot be greater than Maximum price.');
+            return;
+        }
+
+        const form = document.getElementById('filters-form');
+        const formData = new FormData(form);
+        const params = new URLSearchParams();
+        
+        for (let [key, value] of formData.entries()) {
+            if (value.trim() !== '') {
+                params.append(key, value);
+            }
+        }
+        params.set('page', currentPage);
+        
+        window.history.pushState({}, '', '?' + params.toString());
+        loadProducts();
+    }
+    
+    function clearAllFilters() {
+        document.getElementById('filters-form').reset();
+        document.getElementById('sort-select-top').value = '';
+        applyFilters();
+    }
+    
+    async function addToCart(productId) {
+        if (!authAPI.isAuthenticated()) {
+            window.location.href = "{% url 'frontend-login' %}?next=" + window.location.pathname;
+            return;
+        }
+        try {
+            const res = await authAPI.fetchWithAuth('/cart/items/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ product: productId, quantity: 1 })
+            });
+            if (res.ok) {
+                alert('Added to cart!');
+                // Update nav cart count (page refresh or dispatch event)
+                location.reload();
+            } else {
+                const data = await res.json();
+                alert('Failed to add to cart: ' + JSON.stringify(data));
+            }
+        } catch (e) {
+            alert('Error adding to cart');
+        }
+    }
+    
+    async function addToWishlist(productId) {
+        if (!authAPI.isAuthenticated()) {
+            window.location.href = "{% url 'frontend-login' %}?next=" + window.location.pathname;
+            return;
+        }
+        try {
+            const res = await authAPI.fetchWithAuth('/wishlist/add/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ product: productId })
+            });
+            if (res.ok) {
+                alert('Added to wishlist!');
+            } else {
+                const data = await res.json();
+                const errorMsg = data.non_field_errors?.[0] || data.detail || data.product?.[0] || 'Unknown error occurred';
+                alert('Failed to add to wishlist: ' + errorMsg);
+            }
+        } catch (e) {
+            alert('Error adding to wishlist');
+        }
+    }
+</script>
+{% endblock %}
