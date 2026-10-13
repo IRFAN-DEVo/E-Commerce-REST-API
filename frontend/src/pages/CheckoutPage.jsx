@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ShieldCheck, CheckCircle2, Tag, AlertCircle, ShoppingBag } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, Tag, AlertCircle, ShoppingBag, Lock, CreditCard } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 import { ordersApi } from '../api/orders';
 import { couponsApi } from '../api/coupons';
 import { paymentsApi } from '../api/payments';
-import { LoadingSpinner } from '../components/common/LoadingSpinner';
 
 export const CheckoutPage = () => {
   const { cartItems, totalPrice, clearCartState } = useCart();
@@ -90,7 +89,6 @@ export const CheckoutPage = () => {
     try {
       const res = await couponsApi.applyCoupon(createdOrder.id, couponCode.trim());
       setAppliedCoupon(res);
-      // Update order total locally based on server response
       setCreatedOrder((prev) => ({
         ...prev,
         total_price: res.final_total,
@@ -138,344 +136,429 @@ export const CheckoutPage = () => {
 
   if (!createdOrder && cartItems.length === 0) {
     return (
-      <div className="container" style={{ padding: '4rem 1.5rem', textAlign: 'center' }}>
-        <ShoppingBag size={48} color="var(--primary-600)" style={{ margin: '0 auto 1rem' }} />
-        <h2>Your cart is empty</h2>
-        <p style={{ color: 'var(--text-secondary)', margin: '1rem 0' }}>
+      <div className="container" style={{ padding: '5rem 0', textAlign: 'center', maxWidth: '500px' }}>
+        <ShoppingBag size={48} color="#000000" style={{ margin: '0 auto 1.5rem', opacity: 0.3 }} />
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#000000', marginBottom: '0.5rem' }}>
+          Your cart is empty
+        </h2>
+        <p style={{ color: '#71717a', fontSize: '0.9375rem', marginBottom: '2rem' }}>
           Please add items to your cart before proceeding to checkout.
         </p>
-        <Link to="/products" className="btn btn-primary">
+        <Link to="/products" className="btn btn-primary" style={{ padding: '0.75rem 2rem' }}>
           Browse Products
         </Link>
       </div>
     );
   }
 
+  const currentStep = createdOrder ? 2 : 1;
+  const currentTotal = createdOrder ? createdOrder.total_price : totalPrice;
+
   return (
-    <div className="container" style={{ padding: '2.5rem 1.5rem' }}>
-      <h1 style={{ fontSize: '1.875rem', fontWeight: 700, marginBottom: '2rem' }}>
-        {createdOrder ? `Checkout — Order #${createdOrder.id}` : 'Secure Checkout'}
-      </h1>
+    <div style={{ backgroundColor: '#ffffff', padding: '3rem 0 6rem 0' }}>
+      <div className="container">
+        {/* 3-Step Stepper Header (Screenshot #7) */}
+        <div className="stepper-container">
+          <div className={`stepper-step ${currentStep >= 1 ? 'completed active' : ''}`}>
+            <span className="stepper-number">1</span>
+            <span>Shipping</span>
+          </div>
+          <div className="stepper-divider" />
+          <div className={`stepper-step ${currentStep >= 2 ? 'active' : ''}`}>
+            <span className="stepper-number">2</span>
+            <span>Payment</span>
+          </div>
+          <div className="stepper-divider" />
+          <div className="stepper-step">
+            <span className="stepper-number">3</span>
+            <span>Review</span>
+          </div>
+        </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(320px, 1.6fr) minmax(280px, 1fr)',
-          gap: '2.5rem',
-          alignItems: 'start',
-        }}
-        className="checkout-layout"
-      >
-        {/* Main Column */}
-        <div>
-          {!createdOrder ? (
-            /* Shipping Address Form */
-            <div className="card" style={{ padding: '2rem' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1.5rem' }}>
-                1. Delivery Shipping Address
-              </h2>
-
-              <form onSubmit={handleCreateOrder}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label htmlFor="full_name" className="form-label">Full Name *</label>
-                    <input
-                      id="full_name"
-                      type="text"
-                      name="full_name"
-                      required
-                      className="form-input"
-                      value={shippingAddress.full_name}
-                      onChange={handleShippingChange}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="phone" className="form-label">Contact Phone *</label>
-                    <input
-                      id="phone"
-                      type="tel"
-                      name="phone"
-                      required
-                      className="form-input"
-                      placeholder="10-digit mobile number"
-                      value={shippingAddress.phone}
-                      onChange={handleShippingChange}
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="address" className="form-label">Street Address *</label>
-                  <textarea
-                    id="address"
-                    name="address"
-                    required
-                    rows={2}
-                    className="form-textarea"
-                    placeholder="House/Flat number, Building name, Street"
-                    value={shippingAddress.address}
-                    onChange={handleShippingChange}
-                  />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label htmlFor="city" className="form-label">City *</label>
-                    <input
-                      id="city"
-                      type="text"
-                      name="city"
-                      required
-                      className="form-input"
-                      value={shippingAddress.city}
-                      onChange={handleShippingChange}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="state" className="form-label">State *</label>
-                    <input
-                      id="state"
-                      type="text"
-                      name="state"
-                      required
-                      className="form-input"
-                      value={shippingAddress.state}
-                      onChange={handleShippingChange}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="postal_code" className="form-label">Postal Code *</label>
-                    <input
-                      id="postal_code"
-                      type="text"
-                      name="postal_code"
-                      required
-                      className="form-input"
-                      value={shippingAddress.postal_code}
-                      onChange={handleShippingChange}
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="country" className="form-label">Country</label>
-                  <input
-                    id="country"
-                    type="text"
-                    name="country"
-                    disabled
-                    className="form-input"
-                    value={shippingAddress.country}
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="btn btn-primary btn-lg"
-                  style={{ width: '100%', marginTop: '1rem' }}
-                >
-                  {isSubmitting ? 'Creating Order...' : 'Confirm Shipping & Continue'}
-                </button>
-              </form>
-            </div>
-          ) : (
-            /* Payment & Coupon Section after Order Creation */
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              {/* Order Created Success Notice */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1.6fr 1fr',
+            gap: '3rem',
+            alignItems: 'start',
+          }}
+          className="checkout-layout"
+        >
+          {/* Main Form Column */}
+          <div>
+            {!createdOrder ? (
+              /* Step 1: Shipping Address Form (Screenshot #7) */
               <div
+                className="card"
                 style={{
-                  padding: '1rem 1.25rem',
-                  backgroundColor: 'var(--success-50)',
-                  border: '1px solid rgba(16, 185, 129, 0.3)',
-                  borderRadius: 'var(--radius-md)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  color: 'var(--success-600)',
+                  padding: '2rem',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '12px',
                 }}
               >
-                <CheckCircle2 size={20} />
-                <span style={{ fontSize: '0.9375rem', fontWeight: 500 }}>
-                  Order <strong>#{createdOrder.id}</strong> reserved. Please apply any coupon and confirm payment.
+                <h2
+                  style={{
+                    fontSize: '1.25rem',
+                    fontWeight: 700,
+                    color: '#000000',
+                    letterSpacing: '-0.02em',
+                    marginBottom: '1.75rem',
+                  }}
+                >
+                  1. Delivery Shipping Address
+                </h2>
+
+                <form onSubmit={handleCreateOrder}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                    <div className="form-group">
+                      <label htmlFor="full_name" className="form-label">Full Name *</label>
+                      <input
+                        id="full_name"
+                        type="text"
+                        name="full_name"
+                        required
+                        className="form-input"
+                        placeholder="John Doe"
+                        value={shippingAddress.full_name}
+                        onChange={handleShippingChange}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="phone" className="form-label">Contact Phone *</label>
+                      <input
+                        id="phone"
+                        type="tel"
+                        name="phone"
+                        required
+                        className="form-input"
+                        placeholder="10-digit mobile number"
+                        value={shippingAddress.phone}
+                        onChange={handleShippingChange}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="address" className="form-label">Street Address *</label>
+                    <textarea
+                      id="address"
+                      name="address"
+                      required
+                      rows={2}
+                      className="form-textarea"
+                      placeholder="Apartment, suite, unit, building, or street address"
+                      value={shippingAddress.address}
+                      onChange={handleShippingChange}
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                    <div className="form-group">
+                      <label htmlFor="city" className="form-label">City *</label>
+                      <input
+                        id="city"
+                        type="text"
+                        name="city"
+                        required
+                        className="form-input"
+                        value={shippingAddress.city}
+                        onChange={handleShippingChange}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="state" className="form-label">State *</label>
+                      <input
+                        id="state"
+                        type="text"
+                        name="state"
+                        required
+                        className="form-input"
+                        value={shippingAddress.state}
+                        onChange={handleShippingChange}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="postal_code" className="form-label">Postal Code *</label>
+                      <input
+                        id="postal_code"
+                        type="text"
+                        name="postal_code"
+                        required
+                        className="form-input"
+                        value={shippingAddress.postal_code}
+                        onChange={handleShippingChange}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="country" className="form-label">Country *</label>
+                    <input
+                      id="country"
+                      type="text"
+                      name="country"
+                      required
+                      className="form-input"
+                      value={shippingAddress.country}
+                      onChange={handleShippingChange}
+                    />
+                  </div>
+
+                  <div style={{ marginTop: '1.5rem' }}>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="btn btn-primary btn-lg"
+                      style={{ width: '100%', borderRadius: '8px' }}
+                    >
+                      {isSubmitting ? 'Creating Order...' : 'Confirm Shipping & Continue'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            ) : (
+              /* Step 2: Payment & Coupon Method (Screenshot #7) */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {/* Shipping Confirmation Card */}
+                <div
+                  className="card"
+                  style={{
+                    padding: '1.5rem',
+                    backgroundColor: '#fafafa',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '12px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                    <span style={{ fontSize: '0.9375rem', fontWeight: 700, color: '#000000' }}>
+                      Shipping Address (Order #{createdOrder.id})
+                    </span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#16a34a', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <CheckCircle2 size={14} /> Confirmed
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.875rem', color: '#52525b', lineHeight: '1.6' }}>
+                    <div><strong>{shippingAddress.full_name}</strong> &bull; {shippingAddress.phone}</div>
+                    <div>{shippingAddress.address}, {shippingAddress.city}, {shippingAddress.state} - {shippingAddress.postal_code}</div>
+                  </div>
+                </div>
+
+                {/* Payment Selection Card (Screenshot #7) */}
+                <div
+                  className="card"
+                  style={{
+                    padding: '2rem',
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '12px',
+                  }}
+                >
+                  <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#000000', marginBottom: '1.5rem' }}>
+                    2. Choose Payment Method
+                  </h2>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {/* Cash on Delivery (Active) */}
+                    <label
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '1rem',
+                        padding: '1.25rem',
+                        borderRadius: '8px',
+                        border: paymentMethod === 'COD' ? '2px solid #000000' : '1px solid #e5e7eb',
+                        backgroundColor: paymentMethod === 'COD' ? '#fafafa' : '#ffffff',
+                        cursor: 'pointer',
+                        transition: 'all 150ms ease',
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="payment_method"
+                        value="COD"
+                        checked={paymentMethod === 'COD'}
+                        onChange={() => setPaymentMethod('COD')}
+                        className="form-radio"
+                        style={{ marginTop: '0.25rem' }}
+                      />
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#000000', fontSize: '0.9375rem' }}>
+                          Cash on Delivery (COD)
+                        </div>
+                        <div style={{ fontSize: '0.8125rem', color: '#71717a', marginTop: '0.25rem' }}>
+                          Pay with cash upon physical delivery at your doorstep. Verified safe & instant.
+                        </div>
+                      </div>
+                    </label>
+
+                    {/* Online Gateway Disabled Notice */}
+                    <div
+                      style={{
+                        padding: '1.25rem',
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb',
+                        backgroundColor: '#f4f4f5',
+                        opacity: 0.7,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, fontSize: '0.875rem', color: '#71717a' }}>
+                          <CreditCard size={18} />
+                          <span>Online Card / UPI Payment</span>
+                        </div>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#71717a', backgroundColor: '#e4e4e7', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
+                          Available Soon
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#a1a1aa', marginTop: '0.35rem' }}>
+                        Razorpay and Stripe gateway integrations are currently disabled for safety.
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Coupon Code Input Form */}
+                  <div style={{ marginTop: '2rem', borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem' }}>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#000000', marginBottom: '0.75rem' }}>
+                      Apply Promo or Discount Code
+                    </div>
+                    <form onSubmit={handleApplyCoupon} style={{ display: 'flex', gap: '0.5rem' }}>
+                      <input
+                        type="text"
+                        placeholder="Enter coupon code"
+                        className="form-input"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                      />
+                      <button
+                        type="submit"
+                        disabled={isApplyingCoupon || !couponCode.trim()}
+                        className="btn btn-secondary"
+                        style={{ padding: '0.625rem 1.25rem', whiteSpace: 'nowrap' }}
+                      >
+                        {isApplyingCoupon ? 'Applying...' : 'Apply'}
+                      </button>
+                    </form>
+
+                    {appliedCoupon && (
+                      <div
+                        style={{
+                          marginTop: '0.75rem',
+                          padding: '0.625rem 0.875rem',
+                          borderRadius: '6px',
+                          backgroundColor: '#f0fdf4',
+                          border: '1px solid #bbf7d0',
+                          color: '#15803d',
+                          fontSize: '0.8125rem',
+                          fontWeight: 500,
+                        }}
+                      >
+                        Coupon “{appliedCoupon.coupon}” applied: -₹{Number(appliedCoupon.discount).toFixed(2)} discount!
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Right Column: Order Summary (Screenshot #7) */}
+          <div
+            className="card"
+            style={{
+              padding: '1.75rem',
+              backgroundColor: '#fafafa',
+              border: '1px solid #e5e7eb',
+              borderRadius: '12px',
+              position: 'sticky',
+              top: '5.5rem',
+            }}
+          >
+            <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#000000', marginBottom: '1.5rem' }}>
+              Order Summary
+            </h2>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', fontSize: '0.875rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#52525b' }}>
+                <span>Subtotal</span>
+                <span style={{ fontWeight: 600, color: '#000000' }}>
+                  ₹{Number(createdOrder ? createdOrder.total_price : totalPrice).toFixed(2)}
                 </span>
               </div>
 
-              {/* Coupon Section */}
-              <div className="card" style={{ padding: '1.5rem' }}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                  <Tag size={18} color="var(--primary-600)" />
-                  <span>Have a Promo Code or Coupon?</span>
-                </h3>
-
-                {appliedCoupon ? (
-                  <div
-                    style={{
-                      padding: '0.75rem 1rem',
-                      backgroundColor: 'var(--primary-50)',
-                      borderRadius: 'var(--radius-md)',
-                      color: 'var(--primary-700)',
-                      fontWeight: 600,
-                      fontSize: '0.875rem',
-                    }}
-                  >
-                    Coupon &ldquo;{appliedCoupon.coupon}&rdquo; applied: -₹{Number(appliedCoupon.discount).toFixed(2)} discount!
-                  </div>
-                ) : (
-                  <form onSubmit={handleApplyCoupon} style={{ display: 'flex', gap: '0.5rem' }}>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder="Enter coupon code (e.g. TEST20)"
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                      style={{ textTransform: 'uppercase' }}
-                    />
-                    <button type="submit" disabled={isApplyingCoupon} className="btn btn-secondary">
-                      {isApplyingCoupon ? 'Applying...' : 'Apply'}
-                    </button>
-                  </form>
-                )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#52525b' }}>
+                <span>Shipping</span>
+                <span style={{ fontWeight: 600, color: '#16a34a' }}>Free</span>
               </div>
 
-              {/* Payment Method Selector */}
-              <div className="card" style={{ padding: '1.5rem' }}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1rem' }}>
-                  2. Choose Payment Method
-                </h3>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  {/* COD Option */}
-                  <label
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '1rem',
-                      padding: '1rem',
-                      border: '2px solid var(--primary-600)',
-                      borderRadius: 'var(--radius-md)',
-                      backgroundColor: 'var(--primary-50)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <input
-                      type="radio"
-                      name="payment_method"
-                      value="COD"
-                      checked={paymentMethod === 'COD'}
-                      onChange={() => setPaymentMethod('COD')}
-                      style={{ marginTop: '0.25rem' }}
-                    />
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>
-                        Cash on Delivery (COD) — Verified & Active
-                      </div>
-                      <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-                        Pay cash upon receiving your shipment at your delivery doorstep.
-                      </div>
-                    </div>
-                  </label>
-
-                  {/* Razorpay & Stripe Mock Notice (Disabled per project requirements) */}
-                  <div
-                    style={{
-                      padding: '1rem',
-                      border: '1px dashed var(--gray-300)',
-                      borderRadius: 'var(--radius-md)',
-                      backgroundColor: 'var(--gray-50)',
-                      opacity: 0.7,
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}>
-                      <AlertCircle size={16} />
-                      <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>
-                        Razorpay & Stripe (Online Gateways — Staging Mock)
-                      </span>
-                    </div>
-                    <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                      Online payment SDKs are not connected with live banking APIs. Use Cash on Delivery to finalize real orders.
-                    </div>
-                  </div>
+              {appliedCoupon && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#16a34a' }}>
+                  <span>Discount ({appliedCoupon.coupon})</span>
+                  <span>-₹{Number(appliedCoupon.discount).toFixed(2)}</span>
                 </div>
+              )}
 
+              <div
+                style={{
+                  borderTop: '1px solid #e5e7eb',
+                  paddingTop: '1rem',
+                  marginTop: '0.5rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: '1.125rem',
+                  fontWeight: 800,
+                  color: '#000000',
+                }}
+              >
+                <span>Total</span>
+                <span>₹{Number(currentTotal).toFixed(2)}</span>
+              </div>
+            </div>
+
+            {/* Place Order CTA Button */}
+            {createdOrder && (
+              <div style={{ marginTop: '1.75rem' }}>
                 <button
                   onClick={handleConfirmPayment}
                   disabled={isSubmitting}
                   className="btn btn-primary btn-lg"
-                  style={{ width: '100%', marginTop: '1.5rem' }}
+                  style={{ width: '100%', borderRadius: '8px' }}
                 >
-                  {isSubmitting ? 'Confirming Order...' : `Place Order (₹${Number(createdOrder.total_price).toFixed(2)})`}
+                  {isSubmitting
+                    ? 'Processing Order...'
+                    : `Place Order (₹${Number(currentTotal).toFixed(2)})`}
                 </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Order Summary Column */}
-        <div className="card" style={{ padding: '1.5rem', position: 'sticky', top: '5.5rem' }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1rem' }}>
-            Summary
-          </h2>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.9375rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
-              <span>Items Total</span>
-              <span>₹{Number(totalPrice).toFixed(2)}</span>
-            </div>
-
-            {appliedCoupon && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--success-600)', fontWeight: 600 }}>
-                <span>Coupon ({appliedCoupon.coupon})</span>
-                <span>-₹{Number(appliedCoupon.discount).toFixed(2)}</span>
               </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
-              <span>Delivery</span>
-              <span style={{ color: 'var(--success-600)', fontWeight: 600 }}>FREE</span>
-            </div>
-
             <div
               style={{
-                borderTop: '1px solid var(--border-color)',
-                paddingTop: '1rem',
-                marginTop: '0.5rem',
+                marginTop: '1.25rem',
                 display: 'flex',
-                justifyContent: 'space-between',
-                fontSize: '1.25rem',
-                fontWeight: 800,
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                fontSize: '0.75rem',
+                color: '#71717a',
               }}
             >
-              <span>Payable Total</span>
-              <span>
-                ₹{Number(createdOrder ? createdOrder.total_price : totalPrice).toFixed(2)}
-              </span>
+              <Lock size={14} color="#71717a" />
+              <span>Secure Checkout</span>
             </div>
-          </div>
-
-          <div
-            style={{
-              marginTop: '1.5rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              fontSize: '0.75rem',
-              color: 'var(--text-muted)',
-            }}
-          >
-            <ShieldCheck size={16} color="var(--success-600)" />
-            <span>Server-computed pricing & atomic transaction safety</span>
           </div>
         </div>
       </div>
 
       <style>{`
-        @media (max-width: 768px) {
+        @media (max-width: 900px) {
           .checkout-layout {
             grid-template-columns: 1fr !important;
+            gap: 2rem !important;
           }
         }
       `}</style>
     </div>
   );
 };
+export default CheckoutPage;

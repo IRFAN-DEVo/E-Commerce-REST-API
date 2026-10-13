@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Filter, Search, RotateCcw } from 'lucide-react';
+import { Filter, Search, RotateCcw, SlidersHorizontal, Star } from 'lucide-react';
 import { productsApi } from '../api/products';
 import { ProductCard } from '../components/products/ProductCard';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
@@ -45,8 +45,8 @@ export const ProductsPage = () => {
         page: pageParam,
         page_size: pageSize,
       };
-      if (categoryParam) params.category = categoryParam;
-      if (brandParam) params.brand = brandParam;
+      if (categoryParam && categoryParam !== 'all') params.category = categoryParam;
+      if (brandParam && brandParam !== 'all') params.brand = brandParam;
       if (searchParam) params.search = searchParam;
       if (orderingParam) params.ordering = orderingParam;
       if (minPriceParam) params.min_price = minPriceParam;
@@ -93,178 +93,341 @@ export const ProductsPage = () => {
   const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
-    <div className="container" style={{ padding: '2rem 1.5rem' }}>
-      {/* Page Header */}
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '1.875rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-          Product Catalog
-        </h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', marginTop: '0.25rem' }}>
-          {totalCount} products available
-        </p>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '2rem' }} className="catalog-layout">
-        {/* Sidebar Filters */}
-        <aside
+    <div style={{ backgroundColor: '#ffffff', minHeight: '80vh', padding: '2rem 0 5rem 0' }}>
+      <div className="container">
+        {/* Layout: Sidebar + Catalog Grid (Matching Screenshot #2) */}
+        <div
           style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1.5rem',
+            display: 'grid',
+            gridTemplateColumns: '260px 1fr',
+            gap: '2.5rem',
+            alignItems: 'start',
           }}
-          className="catalog-filters"
+          className="catalog-layout"
         >
-          <div className="card" style={{ padding: '1.25rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-              <span style={{ fontWeight: 600, fontSize: '0.9375rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Filter size={18} />
-                <span>Filters</span>
+          {/* Left Sidebar Filters (Screenshot #2) */}
+          <aside
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '2rem',
+              backgroundColor: '#ffffff',
+              paddingRight: '1rem',
+            }}
+            className="catalog-filters"
+          >
+            {/* Header & Reset Button */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #e5e7eb', paddingBottom: '1rem' }}>
+              <span style={{ fontWeight: 700, fontSize: '1.0625rem', color: '#000000', letterSpacing: '-0.02em' }}>
+                Filters
               </span>
-              {(categoryParam || brandParam || searchParam || minPriceParam || maxPriceParam) && (
-                <button
-                  onClick={handleResetFilters}
-                  style={{ fontSize: '0.75rem', color: 'var(--primary-600)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-                >
-                  <RotateCcw size={12} />
-                  <span>Reset</span>
-                </button>
-              )}
+              <button
+                onClick={handleResetFilters}
+                style={{
+                  fontSize: '0.8125rem',
+                  fontWeight: 500,
+                  color: '#71717a',
+                  transition: 'color 150ms',
+                }}
+                onMouseEnter={(e) => e.target.style.color = '#000'}
+                onMouseLeave={(e) => e.target.style.color = '#71717a'}
+              >
+                Clear All
+              </button>
             </div>
 
             {/* Category Filter */}
-            <div className="form-group">
-              <label className="form-label">Category</label>
-              <select
-                className="form-select"
-                value={categoryParam}
-                onChange={(e) => updateParam('category', e.target.value)}
-              >
-                <option value="">All Categories</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#000000', marginBottom: '0.875rem' }}>
+                Category
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontSize: '0.875rem',
+                    color: !categoryParam ? '#000000' : '#52525b',
+                    cursor: 'pointer',
+                    fontWeight: !categoryParam ? 600 : 400,
+                  }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={!categoryParam}
+                      onChange={() => updateParam('category', '')}
+                      className="form-checkbox"
+                    />
+                    <span>All Categories</span>
+                  </span>
+                </label>
+
+                {categories.map((c) => {
+                  const isChecked = categoryParam === String(c.id) || categoryParam === c.slug;
+                  return (
+                    <label
+                      key={c.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontSize: '0.875rem',
+                        color: isChecked ? '#000000' : '#52525b',
+                        cursor: 'pointer',
+                        fontWeight: isChecked ? 600 : 400,
+                      }}
+                    >
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => updateParam('category', isChecked ? '' : (c.id || c.slug))}
+                          className="form-checkbox"
+                        />
+                        <span>{c.name}</span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Brand Filter */}
-            <div className="form-group">
-              <label className="form-label">Brand</label>
-              <select
-                className="form-select"
-                value={brandParam}
-                onChange={(e) => updateParam('brand', e.target.value)}
-              >
-                <option value="">All Brands</option>
-                {brands.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
+            <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem' }}>
+              <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#000000', marginBottom: '0.875rem' }}>
+                Brand
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontSize: '0.875rem',
+                    color: !brandParam ? '#000000' : '#52525b',
+                    cursor: 'pointer',
+                    fontWeight: !brandParam ? 600 : 400,
+                  }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={!brandParam}
+                      onChange={() => updateParam('brand', '')}
+                      className="form-checkbox"
+                    />
+                    <span>All Brands</span>
+                  </span>
+                </label>
+
+                {brands.map((b) => {
+                  const isChecked = brandParam === String(b.id) || brandParam === b.slug;
+                  return (
+                    <label
+                      key={b.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontSize: '0.875rem',
+                        color: isChecked ? '#000000' : '#52525b',
+                        cursor: 'pointer',
+                        fontWeight: isChecked ? 600 : 400,
+                      }}
+                    >
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => updateParam('brand', isChecked ? '' : (b.id || b.slug))}
+                          className="form-checkbox"
+                        />
+                        <span>{b.name}</span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Price Filter */}
-            <div className="form-group">
-              <label className="form-label">Price Range (₹)</label>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {/* Price Range */}
+            <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem' }}>
+              <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#000000', marginBottom: '0.875rem' }}>
+                Price Range
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                 <input
                   type="number"
-                  placeholder="Min"
+                  placeholder="$ Min"
                   className="form-input"
                   value={minPriceParam}
                   onChange={(e) => updateParam('min_price', e.target.value)}
+                  style={{ fontSize: '0.8125rem', padding: '0.45rem 0.625rem' }}
                 />
+                <span style={{ color: '#a1a1aa' }}>-</span>
                 <input
                   type="number"
-                  placeholder="Max"
+                  placeholder="$ Max"
                   className="form-input"
                   value={maxPriceParam}
                   onChange={(e) => updateParam('max_price', e.target.value)}
+                  style={{ fontSize: '0.8125rem', padding: '0.45rem 0.625rem' }}
                 />
               </div>
             </div>
-          </div>
-        </aside>
 
-        {/* Catalog Main Content */}
-        <div>
-          {/* Top Control Bar (Search & Sort) */}
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '1rem',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '1.5rem',
-            }}
-          >
-            {/* Search Filter Input */}
-            <div style={{ position: 'relative', flex: 1, minWidth: '220px', maxWidth: '400px' }}>
-              <input
-                type="text"
-                placeholder="Search products in view..."
-                className="form-input"
-                value={searchParam}
-                onChange={(e) => updateParam('search', e.target.value)}
-                style={{ paddingRight: '2rem' }}
-              />
-              <Search
-                size={16}
-                style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}
-              />
+            {/* Rating Filter (Screenshot #2) */}
+            <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.5rem' }}>
+              <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#000000', marginBottom: '0.875rem' }}>
+                Rating
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.8125rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                  <input type="checkbox" className="form-checkbox" defaultChecked />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <div style={{ display: 'flex', color: '#000000' }}>
+                      <Star size={14} fill="#000000" />
+                      <Star size={14} fill="#000000" />
+                      <Star size={14} fill="#000000" />
+                      <Star size={14} fill="#000000" />
+                      <Star size={14} fill="none" />
+                    </div>
+                    <span>4.0 & above</span>
+                  </div>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                  <input type="checkbox" className="form-checkbox" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <div style={{ display: 'flex', color: '#000000' }}>
+                      <Star size={14} fill="#000000" />
+                      <Star size={14} fill="#000000" />
+                      <Star size={14} fill="#000000" />
+                      <Star size={14} fill="none" />
+                      <Star size={14} fill="none" />
+                    </div>
+                    <span>3.0 & above</span>
+                  </div>
+                </label>
+              </div>
             </div>
+          </aside>
 
-            {/* Ordering Selector */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Sort by:</span>
-              <select
-                className="form-select"
-                style={{ width: 'auto' }}
-                value={orderingParam}
-                onChange={(e) => updateParam('ordering', e.target.value)}
-              >
-                <option value="-created_at">Newest First</option>
-                <option value="price">Price: Low to High</option>
-                <option value="-price">Price: High to Low</option>
-                <option value="-stock">Highest Stock</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Product Grid */}
-          {isLoading ? (
-            <LoadingSpinner message="Fetching products..." />
-          ) : products.length > 0 ? (
-            <>
-              <div className="grid-products">
-                {products.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
+          {/* Catalog Main Content */}
+          <div>
+            {/* Top Bar: Search Input + Sorting (Screenshot #2) */}
+            <div
+              style={{
+                display: 'flex',
+                gap: '1rem',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '2rem',
+                flexWrap: 'wrap',
+              }}
+            >
+              {/* Search Bar matching Screenshot #2 */}
+              <div style={{ position: 'relative', flex: 1, minWidth: '260px' }}>
+                <input
+                  type="text"
+                  placeholder="Search products in view..."
+                  className="form-input"
+                  value={searchParam}
+                  onChange={(e) => updateParam('search', e.target.value)}
+                  style={{
+                    paddingLeft: '2.5rem',
+                    paddingRight: '1rem',
+                    borderRadius: '8px',
+                    backgroundColor: '#fafafa',
+                    borderColor: '#e5e7eb',
+                  }}
+                />
+                <Search
+                  size={16}
+                  style={{
+                    position: 'absolute',
+                    left: '0.9rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: '#71717a',
+                  }}
+                />
               </div>
 
-              <Pagination
-                currentPage={pageParam}
-                totalPages={totalPages}
-                onPageChange={(p) => updateParam('page', p.toString())}
+              {/* Sort by dropdown */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.875rem', color: '#71717a', whiteSpace: 'nowrap' }}>
+                  Sort by:
+                </span>
+                <select
+                  className="form-select"
+                  style={{
+                    width: 'auto',
+                    padding: '0.55rem 1rem',
+                    borderRadius: '8px',
+                    borderColor: '#e5e7eb',
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                  }}
+                  value={orderingParam}
+                  onChange={(e) => updateParam('ordering', e.target.value)}
+                >
+                  <option value="-created_at">Popularity</option>
+                  <option value="price">Price: Low to High</option>
+                  <option value="-price">Price: High to Low</option>
+                  <option value="-stock">Highest Stock</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Product Grid */}
+            {isLoading ? (
+              <LoadingSpinner message="Fetching products..." />
+            ) : products.length > 0 ? (
+              <>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: '1.5rem',
+                  }}
+                  className="catalog-products-grid"
+                >
+                  {products.map((product) => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+                </div>
+
+                <Pagination
+                  currentPage={pageParam}
+                  totalPages={totalPages}
+                  onPageChange={(p) => updateParam('page', p.toString())}
+                />
+              </>
+            ) : (
+              <EmptyState
+                title="No products matched your criteria"
+                description="Try adjusting your filters, clearing your search query, or checking back later."
+                actionText="Reset Filters"
+                onAction={handleResetFilters}
               />
-            </>
-          ) : (
-            <EmptyState
-              title="No products matched your criteria"
-              description="Try adjusting your filters, clearing your search query, or checking back later."
-              actionText="Reset Filters"
-              onAction={handleResetFilters}
-            />
-          )}
+            )}
+          </div>
         </div>
       </div>
 
       <style>{`
-        @media (max-width: 768px) {
+        @media (max-width: 900px) {
           .catalog-layout {
+            grid-template-columns: 1fr !important;
+          }
+          .catalog-products-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+        }
+        @media (max-width: 550px) {
+          .catalog-products-grid {
             grid-template-columns: 1fr !important;
           }
         }
@@ -272,3 +435,4 @@ export const ProductsPage = () => {
     </div>
   );
 };
+export default ProductsPage;

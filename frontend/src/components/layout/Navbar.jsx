@@ -11,6 +11,7 @@ import {
   Search,
   Menu,
   X,
+  Package,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
@@ -57,15 +58,16 @@ export const Navbar = () => {
     navigate('/');
   };
 
+  const isActive = (path) => location.pathname === path;
+
   return (
     <header
       style={{
         backgroundColor: '#ffffff',
-        borderBottom: '1px solid var(--border-color)',
+        borderBottom: '1px solid #e5e7eb',
         position: 'sticky',
         top: 0,
         zIndex: 50,
-        boxShadow: 'var(--shadow-xs)',
       }}
     >
       <div
@@ -74,8 +76,8 @@ export const Navbar = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          height: '4.25rem',
-          gap: '1.5rem',
+          height: '4.5rem',
+          gap: '2rem',
         }}
       >
         {/* Brand Logo */}
@@ -86,27 +88,105 @@ export const Navbar = () => {
             alignItems: 'center',
             gap: '0.625rem',
             fontWeight: 800,
-            fontSize: '1.35rem',
-            color: 'var(--primary-600)',
-            letterSpacing: '-0.025em',
+            fontSize: '1.4rem',
+            color: '#000000',
+            letterSpacing: '-0.03em',
+            textDecoration: 'none',
           }}
         >
           <div
             style={{
-              backgroundColor: 'var(--primary-600)',
+              backgroundColor: '#000000',
               color: '#ffffff',
-              borderRadius: 'var(--radius-md)',
-              width: '36px',
-              height: '36px',
+              borderRadius: '8px',
+              width: '34px',
+              height: '34px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <ShoppingBag size={20} />
+            <ShoppingBag size={18} strokeWidth={2.2} />
           </div>
           <span>DjangoMart</span>
         </Link>
+
+        {/* Center Navigation Links (Matching Screenshot 1 & 2) */}
+        <nav
+          className="desktop-nav"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1.75rem',
+          }}
+        >
+          <Link
+            to="/"
+            style={{
+              fontSize: '0.9375rem',
+              fontWeight: isActive('/') ? 600 : 500,
+              color: isActive('/') ? '#000000' : '#52525b',
+              transition: 'color 150ms ease',
+            }}
+          >
+            Home
+          </Link>
+          <Link
+            to="/products"
+            style={{
+              fontSize: '0.9375rem',
+              fontWeight: isActive('/products') ? 600 : 500,
+              color: isActive('/products') ? '#000000' : '#52525b',
+              transition: 'color 150ms ease',
+            }}
+          >
+            Shop
+          </Link>
+          <Link
+            to="/products?category=all"
+            style={{
+              fontSize: '0.9375rem',
+              fontWeight: 500,
+              color: '#52525b',
+              transition: 'color 150ms ease',
+            }}
+          >
+            Categories
+          </Link>
+          <Link
+            to="/products?brand=all"
+            style={{
+              fontSize: '0.9375rem',
+              fontWeight: 500,
+              color: '#52525b',
+              transition: 'color 150ms ease',
+            }}
+          >
+            Brands
+          </Link>
+          <Link
+            to="/about"
+            style={{
+              fontSize: '0.9375rem',
+              fontWeight: isActive('/about') ? 600 : 500,
+              color: isActive('/about') ? '#000000' : '#52525b',
+              transition: 'color 150ms ease',
+            }}
+          >
+            About
+          </Link>
+          <Link
+            to="/contact"
+            style={{
+              fontSize: '0.9375rem',
+              fontWeight: isActive('/contact') ? 600 : 500,
+              color: isActive('/contact') ? '#000000' : '#52525b',
+              transition: 'color 150ms ease',
+            }}
+          >
+            Contact
+          </Link>
+        </nav>
 
         {/* Search Bar - Desktop */}
         <form
@@ -114,79 +194,91 @@ export const Navbar = () => {
           style={{
             display: 'flex',
             flex: 1,
-            maxWidth: '520px',
+            maxWidth: '380px',
             position: 'relative',
           }}
           className="desktop-search"
         >
           <input
             type="text"
-            className="form-input"
-            placeholder="Search products, brands, categories..."
+            placeholder="Search products..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
-              paddingRight: '2.75rem',
-              borderRadius: 'var(--radius-full)',
-              backgroundColor: 'var(--gray-50)',
+              width: '100%',
+              padding: '0.55rem 1rem 0.55rem 2.5rem',
+              fontSize: '0.875rem',
+              borderRadius: '9999px',
+              backgroundColor: '#f4f4f5',
+              border: '1px solid transparent',
+              outline: 'none',
+              transition: 'all 150ms ease',
+            }}
+            onFocus={(e) => {
+              e.target.style.backgroundColor = '#ffffff';
+              e.target.style.borderColor = '#000000';
+            }}
+            onBlur={(e) => {
+              e.target.style.backgroundColor = '#f4f4f5';
+              e.target.style.borderColor = 'transparent';
             }}
             aria-label="Search products"
           />
-          <button
-            type="submit"
+          <Search
+            size={16}
             style={{
               position: 'absolute',
-              right: '0.75rem',
+              left: '0.9rem',
               top: '50%',
               transform: 'translateY(-50%)',
-              color: 'var(--gray-500)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              color: '#71717a',
+              pointerEvents: 'none',
             }}
-            aria-label="Submit search"
-          >
-            <Search size={18} />
-          </button>
+          />
         </form>
 
-        {/* Navigation & Action Links */}
-        <nav style={{ display: 'flex', alignItems: 'center', gap: '1rem' }} className="desktop-nav">
+        {/* Action Icons (Search/Wishlist/Cart/Account) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          {/* Wishlist Icon */}
           <Link
-            to="/products"
+            to="/wishlist"
             style={{
-              fontWeight: 500,
-              fontSize: '0.9375rem',
-              color: location.pathname === '/products' ? 'var(--primary-600)' : 'var(--text-secondary)',
-              padding: '0.5rem 0.75rem',
-              borderRadius: 'var(--radius-md)',
+              padding: '0.5rem',
+              color: '#18181b',
+              display: 'flex',
+              alignItems: 'center',
+              borderRadius: '9999px',
+              transition: 'background-color 150ms ease',
             }}
+            aria-label="Wishlist"
           >
-            Products
+            <Heart size={20} strokeWidth={1.8} />
           </Link>
 
-          {/* Cart Icon & Counter */}
+          {/* Cart Icon & Badge */}
           <Link
             to="/cart"
             style={{
               position: 'relative',
               padding: '0.5rem',
-              color: 'var(--text-secondary)',
+              color: '#18181b',
               display: 'flex',
               alignItems: 'center',
+              borderRadius: '9999px',
+              transition: 'background-color 150ms ease',
             }}
             aria-label={`Cart with ${totalItems} items`}
           >
-            <ShoppingCart size={22} />
+            <ShoppingCart size={20} strokeWidth={1.8} />
             {totalItems > 0 && (
               <span
                 style={{
                   position: 'absolute',
                   top: '2px',
                   right: '0px',
-                  backgroundColor: 'var(--primary-600)',
+                  backgroundColor: '#000000',
                   color: '#ffffff',
-                  fontSize: '0.7rem',
+                  fontSize: '0.6875rem',
                   fontWeight: 700,
                   borderRadius: '9999px',
                   minWidth: '18px',
@@ -202,45 +294,29 @@ export const Navbar = () => {
             )}
           </Link>
 
-          {/* Wishlist Link */}
-          {isAuthenticated && (
-            <Link
-              to="/wishlist"
-              style={{
-                padding: '0.5rem',
-                color: 'var(--text-secondary)',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-              aria-label="Wishlist"
-            >
-              <Heart size={22} />
-            </Link>
-          )}
-
-          {/* Notifications Link */}
+          {/* Notifications Icon (if logged in) */}
           {isAuthenticated && (
             <Link
               to="/notifications"
               style={{
                 position: 'relative',
                 padding: '0.5rem',
-                color: 'var(--text-secondary)',
+                color: '#18181b',
                 display: 'flex',
                 alignItems: 'center',
               }}
               aria-label={`Notifications, ${unreadNotifications} unread`}
             >
-              <Bell size={22} />
+              <Bell size={20} strokeWidth={1.8} />
               {unreadNotifications > 0 && (
                 <span
                   style={{
                     position: 'absolute',
                     top: '4px',
                     right: '4px',
-                    width: '8px',
-                    height: '8px',
-                    backgroundColor: 'var(--danger-500)',
+                    width: '7px',
+                    height: '7px',
+                    backgroundColor: '#000000',
                     borderRadius: '50%',
                   }}
                 />
@@ -248,7 +324,7 @@ export const Navbar = () => {
             </Link>
           )}
 
-          {/* User Account Dropdown or Login Button */}
+          {/* User Account / Profile Menu */}
           {isAuthenticated ? (
             <div style={{ position: 'relative' }}>
               <button
@@ -257,48 +333,95 @@ export const Navbar = () => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.5rem',
-                  padding: '0.375rem 0.75rem',
-                  borderRadius: 'var(--radius-full)',
-                  border: '1px solid var(--border-color)',
-                  backgroundColor: 'var(--gray-50)',
-                  fontWeight: 500,
+                  padding: '0.4rem 0.6rem',
+                  borderRadius: '9999px',
+                  border: '1px solid #e5e7eb',
+                  backgroundColor: '#ffffff',
+                  color: '#000000',
                   fontSize: '0.875rem',
+                  fontWeight: 500,
+                  transition: 'border-color 150ms ease',
                 }}
                 aria-expanded={userDropdownOpen}
-                aria-haspopup="true"
+                aria-label="User menu"
               >
-                <User size={16} color="var(--primary-600)" />
-                <span style={{ maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {user?.name || user?.email?.split('@')[0] || 'Account'}
+                <div
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    backgroundColor: '#18181b',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  {user?.first_name ? user.first_name[0].toUpperCase() : 'U'}
+                </div>
+                <span className="desktop-username" style={{ maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {user?.first_name || user?.username || 'Account'}
                 </span>
               </button>
 
+              {/* Dropdown Menu */}
               {userDropdownOpen && (
                 <div
                   style={{
                     position: 'absolute',
                     right: 0,
-                    top: 'calc(100% + 0.5rem)',
+                    top: 'calc(100% + 8px)',
+                    width: '210px',
                     backgroundColor: '#ffffff',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: 'var(--radius-md)',
-                    boxShadow: 'var(--shadow-lg)',
-                    minWidth: '200px',
+                    borderRadius: '8px',
+                    border: '1px solid #e5e7eb',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.08)',
                     padding: '0.5rem 0',
                     zIndex: 100,
                   }}
-                  onMouseLeave={() => setUserDropdownOpen(false)}
                 >
-                  <div
+                  <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid #f4f4f5' }}>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#000000' }}>
+                      {user?.first_name} {user?.last_name}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#71717a', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {user?.email}
+                    </div>
+                  </div>
+
+                  <Link
+                    to="/profile"
+                    onClick={() => setUserDropdownOpen(false)}
                     style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.625rem',
                       padding: '0.5rem 1rem',
-                      borderBottom: '1px solid var(--border-color)',
-                      marginBottom: '0.25rem',
+                      fontSize: '0.875rem',
+                      color: '#27272a',
                     }}
                   >
-                    <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{user?.name}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{user?.email}</div>
-                  </div>
+                    <User size={16} />
+                    <span>My Account</span>
+                  </Link>
+
+                  <Link
+                    to="/orders"
+                    onClick={() => setUserDropdownOpen(false)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.625rem',
+                      padding: '0.5rem 1rem',
+                      fontSize: '0.875rem',
+                      color: '#27272a',
+                    }}
+                  >
+                    <Package size={16} />
+                    <span>My Orders</span>
+                  </Link>
 
                   {isOwner && (
                     <Link
@@ -307,11 +430,12 @@ export const Navbar = () => {
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.5rem',
+                        gap: '0.625rem',
                         padding: '0.5rem 1rem',
                         fontSize: '0.875rem',
-                        color: 'var(--primary-600)',
+                        color: '#000000',
                         fontWeight: 600,
+                        borderTop: '1px solid #f4f4f5',
                       }}
                     >
                       <LayoutDashboard size={16} />
@@ -319,185 +443,114 @@ export const Navbar = () => {
                     </Link>
                   )}
 
-                  <Link
-                    to="/orders"
-                    onClick={() => setUserDropdownOpen(false)}
+                  <button
+                    onClick={handleLogout}
                     style={{
+                      width: '100%',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '0.5rem',
+                      gap: '0.625rem',
                       padding: '0.5rem 1rem',
                       fontSize: '0.875rem',
-                      color: 'var(--text-primary)',
+                      color: '#b91c1c',
+                      borderTop: '1px solid #f4f4f5',
+                      textAlign: 'left',
                     }}
                   >
-                    <ShoppingBag size={16} />
-                    <span>My Orders</span>
-                  </Link>
-
-                  <Link
-                    to="/profile"
-                    onClick={() => setUserDropdownOpen(false)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      padding: '0.5rem 1rem',
-                      fontSize: '0.875rem',
-                      color: 'var(--text-primary)',
-                    }}
-                  >
-                    <User size={16} />
-                    <span>Profile</span>
-                  </Link>
-
-                  <div style={{ borderTop: '1px solid var(--border-color)', marginTop: '0.25rem', paddingTop: '0.25rem' }}>
-                    <button
-                      onClick={handleLogout}
-                      style={{
-                        width: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        padding: '0.5rem 1rem',
-                        fontSize: '0.875rem',
-                        color: 'var(--danger-600)',
-                        textAlign: 'left',
-                      }}
-                    >
-                      <LogOut size={16} />
-                      <span>Sign Out</span>
-                    </button>
-                  </div>
+                    <LogOut size={16} />
+                    <span>Sign Out</span>
+                  </button>
                 </div>
               )}
             </div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Link to="/login" className="btn btn-secondary btn-sm">
-                Sign In
-              </Link>
-              <Link to="/register" className="btn btn-primary btn-sm">
-                Register
-              </Link>
-            </div>
-          )}
-        </nav>
-
-        {/* Mobile Menu Toggle Button */}
-        <button
-          className="mobile-toggle"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          aria-label="Toggle navigation menu"
-          style={{ display: 'none', color: 'var(--text-primary)' }}
-        >
-          {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-      </div>
-
-      {/* Mobile Drawer */}
-      {mobileMenuOpen && (
-        <div
-          style={{
-            backgroundColor: '#ffffff',
-            borderTop: '1px solid var(--border-color)',
-            padding: '1rem 1.5rem',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1rem',
-          }}
-          className="mobile-drawer"
-        >
-          <form onSubmit={handleSearchSubmit} style={{ display: 'flex', position: 'relative' }}>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="Search products..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <button
-              type="submit"
-              style={{
-                position: 'absolute',
-                right: '0.75rem',
-                top: '50%',
-                transform: 'translateY(-50%)',
-              }}
-            >
-              <Search size={18} />
-            </button>
-          </form>
-
-          <Link to="/products" onClick={() => setMobileMenuOpen(false)}>
-            Browse Products
-          </Link>
-          <Link to="/cart" onClick={() => setMobileMenuOpen(false)}>
-            Shopping Cart ({totalItems})
-          </Link>
-
-          {isAuthenticated ? (
-            <>
-              {isOwner && (
-                <Link to="/admin/dashboard" onClick={() => setMobileMenuOpen(false)}>
-                  Admin Dashboard
-                </Link>
-              )}
-              <Link to="/orders" onClick={() => setMobileMenuOpen(false)}>
-                My Orders
-              </Link>
-              <Link to="/wishlist" onClick={() => setMobileMenuOpen(false)}>
-                Wishlist
-              </Link>
-              <Link to="/notifications" onClick={() => setMobileMenuOpen(false)}>
-                Notifications ({unreadNotifications})
-              </Link>
-              <Link to="/profile" onClick={() => setMobileMenuOpen(false)}>
-                My Profile
-              </Link>
-              <button
-                onClick={() => {
-                  handleLogout();
-                  setMobileMenuOpen(false);
-                }}
-                style={{ textAlign: 'left', color: 'var(--danger-600)', fontWeight: 600 }}
-              >
-                Sign Out
-              </button>
-            </>
-          ) : (
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
               <Link
                 to="/login"
-                className="btn btn-secondary"
-                style={{ flex: 1 }}
-                onClick={() => setMobileMenuOpen(false)}
+                style={{
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  color: '#18181b',
+                  padding: '0.5rem 0.875rem',
+                }}
               >
-                Sign In
+                Log In
               </Link>
               <Link
                 to="/register"
                 className="btn btn-primary"
-                style={{ flex: 1 }}
-                onClick={() => setMobileMenuOpen(false)}
+                style={{
+                  padding: '0.45rem 1rem',
+                  fontSize: '0.8125rem',
+                  borderRadius: '9999px',
+                }}
               >
-                Register
+                Sign Up
               </Link>
             </div>
           )}
+
+          {/* Mobile Menu Hamburger */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="mobile-menu-btn"
+            style={{
+              padding: '0.5rem',
+              color: '#000000',
+              display: 'none',
+            }}
+            aria-label="Toggle mobile menu"
+          >
+            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Drawer Navigation */}
+      {mobileMenuOpen && (
+        <div
+          style={{
+            backgroundColor: '#ffffff',
+            borderTop: '1px solid #e5e7eb',
+            padding: '1.25rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem',
+          }}
+        >
+          <form onSubmit={handleSearchSubmit} style={{ display: 'flex', position: 'relative' }}>
+            <input
+              type="text"
+              placeholder="Search products..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="form-input"
+              style={{ borderRadius: '9999px', paddingLeft: '2.5rem' }}
+            />
+            <Search size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#71717a' }} />
+          </form>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <Link to="/" onClick={() => setMobileMenuOpen(false)} style={{ padding: '0.5rem 0', fontWeight: 500 }}>Home</Link>
+            <Link to="/products" onClick={() => setMobileMenuOpen(false)} style={{ padding: '0.5rem 0', fontWeight: 500 }}>Shop All</Link>
+            <Link to="/products?category=all" onClick={() => setMobileMenuOpen(false)} style={{ padding: '0.5rem 0', fontWeight: 500 }}>Categories</Link>
+            <Link to="/about" onClick={() => setMobileMenuOpen(false)} style={{ padding: '0.5rem 0', fontWeight: 500 }}>About</Link>
+            <Link to="/contact" onClick={() => setMobileMenuOpen(false)} style={{ padding: '0.5rem 0', fontWeight: 500 }}>Contact</Link>
+          </div>
         </div>
       )}
 
       <style>{`
-        @media (max-width: 768px) {
-          .desktop-search, .desktop-nav {
+        @media (max-width: 900px) {
+          .desktop-nav, .desktop-search, .desktop-username {
             display: none !important;
           }
-          .mobile-toggle {
-            display: block !important;
+          .mobile-menu-btn {
+            display: flex !important;
           }
         }
       `}</style>
     </header>
   );
 };
+export default Navbar;

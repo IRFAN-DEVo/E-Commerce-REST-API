@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { wishlistApi } from '../../api/wishlist';
 import { StockBadge } from '../common/Badge';
+import { StarRating } from '../common/StarRating';
 
 export const ProductCard = ({ product, inWishlist = false, onWishlistToggle }) => {
   const { addItem } = useCart();
@@ -46,15 +47,44 @@ export const ProductCard = ({ product, inWishlist = false, onWishlistToggle }) =
   const displayPrice = hasDiscount ? product.discount_price : product.price;
   const originalPrice = hasDiscount ? product.price : null;
 
+  const discountPercent = hasDiscount && product.price
+    ? Math.round(((Number(product.price) - Number(product.discount_price)) / Number(product.price)) * 100)
+    : null;
+
+  const rating = product.rating || product.average_rating || 4.5;
+  const reviewsCount = product.reviews_count || product.num_reviews || 24;
+
   return (
-    <div className="card card-interactive" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Product Image & Badges */}
+    <div
+      className="card"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        backgroundColor: '#ffffff',
+        border: '1px solid #e5e7eb',
+        borderRadius: '8px',
+        overflow: 'hidden',
+        transition: 'transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-3px)';
+        e.currentTarget.style.boxShadow = '0 10px 24px rgba(0,0,0,0.06)';
+        e.currentTarget.style.borderColor = '#111111';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.boxShadow = 'var(--shadow-xs)';
+        e.currentTarget.style.borderColor = '#e5e7eb';
+      }}
+    >
+      {/* Product Image & Badges Container */}
       <Link
         to={`/products/${product.id}`}
         style={{
           position: 'relative',
-          paddingTop: '75%',
-          backgroundColor: 'var(--gray-100)',
+          paddingTop: '85%',
+          backgroundColor: '#f4f4f5',
           overflow: 'hidden',
           display: 'block',
         }}
@@ -69,8 +99,9 @@ export const ProductCard = ({ product, inWishlist = false, onWishlistToggle }) =
               left: 0,
               width: '100%',
               height: '100%',
-              objectFit: 'cover',
-              transition: 'transform var(--transition-normal)',
+              objectFit: 'contain',
+              padding: '1rem',
+              transition: 'transform 250ms ease',
             }}
             loading="lazy"
           />
@@ -85,7 +116,7 @@ export const ProductCard = ({ product, inWishlist = false, onWishlistToggle }) =
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: 'var(--text-muted)',
+              color: '#a1a1aa',
               fontSize: '0.875rem',
             }}
           >
@@ -93,8 +124,23 @@ export const ProductCard = ({ product, inWishlist = false, onWishlistToggle }) =
           </div>
         )}
 
-        {/* Stock Badge Overlay */}
-        <div style={{ position: 'absolute', top: '0.75rem', left: '0.75rem' }}>
+        {/* Top Badges (Discount / Stock) */}
+        <div style={{ position: 'absolute', top: '0.75rem', left: '0.75rem', display: 'flex', gap: '0.375rem' }}>
+          {discountPercent ? (
+            <span
+              style={{
+                backgroundColor: '#000000',
+                color: '#ffffff',
+                fontSize: '0.6875rem',
+                fontWeight: 700,
+                padding: '0.2rem 0.5rem',
+                borderRadius: '4px',
+                letterSpacing: '0.02em',
+              }}
+            >
+              {discountPercent}% OFF
+            </span>
+          ) : null}
           <StockBadge stock={product.stock} isAvailable={product.is_available} />
         </div>
 
@@ -107,72 +153,91 @@ export const ProductCard = ({ product, inWishlist = false, onWishlistToggle }) =
             right: '0.75rem',
             backgroundColor: '#ffffff',
             borderRadius: '50%',
-            width: '34px',
-            height: '34px',
+            width: '32px',
+            height: '32px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: 'var(--shadow-sm)',
-            color: inWishlist ? 'var(--danger-500)' : 'var(--gray-500)',
-            transition: 'transform var(--transition-fast)',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+            border: '1px solid #e5e7eb',
+            color: inWishlist ? '#000000' : '#71717a',
+            transition: 'all 150ms ease',
           }}
           aria-label={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
         >
-          <Heart size={18} fill={inWishlist ? 'var(--danger-500)' : 'none'} />
+          <Heart size={16} fill={inWishlist ? '#000000' : 'none'} strokeWidth={2} />
         </button>
       </Link>
 
-      {/* Product Info */}
-      <div className="card-body" style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '0.5rem' }}>
-        {product.category_name && (
-          <span style={{ fontSize: '0.75rem', color: 'var(--primary-600)', fontWeight: 600, textTransform: 'uppercase' }}>
-            {product.category_name}
-          </span>
-        )}
+      {/* Product Information */}
+      <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', flex: 1, gap: '0.375rem' }}>
+        {/* Category & Brand */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: '#71717a' }}>
+          {product.category_name && (
+            <span style={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              {product.category_name}
+            </span>
+          )}
+          {product.category_name && product.brand_name && <span>•</span>}
+          {product.brand_name && (
+            <span>
+              {product.brand_name}
+            </span>
+          )}
+        </div>
 
+        {/* Title */}
         <Link
           to={`/products/${product.id}`}
           style={{
             fontWeight: 600,
-            fontSize: '1rem',
-            color: 'var(--text-primary)',
+            fontSize: '0.9375rem',
+            color: '#111111',
             lineHeight: 1.4,
             display: '-webkit-box',
             WebkitLineClamp: 2,
             WebkitBoxOrient: 'vertical',
             overflow: 'hidden',
+            marginTop: '0.25rem',
+            textDecoration: 'none',
           }}
         >
           {product.name}
         </Link>
 
-        {product.brand_name && (
-          <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-            Brand: {product.brand_name}
-          </span>
-        )}
+        {/* Ratings Display matching Mockup */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', margin: '0.25rem 0' }}>
+          <StarRating rating={Math.round(rating)} size={14} />
+          <span style={{ fontSize: '0.75rem', color: '#71717a' }}>({reviewsCount})</span>
+        </div>
 
+        {/* Price & Action Bottom Row */}
         <div style={{ marginTop: 'auto', paddingTop: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-              <span style={{ fontWeight: 700, fontSize: '1.125rem', color: 'var(--text-primary)' }}>
-                ₹{Number(displayPrice).toFixed(2)}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+            <span style={{ fontWeight: 700, fontSize: '1.0625rem', color: '#000000' }}>
+              ₹{Number(displayPrice).toFixed(2)}
+            </span>
+            {originalPrice && (
+              <span style={{ textDecoration: 'line-through', color: '#a1a1aa', fontSize: '0.8125rem' }}>
+                ₹{Number(originalPrice).toFixed(2)}
               </span>
-              {originalPrice && (
-                <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                  ₹{Number(originalPrice).toFixed(2)}
-                </span>
-              )}
-            </div>
+            )}
           </div>
 
           <button
             onClick={handleAddToCart}
             disabled={!product.is_available || product.stock <= 0}
-            className="btn btn-primary btn-sm"
+            className="btn btn-primary"
+            style={{
+              padding: '0.4rem 0.8rem',
+              fontSize: '0.75rem',
+              borderRadius: '4px',
+              backgroundColor: '#000000',
+              color: '#ffffff',
+            }}
             aria-label={`Add ${product.name} to cart`}
           >
-            <ShoppingCart size={16} />
+            <ShoppingCart size={14} />
             <span>Add</span>
           </button>
         </div>
@@ -180,3 +245,4 @@ export const ProductCard = ({ product, inWishlist = false, onWishlistToggle }) =
     </div>
   );
 };
+export default ProductCard;
