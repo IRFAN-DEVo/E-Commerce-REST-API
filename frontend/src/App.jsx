@@ -8,6 +8,7 @@ import { Layout } from './components/layout/Layout';
 import { AdminLayout } from './components/layout/AdminLayout';
 import { ProtectedRoute, AdminRoute } from './components/common/ProtectedRoute';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
+import { ScrollToTop } from './components/common/ScrollToTop';
 
 // Route Lazy Loading for optimized bundle performance
 const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })));
@@ -41,6 +42,7 @@ const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage').t
 export function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <ToastProvider>
         <AuthProvider>
           <WishlistProvider>
