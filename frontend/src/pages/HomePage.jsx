@@ -4,6 +4,7 @@ import { ArrowRight, Truck, Tag, ShieldCheck, ShoppingBag, ChevronLeft, ChevronR
 import { productsApi } from '../api/products';
 import { ProductCard } from '../components/products/ProductCard';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { AnimatedContent } from '../components/common/AnimatedContent';
 
 import heroWatchImg from '../assets/hero_watch.jpg';
 import heroShoesImg from '../assets/hero_shoes.jpg';
@@ -136,70 +137,92 @@ export const HomePage = () => {
             className="hero-grid"
           >
             {/* Left Column: Typography & Action */}
-            <div style={{ maxWidth: '580px' }}>
-              <h1
-                style={{
-                  fontSize: 'clamp(2.75rem, 5vw, 4.25rem)',
-                  fontWeight: 800,
-                  color: '#000000',
-                  lineHeight: 1.08,
-                  letterSpacing: '-0.035em',
-                  marginBottom: '1.25rem',
-                }}
-              >
-                Modern Style For Everyday Life
-              </h1>
-
-              <p
-                style={{
-                  fontSize: 'clamp(1rem, 1.5vw, 1.125rem)',
-                  color: '#52525b',
-                  lineHeight: 1.6,
-                  marginBottom: '2.5rem',
-                  fontWeight: 400,
-                }}
-              >
-                Discover premium products with the best quality and unbeatable prices.
-              </p>
-
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                <Link
-                  to="/products"
-                  className="btn btn-primary"
+            <AnimatedContent
+              distance={70}
+              direction="vertical"
+              duration={0.9}
+              ease="power3.out"
+              initialOpacity={0}
+              animateOpacity
+              scale={0.98}
+              delay={0.1}
+            >
+              <div style={{ maxWidth: '580px' }}>
+                <h1
                   style={{
-                    padding: '0.875rem 2rem',
-                    fontSize: '0.9375rem',
-                    borderRadius: '9999px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.625rem',
-                    fontWeight: 600,
+                    fontSize: 'clamp(2.75rem, 5vw, 4.25rem)',
+                    fontWeight: 800,
+                    color: '#000000',
+                    lineHeight: 1.08,
+                    letterSpacing: '-0.035em',
+                    marginBottom: '1.25rem',
                   }}
                 >
-                  <span>Shop Now</span>
-                  <ArrowRight size={18} />
-                </Link>
+                  Modern Style For Everyday Life
+                </h1>
 
-                <Link
-                  to="/products?category=all"
-                  className="btn btn-secondary"
+                <p
                   style={{
-                    padding: '0.875rem 1.75rem',
-                    fontSize: '0.9375rem',
-                    borderRadius: '9999px',
+                    fontSize: 'clamp(1rem, 1.5vw, 1.125rem)',
+                    color: '#52525b',
+                    lineHeight: 1.6,
+                    marginBottom: '2.5rem',
+                    fontWeight: 400,
                   }}
                 >
-                  Explore Categories
-                </Link>
+                  Discover premium products with the best quality and unbeatable prices.
+                </p>
+
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <Link
+                    to="/products"
+                    className="btn btn-primary"
+                    style={{
+                      padding: '0.875rem 2rem',
+                      fontSize: '0.9375rem',
+                      borderRadius: '9999px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.625rem',
+                      fontWeight: 600,
+                    }}
+                  >
+                    <span>Shop Now</span>
+                    <ArrowRight size={18} />
+                  </Link>
+
+                  <Link
+                    to="/products?category=all"
+                    className="btn btn-secondary"
+                    style={{
+                      padding: '0.875rem 1.75rem',
+                      fontSize: '0.9375rem',
+                      borderRadius: '9999px',
+                    }}
+                  >
+                    Explore Categories
+                  </Link>
+                </div>
               </div>
-            </div>
+            </AnimatedContent>
 
             {/* Right Column: Hero Slider Carousel */}
-            <div
-              style={{ position: 'relative' }}
-              onMouseEnter={() => setIsPaused(true)}
-              onMouseLeave={() => setIsPaused(false)}
+            <AnimatedContent
+              distance={70}
+              direction="horizontal"
+              reverse={false}
+              duration={1}
+              ease="power3.out"
+              initialOpacity={0}
+              animateOpacity
+              scale={0.97}
+              delay={0.2}
             >
+              <div
+                style={{ position: 'relative' }}
+                onMouseEnter={() => setIsPaused(true)}
+                onMouseLeave={() => setIsPaused(false)}
+              >
               {/* Slider Image Box */}
               <div
                 style={{
@@ -417,50 +440,70 @@ export const HomePage = () => {
                 })}
               </div>
             </div>
-          </div>
+          </AnimatedContent>
+        </div>
         </div>
       </section>
 
       {/* 2. Value Props Bar (Screenshot #1) */}
       <section className="container">
-        <div className="value-props-bar">
-          <div className="value-prop-item">
-            <div className="value-prop-icon">
-              <Truck size={20} strokeWidth={2} />
+        <AnimatedContent
+          distance={40}
+          direction="vertical"
+          duration={0.8}
+          ease="power3.out"
+          initialOpacity={0}
+          animateOpacity
+          threshold={0.1}
+        >
+          <div className="value-props-bar">
+            <div className="value-prop-item">
+              <div className="value-prop-icon">
+                <Truck size={20} strokeWidth={2} />
+              </div>
+              <div>
+                <div className="value-prop-title">Free Shipping</div>
+                <div className="value-prop-desc">On orders over $50</div>
+              </div>
             </div>
-            <div>
-              <div className="value-prop-title">Free Shipping</div>
-              <div className="value-prop-desc">On orders over $50</div>
-            </div>
-          </div>
 
-          <div className="value-prop-item">
-            <div className="value-prop-icon">
-              <Tag size={20} strokeWidth={2} />
+            <div className="value-prop-item">
+              <div className="value-prop-icon">
+                <Tag size={20} strokeWidth={2} />
+              </div>
+              <div>
+                <div className="value-prop-title">Special Offers</div>
+                <div className="value-prop-desc">Save up to 50%</div>
+              </div>
             </div>
-            <div>
-              <div className="value-prop-title">Special Offers</div>
-              <div className="value-prop-desc">Save up to 50%</div>
-            </div>
-          </div>
 
-          <div className="value-prop-item">
-            <div className="value-prop-icon">
-              <ShieldCheck size={20} strokeWidth={2} />
-            </div>
-            <div>
-              <div className="value-prop-title">Secure Payment</div>
-              <div className="value-prop-desc">100% secure checkout</div>
+            <div className="value-prop-item">
+              <div className="value-prop-icon">
+                <ShieldCheck size={20} strokeWidth={2} />
+              </div>
+              <div>
+                <div className="value-prop-title">Secure Payment</div>
+                <div className="value-prop-desc">100% secure checkout</div>
+              </div>
             </div>
           </div>
-        </div>
+        </AnimatedContent>
       </section>
 
       {/* 3. Featured Products Section (Screenshot #1) */}
       <section className="container" style={{ padding: '2rem 0 5rem 0' }}>
-        <div
-          style={{
-            display: 'flex',
+        <AnimatedContent
+          distance={50}
+          direction="vertical"
+          duration={0.8}
+          ease="power3.out"
+          initialOpacity={0}
+          animateOpacity
+          threshold={0.1}
+        >
+          <div
+            style={{
+              display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             marginBottom: '2rem',
@@ -537,6 +580,7 @@ export const HomePage = () => {
             ))}
           </div>
         )}
+        </AnimatedContent>
       </section>
 
       {/* 4. Categories Banner Section */}
@@ -549,58 +593,68 @@ export const HomePage = () => {
           }}
         >
           <div className="container">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2rem' }}>
-              <div>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#000000', letterSpacing: '-0.02em' }}>
-                  Explore Collections
-                </h2>
-                <p style={{ color: '#71717a', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-                  Browse our curated collections engineered for modern essentials.
-                </p>
-              </div>
-              <Link to="/products" style={{ fontSize: '0.875rem', fontWeight: 600, color: '#000000' }}>
-                All Categories →
-              </Link>
-            </div>
-
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                gap: '1rem',
-              }}
+            <AnimatedContent
+              distance={50}
+              direction="vertical"
+              duration={0.8}
+              ease="power3.out"
+              initialOpacity={0}
+              animateOpacity
+              threshold={0.1}
             >
-              {categories.slice(0, 6).map((cat) => (
-                <Link
-                  key={cat.id}
-                  to={`/products?category=${encodeURIComponent(cat.slug || cat.name)}`}
-                  style={{
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    padding: '1.5rem 1.25rem',
-                    textAlign: 'center',
-                    transition: 'all 150ms ease',
-                    textDecoration: 'none',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#000000';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.05)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = '#e5e7eb';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
-                >
-                  <div style={{ fontWeight: 600, color: '#000000', fontSize: '0.9375rem', marginBottom: '0.25rem' }}>
-                    {cat.name}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#71717a' }}>Explore Store</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2rem' }}>
+                <div>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#000000', letterSpacing: '-0.02em' }}>
+                    Explore Collections
+                  </h2>
+                  <p style={{ color: '#71717a', fontSize: '0.875rem', marginTop: '0.25rem' }}>
+                    Browse our curated collections engineered for modern essentials.
+                  </p>
+                </div>
+                <Link to="/products" style={{ fontSize: '0.875rem', fontWeight: 600, color: '#000000' }}>
+                  All Categories →
                 </Link>
-              ))}
-            </div>
+              </div>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                  gap: '1rem',
+                }}
+              >
+                {categories.slice(0, 6).map((cat) => (
+                  <Link
+                    key={cat.id}
+                    to={`/products?category=${encodeURIComponent(cat.slug || cat.name)}`}
+                    style={{
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      padding: '1.5rem 1.25rem',
+                      textAlign: 'center',
+                      transition: 'all 150ms ease',
+                      textDecoration: 'none',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#000000';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.05)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#e5e7eb';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, color: '#000000', fontSize: '0.9375rem', marginBottom: '0.25rem' }}>
+                      {cat.name}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#71717a' }}>Explore Store</div>
+                  </Link>
+                ))}
+              </div>
+            </AnimatedContent>
           </div>
         </section>
       )}
