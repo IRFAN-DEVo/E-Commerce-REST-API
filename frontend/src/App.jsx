@@ -1,9 +1,11 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider } from './context/ToastContext';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import { WishlistProvider } from './context/WishlistContext';
 import { Layout } from './components/layout/Layout';
+import { AdminLayout } from './components/layout/AdminLayout';
 import { ProtectedRoute, AdminRoute } from './components/common/ProtectedRoute';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 
@@ -30,14 +32,20 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ de
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage })));
 const AdminOrdersPage = lazy(() => import('./pages/admin/AdminOrdersPage').then((m) => ({ default: m.AdminOrdersPage })));
 const AdminProductsPage = lazy(() => import('./pages/admin/AdminProductsPage').then((m) => ({ default: m.AdminProductsPage })));
+const AdminCustomersPage = lazy(() => import('./pages/admin/AdminCustomersPage').then((m) => ({ default: m.AdminCustomersPage })));
+const AdminCategoriesPage = lazy(() => import('./pages/admin/AdminCategoriesPage').then((m) => ({ default: m.AdminCategoriesPage })));
+const AdminBrandsPage = lazy(() => import('./pages/admin/AdminBrandsPage').then((m) => ({ default: m.AdminBrandsPage })));
+const AdminCouponsPage = lazy(() => import('./pages/admin/AdminCouponsPage').then((m) => ({ default: m.AdminCouponsPage })));
+const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage').then((m) => ({ default: m.AdminSettingsPage })));
 
 export function App() {
   return (
     <BrowserRouter>
       <ToastProvider>
         <AuthProvider>
-          <CartProvider>
-            <Suspense fallback={<LoadingSpinner message="Loading page..." />}>
+          <WishlistProvider>
+            <CartProvider>
+              <Suspense fallback={<LoadingSpinner message="Loading page..." />}>
               <Routes>
                 <Route element={<Layout />}>
                   {/* Public Storefront Routes */}
@@ -107,38 +115,33 @@ export function App() {
                     }
                   />
 
-                  {/* Admin Protected Routes */}
-                  <Route
-                    path="/admin/dashboard"
-                    element={
-                      <AdminRoute>
-                        <AdminDashboardPage />
-                      </AdminRoute>
-                    }
-                  />
-                  <Route
-                    path="/admin/orders"
-                    element={
-                      <AdminRoute>
-                        <AdminOrdersPage />
-                      </AdminRoute>
-                    }
-                  />
-                  <Route
-                    path="/admin/products"
-                    element={
-                      <AdminRoute>
-                        <AdminProductsPage />
-                      </AdminRoute>
-                    }
-                  />
-
                   {/* 404 Fallback */}
                   <Route path="*" element={<NotFoundPage />} />
+                </Route>
+
+                {/* Admin Dedicated Routes (Independent from customer Navbar & Footer) */}
+                <Route
+                  path="/admin"
+                  element={
+                    <AdminRoute>
+                      <AdminLayout />
+                    </AdminRoute>
+                  }
+                >
+                  <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                  <Route path="dashboard" element={<AdminDashboardPage />} />
+                  <Route path="products" element={<AdminProductsPage />} />
+                  <Route path="orders" element={<AdminOrdersPage />} />
+                  <Route path="customers" element={<AdminCustomersPage />} />
+                  <Route path="categories" element={<AdminCategoriesPage />} />
+                  <Route path="brands" element={<AdminBrandsPage />} />
+                  <Route path="coupons" element={<AdminCouponsPage />} />
+                  <Route path="settings" element={<AdminSettingsPage />} />
                 </Route>
               </Routes>
             </Suspense>
           </CartProvider>
+          </WishlistProvider>
         </AuthProvider>
       </ToastProvider>
     </BrowserRouter>

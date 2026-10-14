@@ -48,7 +48,7 @@ export const AdminOrdersPage = () => {
   }
 
   return (
-    <div className="container" style={{ padding: '2.5rem 1.5rem' }}>
+    <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 style={{ fontSize: '1.875rem', fontWeight: 800 }}>Manage Customer Orders</h1>

@@ -5,6 +5,7 @@ import { productsApi } from '../api/products';
 import { reviewsApi } from '../api/reviews';
 import { wishlistApi } from '../api/wishlist';
 import { useCart } from '../context/CartContext';
+import { useWishlist } from '../context/WishlistContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { StockBadge } from '../components/common/Badge';
@@ -14,6 +15,7 @@ import { StarRating } from '../components/common/StarRating';
 export const ProductDetailPage = () => {
   const { id } = useParams();
   const { addItem } = useCart();
+  const { addToWishlist, removeFromWishlist, isInWishlist, toggleWishlist } = useWishlist();
   const { isAuthenticated } = useAuth();
   const { showToast } = useToast();
 
@@ -63,17 +65,16 @@ export const ProductDetailPage = () => {
     await addItem(product.id, quantity);
   };
 
-  const handleAddToWishlist = async () => {
-    if (!isAuthenticated) {
-      showToast('Please sign in to save items to your wishlist.', 'warning');
-      return;
-    }
-    try {
-      await wishlistApi.addToWishlist(product.id);
-      showToast('Product added to wishlist!', 'success');
-    } catch (err) {
-      const msg = err.response?.data?.detail || 'Item already in wishlist.';
-      showToast(msg, 'info');
+  const isFavorited = product?.id != null && isInWishlist(product.id);
+
+  const handleToggleWishlist = async () => {
+    if (!product) return;
+    if (toggleWishlist) {
+      await toggleWishlist(product);
+    } else if (isFavorited) {
+      await removeFromWishlist(product.id);
+    } else {
+      await addToWishlist(product);
     }
   };
 
@@ -435,16 +436,25 @@ export const ProductDetailPage = () => {
 
               {/* Wishlist Button */}
               <button
-                onClick={handleAddToWishlist}
+                onClick={handleToggleWishlist}
                 className="btn btn-secondary"
                 style={{
                   padding: '0.75rem',
                   borderRadius: '6px',
+                  backgroundColor: isFavorited ? '#fff1f2' : undefined,
+                  borderColor: isFavorited ? '#fecdd3' : undefined,
+                  color: isFavorited ? '#e11d48' : undefined,
+                  transition: 'all 200ms ease',
                 }}
-                title="Add to Wishlist"
-                aria-label="Save to Wishlist"
+                title={isFavorited ? 'Remove from Wishlist' : 'Add to Wishlist'}
+                aria-label={isFavorited ? 'Remove from Wishlist' : 'Save to Wishlist'}
               >
-                <Heart size={20} />
+                <Heart
+                  size={20}
+                  fill={isFavorited ? '#e11d48' : 'none'}
+                  stroke={isFavorited ? '#e11d48' : 'currentColor'}
+                  strokeWidth={2}
+                />
               </button>
             </div>
 

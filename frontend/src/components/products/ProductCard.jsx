@@ -5,6 +5,7 @@ import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { wishlistApi } from '../../api/wishlist';
+import { useWishlist } from '../../context/WishlistContext';
 import { StockBadge } from '../common/Badge';
 import { StarRating } from '../common/StarRating';
 
@@ -12,6 +13,9 @@ export const ProductCard = ({ product, inWishlist = false, onWishlistToggle }) =
   const { addItem } = useCart();
   const { isAuthenticated } = useAuth();
   const { showToast } = useToast();
+  const { addToWishlist, removeFromWishlist, isInWishlist, toggleWishlist } = useWishlist();
+
+  const isFavorited = inWishlist || (product?.id != null && isInWishlist(product.id));
 
   const handleAddToCart = async (e) => {
     e.preventDefault();
@@ -26,20 +30,16 @@ export const ProductCard = ({ product, inWishlist = false, onWishlistToggle }) =
   const handleWishlistClick = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!isAuthenticated) {
-      showToast('Please sign in to save items to your wishlist.', 'warning');
+    if (onWishlistToggle) {
+      onWishlistToggle(product.id);
       return;
     }
-    try {
-      if (onWishlistToggle) {
-        onWishlistToggle(product.id);
-      } else {
-        await wishlistApi.addToWishlist(product.id);
-        showToast('Added to your wishlist!', 'success');
-      }
-    } catch (err) {
-      const msg = err.response?.data?.detail || 'Failed to update wishlist.';
-      showToast(msg, 'info');
+    if (toggleWishlist) {
+      await toggleWishlist(product);
+    } else if (isFavorited) {
+      await removeFromWishlist(product.id);
+    } else {
+      await addToWishlist(product);
     }
   };
 
@@ -151,21 +151,29 @@ export const ProductCard = ({ product, inWishlist = false, onWishlistToggle }) =
             position: 'absolute',
             top: '0.75rem',
             right: '0.75rem',
-            backgroundColor: '#ffffff',
+            backgroundColor: isFavorited ? '#fff1f2' : '#ffffff',
             borderRadius: '50%',
             width: '32px',
             height: '32px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
-            border: '1px solid #e5e7eb',
-            color: inWishlist ? '#000000' : '#71717a',
-            transition: 'all 150ms ease',
+            boxShadow: isFavorited ? '0 2px 8px rgba(225, 29, 72, 0.2)' : '0 2px 6px rgba(0,0,0,0.08)',
+            border: isFavorited ? '1px solid #fecdd3' : '1px solid #e5e7eb',
+            color: isFavorited ? '#e11d48' : '#18181b',
+            cursor: 'pointer',
+            transition: 'all 200ms ease',
+            zIndex: 3,
           }}
-          aria-label={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+          aria-label={isFavorited ? 'Remove from wishlist' : 'Add to wishlist'}
+          title={isFavorited ? 'Remove from wishlist' : 'Add to wishlist'}
         >
-          <Heart size={16} fill={inWishlist ? '#000000' : 'none'} strokeWidth={2} />
+          <Heart
+            size={16}
+            fill={isFavorited ? '#e11d48' : 'none'}
+            stroke={isFavorited ? '#e11d48' : '#18181b'}
+            strokeWidth={2}
+          />
         </button>
       </Link>
 

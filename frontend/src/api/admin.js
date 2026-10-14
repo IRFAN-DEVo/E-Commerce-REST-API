@@ -40,4 +40,58 @@ export const adminApi = {
     const response = await apiClient.delete(`/products/products/${id}/delete/`);
     return response.data;
   },
+
+  // Customers
+  async getCustomers(params = {}) {
+    const response = await apiClient.get('/accounts/admin/customers/', { params });
+    return response.data;
+  },
+
+  // Categories
+  async getCategories() {
+    const response = await apiClient.get('/products/categories/');
+    return response.data;
+  },
+
+  async createCategory(data) {
+    const response = await apiClient.post('/products/categories/create/', data);
+    return response.data;
+  },
+
+  async deleteCategory(id) {
+    const response = await apiClient.delete(`/products/categories/${id}/delete/`);
+    return response.data;
+  },
+
+  // Brands
+  async getBrands() {
+    const response = await apiClient.get('/products/brands/');
+    return response.data;
+  },
+
+  async createBrand(data) {
+    const response = await apiClient.post('/products/brands/create/', data);
+    return response.data;
+  },
+
+  async deleteBrand(id) {
+    const response = await apiClient.delete(`/products/brands/${id}/delete/`);
+    return response.data;
+  },
+
+  // Coupons
+  async getCoupons() {
+    const response = await apiClient.get('/coupons/admin/coupons/');
+    return response.data;
+  },
+
+  async createCoupon(data) {
+    const response = await apiClient.post('/coupons/coupons/create/', data);
+    return response.data;
+  },
+
+  async deleteCoupon(id) {
+    const response = await apiClient.delete(`/coupons/coupons/delete/${id}/`);
+    return response.data;
+  },
 };

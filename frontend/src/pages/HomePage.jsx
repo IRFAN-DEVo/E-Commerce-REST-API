@@ -1,10 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Truck, Tag, ShieldCheck, ShoppingBag } from 'lucide-react';
+import { ArrowRight, Truck, Tag, ShieldCheck, ShoppingBag, ChevronLeft, ChevronRight } from 'lucide-react';
 import { productsApi } from '../api/products';
 import { ProductCard } from '../components/products/ProductCard';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+
+import heroWatchImg from '../assets/hero_watch.jpg';
+import heroShoesImg from '../assets/hero_shoes.jpg';
+import heroHeadphonesImg from '../assets/hero_headphones.jpg';
 import heroModelImg from '../assets/hero_model.jpg';
+import heroBackpackImg from '../assets/auth_hero.jpg';
 
 export const HomePage = () => {
   const [categories, setCategories] = useState([]);
@@ -12,12 +17,75 @@ export const HomePage = () => {
   const [activeTab, setActiveTab] = useState('new');
   const [isLoading, setIsLoading] = useState(true);
 
+  // Default fallback slides if backend has no products or while loading
+  const defaultSlides = useMemo(
+    () => [
+      { id: 1, image: heroWatchImg, alt: 'Minimalist Luxury Watch', title: 'Minimalist Luxury Watch', price: '2499.00' },
+      { id: 2, image: heroShoesImg, alt: 'Performance Running Shoes', title: 'Performance Running Shoes', price: '3499.00' },
+      { id: 3, image: heroHeadphonesImg, alt: 'Wireless Noise Canceling Headphones', title: 'Wireless Noise Canceling Headphones', price: '4999.00' },
+      { id: 4, image: heroModelImg, alt: 'Everyday Modern Apparel', title: 'Everyday Modern Apparel', price: '1999.00' },
+      { id: 5, image: heroBackpackImg, alt: 'Urban Streetwear & Leather Backpack', title: 'Urban Streetwear & Leather Backpack', price: '2999.00' },
+    ],
+    []
+  );
+
+  // Derive 5 hero slides dynamically from database products with images
+  const heroSlides = useMemo(() => {
+    const productsWithImages = (featuredProducts || []).filter((p) => p && p.image);
+    if (productsWithImages.length === 0) {
+      if (featuredProducts.length > 0) {
+        return defaultSlides.map((slide, i) => ({
+          ...slide,
+          id: featuredProducts[i % featuredProducts.length]?.id || slide.id,
+        }));
+      }
+      return defaultSlides;
+    }
+
+    const dbSlides = productsWithImages.slice(0, 5).map((p) => ({
+      id: p.id,
+      image: p.image,
+      alt: p.name,
+      title: p.name,
+      price: p.discount_price && Number(p.discount_price) < Number(p.price) ? p.discount_price : p.price,
+    }));
+
+    if (dbSlides.length < 5) {
+      const remaining = defaultSlides.slice(dbSlides.length).map((slide, i) => ({
+        ...slide,
+        id: featuredProducts[i % featuredProducts.length]?.id || slide.id,
+      }));
+      return [...dbSlides, ...remaining];
+    }
+    return dbSlides;
+  }, [featuredProducts, defaultSlides]);
+
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+
+  // Auto-slide every 5 seconds
+  useEffect(() => {
+    if (isPaused || heroSlides.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [isPaused, heroSlides.length]);
+
+  const handlePrevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
+  };
+
+  const handleNextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+  };
+
   useEffect(() => {
     let isMounted = true;
 
     Promise.all([
       productsApi.getCategories(),
-      productsApi.getProducts({ page_size: 8 }),
+      productsApi.getProducts({ page_size: 12 }),
     ])
       .then(([cats, prods]) => {
         if (isMounted) {
@@ -126,8 +194,13 @@ export const HomePage = () => {
               </div>
             </div>
 
-            {/* Right Column: Hero Visual matching Screenshot #1 */}
-            <div style={{ position: 'relative' }}>
+            {/* Right Column: Hero Slider Carousel */}
+            <div
+              style={{ position: 'relative' }}
+              onMouseEnter={() => setIsPaused(true)}
+              onMouseLeave={() => setIsPaused(false)}
+            >
+              {/* Slider Image Box */}
               <div
                 style={{
                   borderRadius: '16px',
@@ -139,16 +212,209 @@ export const HomePage = () => {
                   position: 'relative',
                 }}
               >
-                <img
-                  src={heroModelImg}
-                  alt="Modern Style Fashion Model"
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    objectPosition: 'center 20%',
+                {heroSlides.map((slide, index) => {
+                  const isActive = index === currentSlide;
+                  return (
+                    <div
+                      key={slide.id || index}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        opacity: isActive ? 1 : 0,
+                        transform: isActive ? 'scale(1)' : 'scale(1.02)',
+                        transition: 'opacity 600ms cubic-bezier(0.4, 0, 0.2, 1), transform 600ms cubic-bezier(0.4, 0, 0.2, 1)',
+                        pointerEvents: isActive ? 'auto' : 'none',
+                      }}
+                    >
+                      <Link
+                        to={`/products/${slide.id}`}
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          height: '100%',
+                          position: 'relative',
+                          textDecoration: 'none',
+                          cursor: 'pointer',
+                        }}
+                        aria-label={`View product ${slide.title || slide.alt}`}
+                      >
+                        <img
+                          src={slide.image}
+                          alt={slide.alt || slide.title || 'Product'}
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = heroWatchImg;
+                          }}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            objectPosition: 'center',
+                          }}
+                        />
+
+                        {/* Floating Product Card Badge on Hero Slide */}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            bottom: '1rem',
+                            left: '1rem',
+                            right: '1rem',
+                            maxWidth: 'calc(100% - 2rem)',
+                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                            backdropFilter: 'blur(8px)',
+                            WebkitBackdropFilter: 'blur(8px)',
+                            borderRadius: '10px',
+                            padding: '0.625rem 1rem',
+                            boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                            border: '1px solid rgba(229, 231, 235, 0.9)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '0.75rem',
+                          }}
+                        >
+                          <div style={{ minWidth: 0 }}>
+                            <div
+                              style={{
+                                fontSize: '0.875rem',
+                                fontWeight: 700,
+                                color: '#09090b',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              {slide.title}
+                            </div>
+                            {slide.price && (
+                              <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#18181b', marginTop: '2px' }}>
+                                ₹{Number(slide.price).toFixed(2)}
+                              </div>
+                            )}
+                          </div>
+                          <span
+                            style={{
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              color: '#000000',
+                              backgroundColor: '#f4f4f5',
+                              padding: '0.375rem 0.625rem',
+                              borderRadius: '6px',
+                              whiteSpace: 'nowrap',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <span>View Product</span>
+                            <ArrowRight size={13} strokeWidth={2.5} />
+                          </span>
+                        </div>
+                      </Link>
+                    </div>
+                  );
+                })}
+
+                {/* Left/Right Desktop Navigation Arrows */}
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handlePrevSlide();
                   }}
-                />
+                  className="slider-nav-btn"
+                  style={{
+                    position: 'absolute',
+                    left: '1rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+                    border: '1px solid rgba(229, 231, 235, 0.8)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#000000',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                    transition: 'all 150ms ease',
+                    zIndex: 10,
+                  }}
+                  aria-label="Previous slide"
+                >
+                  <ChevronLeft size={18} strokeWidth={2.2} />
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleNextSlide();
+                  }}
+                  className="slider-nav-btn"
+                  style={{
+                    position: 'absolute',
+                    right: '1rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+                    border: '1px solid rgba(229, 231, 235, 0.8)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#000000',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                    transition: 'all 150ms ease',
+                    zIndex: 10,
+                  }}
+                  aria-label="Next slide"
+                >
+                  <ChevronRight size={18} strokeWidth={2.2} />
+                </button>
+              </div>
+
+              {/* 5 Small Indicator Dots below image matching prompt mockup */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.625rem',
+                  marginTop: '1.25rem',
+                }}
+              >
+                {heroSlides.map((_, dotIndex) => {
+                  const isActive = dotIndex === currentSlide;
+                  return (
+                    <button
+                      key={dotIndex}
+                      onClick={() => setCurrentSlide(dotIndex)}
+                      style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        backgroundColor: isActive ? '#000000' : '#e4e4e7',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: 0,
+                        transition: 'all 200ms ease',
+                        outline: 'none',
+                      }}
+                      aria-label={`Go to slide ${dotIndex + 1}`}
+                    />
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -344,6 +610,11 @@ export const HomePage = () => {
           .hero-grid {
             grid-template-columns: 1fr !important;
             gap: 2.5rem !important;
+          }
+        }
+        @media (max-width: 768px) {
+          .slider-nav-btn {
+            display: none !important;
           }
         }
       `}</style>

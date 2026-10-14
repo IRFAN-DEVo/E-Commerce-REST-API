@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, Trash2, ShoppingCart } from 'lucide-react';
 import { wishlistApi } from '../api/wishlist';
+import { useWishlist } from '../context/WishlistContext';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { EmptyState } from '../components/common/EmptyState';
 
 export const WishlistPage = () => {
-  const [items, setItems] = useState([]);
+  const { wishlistItems, removeFromWishlist } = useWishlist();
+  const [backendItems, setBackendItems] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const { addItem } = useCart();
   const { showToast } = useToast();
@@ -17,9 +19,10 @@ export const WishlistPage = () => {
     setIsLoading(true);
     try {
       const data = await wishlistApi.getWishlist();
-      setItems(Array.isArray(data) ? data : data?.results || []);
+      setBackendItems(Array.isArray(data) ? data : data?.results || []);
     } catch (err) {
-      showToast('Failed to load wishlist items.', 'error');
+      // Backend not authenticated or unavailable; fallback to WishlistContext
+      setBackendItems(null);
     } finally {
       setIsLoading(false);
     }
@@ -29,11 +32,12 @@ export const WishlistPage = () => {
     loadWishlist();
   }, []);
 
-  const handleRemove = async (id) => {
+  const items = backendItems && backendItems.length > 0 ? backendItems : wishlistItems;
+
+  const handleRemove = async (id, productId) => {
     try {
-      await wishlistApi.removeFromWishlist(id);
-      showToast('Item removed from wishlist.', 'info');
-      loadWishlist();
+      await removeFromWishlist(productId || id, id);
+      setBackendItems((prev) => (prev ? prev.filter((item) => item.id !== id) : null));
     } catch (err) {
       showToast('Failed to remove item.', 'error');
     }
@@ -42,8 +46,8 @@ export const WishlistPage = () => {
   const handleMoveToCart = async (productId, wishlistId) => {
     const success = await addItem(productId, 1);
     if (success) {
-      await wishlistApi.removeFromWishlist(wishlistId);
-      loadWishlist();
+      await removeFromWishlist(productId, wishlistId);
+      setBackendItems((prev) => (prev ? prev.filter((item) => item.id !== wishlistId) : null));
     }
   };
 
@@ -76,12 +80,14 @@ export const WishlistPage = () => {
       </h1>
 
       <div className="grid-products">
-        {items.map((item) => {
-          const product = item.product_details || item.product || {};
-          const productId = product.id || item.product;
+        {items.map((item, index) => {
+          const product = item.product_details || (typeof item.product === 'object' && item.product !== null ? item.product : item);
+          const productId = product.id || item.product || item.id;
+          const wishlistId = item.wishlist_id || (item.product && item.id ? item.id : null);
+          const key = item.id || productId || index;
 
           return (
-            <div key={item.id} className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+            <div key={key} className="card" style={{ display: 'flex', flexDirection: 'column' }}>
               <div
                 style={{
                   height: '200px',
@@ -127,7 +133,7 @@ export const WishlistPage = () => {
 
                 <div style={{ marginTop: 'auto', display: 'flex', gap: '0.5rem', paddingTop: '0.5rem' }}>
                   <button
-                    onClick={() => handleMoveToCart(productId, item.id)}
+                    onClick={() => handleMoveToCart(productId, wishlistId || item.id)}
                     className="btn btn-primary btn-sm"
                     style={{ flex: 1 }}
                   >
@@ -136,7 +142,7 @@ export const WishlistPage = () => {
                   </button>
 
                   <button
-                    onClick={() => handleRemove(item.id)}
+                    onClick={() => handleRemove(wishlistId || item.id, productId)}
                     className="btn btn-secondary btn-sm btn-icon"
                     title="Remove from wishlist"
                     aria-label="Remove item"

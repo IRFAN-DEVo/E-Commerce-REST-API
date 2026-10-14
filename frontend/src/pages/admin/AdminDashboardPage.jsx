@@ -14,6 +14,9 @@ import {
   TrendingDown,
   ChevronRight,
   ArrowUpRight,
+  ChevronLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { adminApi } from '../../api/admin';
 import { useAuth } from '../../context/AuthContext';
@@ -23,8 +26,6 @@ export const AdminDashboardPage = () => {
   const [stats, setStats] = useState(null);
   const [fluctuations, setFluctuations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { logout } = useAuth();
-  const navigate = useNavigate();
 
   useEffect(() => {
     let isMounted = true;
@@ -48,11 +49,6 @@ export const AdminDashboardPage = () => {
     };
   }, []);
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/');
-  };
-
   if (isLoading) {
     return (
       <div style={{ padding: '5rem 0', textAlign: 'center' }}>
@@ -62,107 +58,39 @@ export const AdminDashboardPage = () => {
   }
 
   return (
-    <div className="admin-shell">
-      {/* Dark Sidebar (Screenshot #9) */}
-      <aside className="admin-sidebar">
-        {/* Brand Logo in Sidebar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', padding: '0 0.5rem 2rem 0.5rem' }}>
-          <div
+    <div>
+      {/* Top Header */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '2rem',
+          flexWrap: 'wrap',
+          gap: '1rem',
+        }}
+      >
+        <div>
+          <h1
             style={{
-              backgroundColor: '#ffffff',
+              fontSize: '1.625rem',
+              fontWeight: 800,
               color: '#000000',
-              borderRadius: '6px',
-              width: '30px',
-              height: '30px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              letterSpacing: '-0.02em',
+              margin: 0,
             }}
           >
-            <ShoppingBag size={16} strokeWidth={2.5} />
-          </div>
-          <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.025em' }}>
-            DjangoMart
-          </span>
+            Dashboard
+          </h1>
+          <p style={{ color: '#71717a', fontSize: '0.875rem', marginTop: '0.2rem', marginBottom: 0 }}>
+            Overview of store performance and live metrics
+          </p>
         </div>
 
-        {/* Navigation Items matching Screenshot #9 */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem', flex: 1 }}>
-          <Link to="/admin/dashboard" className="active">
-            <LayoutDashboard size={18} />
-            <span>Dashboard</span>
-          </Link>
-          <Link to="/admin/products">
-            <Package size={18} />
-            <span>Products</span>
-          </Link>
-          <Link to="/admin/orders">
-            <ShoppingBag size={18} />
-            <span>Orders</span>
-          </Link>
-          <Link to="/admin/customers" onClick={(e) => { e.preventDefault(); }}>
-            <Users size={18} />
-            <span>Customers</span>
-          </Link>
-          <Link to="/admin/categories" onClick={(e) => { e.preventDefault(); }}>
-            <Bookmark size={18} />
-            <span>Categories</span>
-          </Link>
-          <Link to="/admin/brands" onClick={(e) => { e.preventDefault(); }}>
-            <Tag size={18} />
-            <span>Brands</span>
-          </Link>
-          <Link to="/admin/coupons" onClick={(e) => { e.preventDefault(); }}>
-            <Percent size={18} />
-            <span>Coupons</span>
-          </Link>
-          <Link to="/profile">
-            <Settings size={18} />
-            <span>Settings</span>
-          </Link>
+        <div style={{ fontSize: '0.8125rem', color: '#71717a', fontWeight: 500 }}>
+          Today: {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
         </div>
-
-        {/* Logout bottom */}
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
-          <button
-            onClick={handleLogout}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              padding: '0.625rem 0.875rem',
-              borderRadius: '6px',
-              color: '#f87171',
-              fontSize: '0.875rem',
-              fontWeight: 500,
-              width: '100%',
-              textAlign: 'left',
-              cursor: 'pointer',
-            }}
-          >
-            <LogOut size={18} />
-            <span>Logout</span>
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Light Area (Screenshot #9) */}
-      <main className="admin-content">
-        {/* Top Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
-          <div>
-            <h1 style={{ fontSize: '1.625rem', fontWeight: 800, color: '#000000', letterSpacing: '-0.02em' }}>
-              Dashboard
-            </h1>
-            <p style={{ color: '#71717a', fontSize: '0.875rem', marginTop: '0.2rem' }}>
-              Overview of store performance and live metrics
-            </p>
-          </div>
-
-          <div style={{ fontSize: '0.8125rem', color: '#71717a', fontWeight: 500 }}>
-            Today: {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-          </div>
-        </div>
+      </div>
 
         {/* 4 KPI Metric Cards matching Screenshot #9 */}
         <div
@@ -334,7 +262,6 @@ export const AdminDashboardPage = () => {
             </div>
           </div>
         </div>
-      </main>
 
       <style>{`
         @media (max-width: 1024px) {

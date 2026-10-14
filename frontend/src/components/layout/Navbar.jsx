@@ -15,11 +15,13 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import { useWishlist } from '../../context/WishlistContext';
 import { notificationsApi } from '../../api/notifications';
 
 export const Navbar = () => {
   const { user, isAuthenticated, isOwner, logout } = useAuth();
   const { totalItems } = useCart();
+  const { wishlistCount } = useWishlist();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -111,13 +113,13 @@ export const Navbar = () => {
           <span>DjangoMart</span>
         </Link>
 
-        {/* Center Navigation Links (Matching Screenshot 1 & 2) */}
+        {/* Center Navigation Links */}
         <nav
           className="desktop-nav"
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '1.75rem',
+            gap: '2rem',
           }}
         >
           <Link
@@ -141,28 +143,6 @@ export const Navbar = () => {
             }}
           >
             Shop
-          </Link>
-          <Link
-            to="/products?category=all"
-            style={{
-              fontSize: '0.9375rem',
-              fontWeight: 500,
-              color: '#52525b',
-              transition: 'color 150ms ease',
-            }}
-          >
-            Categories
-          </Link>
-          <Link
-            to="/products?brand=all"
-            style={{
-              fontSize: '0.9375rem',
-              fontWeight: 500,
-              color: '#52525b',
-              transition: 'color 150ms ease',
-            }}
-          >
-            Brands
           </Link>
           <Link
             to="/about"
@@ -243,6 +223,7 @@ export const Navbar = () => {
           <Link
             to="/wishlist"
             style={{
+              position: 'relative',
               padding: '0.5rem',
               color: '#18181b',
               display: 'flex',
@@ -253,6 +234,28 @@ export const Navbar = () => {
             aria-label="Wishlist"
           >
             <Heart size={20} strokeWidth={1.8} />
+            {wishlistCount > 0 && (
+              <span
+                style={{
+                  position: 'absolute',
+                  top: '2px',
+                  right: '0px',
+                  backgroundColor: '#000000',
+                  color: '#ffffff',
+                  fontSize: '0.6875rem',
+                  fontWeight: 700,
+                  borderRadius: '9999px',
+                  minWidth: '18px',
+                  height: '18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0 4px',
+                }}
+              >
+                {wishlistCount}
+              </span>
+            )}
           </Link>
 
           {/* Cart Icon & Badge */}
@@ -532,8 +535,7 @@ export const Navbar = () => {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <Link to="/" onClick={() => setMobileMenuOpen(false)} style={{ padding: '0.5rem 0', fontWeight: 500 }}>Home</Link>
-            <Link to="/products" onClick={() => setMobileMenuOpen(false)} style={{ padding: '0.5rem 0', fontWeight: 500 }}>Shop All</Link>
-            <Link to="/products?category=all" onClick={() => setMobileMenuOpen(false)} style={{ padding: '0.5rem 0', fontWeight: 500 }}>Categories</Link>
+            <Link to="/products" onClick={() => setMobileMenuOpen(false)} style={{ padding: '0.5rem 0', fontWeight: 500 }}>Shop</Link>
             <Link to="/about" onClick={() => setMobileMenuOpen(false)} style={{ padding: '0.5rem 0', fontWeight: 500 }}>About</Link>
             <Link to="/contact" onClick={() => setMobileMenuOpen(false)} style={{ padding: '0.5rem 0', fontWeight: 500 }}>Contact</Link>
           </div>
