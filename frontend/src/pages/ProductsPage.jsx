@@ -6,6 +6,7 @@ import { ProductCard } from '../components/products/ProductCard';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Pagination } from '../components/common/Pagination';
 import { EmptyState } from '../components/common/EmptyState';
+import { AnimatedContent } from '../components/common/AnimatedContent';
 
 export const ProductsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -106,7 +107,18 @@ export const ProductsPage = () => {
           className="catalog-layout"
         >
           {/* Left Sidebar Filters (Screenshot #2) */}
-          <aside
+          <AnimatedContent
+            distance={40}
+            direction="horizontal"
+            reverse={true}
+            duration={0.8}
+            ease="power3.out"
+            initialOpacity={0}
+            animateOpacity
+            scale={0.98}
+            delay={0.1}
+          >
+            <aside
             style={{
               display: 'flex',
               flexDirection: 'column',
@@ -313,10 +325,21 @@ export const ProductsPage = () => {
               </div>
             </div>
           </aside>
+          </AnimatedContent>
 
           {/* Catalog Main Content */}
-          <div>
-            {/* Top Bar: Search Input + Sorting (Screenshot #2) */}
+          <AnimatedContent
+            distance={50}
+            direction="vertical"
+            duration={0.8}
+            ease="power3.out"
+            initialOpacity={0}
+            animateOpacity
+            scale={0.99}
+            delay={0.15}
+          >
+            <div>
+              {/* Top Bar: Search Input + Sorting (Screenshot #2) */}
             <div
               style={{
                 display: 'flex',
@@ -414,6 +437,7 @@ export const ProductsPage = () => {
               />
             )}
           </div>
+          </AnimatedContent>
         </div>
       </div>
 
