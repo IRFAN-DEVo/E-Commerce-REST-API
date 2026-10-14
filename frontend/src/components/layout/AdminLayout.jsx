@@ -17,6 +17,7 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { getUserDisplayName, getUserInitial } from '../../utils/user';
 
 export const AdminLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
@@ -252,7 +253,7 @@ export const AdminLayout = () => {
                 flexShrink: 0,
               }}
             >
-              {user?.first_name ? user.first_name[0].toUpperCase() : 'A'}
+              {getUserInitial(user)}
             </div>
             <div style={{ minWidth: 0, overflow: 'hidden' }}>
               <div
@@ -265,7 +266,7 @@ export const AdminLayout = () => {
                   whiteSpace: 'nowrap',
                 }}
               >
-                {user?.first_name ? `${user.first_name} ${user.last_name || ''}` : user?.email || 'Admin'}
+                {getUserDisplayName(user)}
               </div>
               <div style={{ fontSize: '0.6875rem', color: '#a1a1aa' }}>Administrator</div>
             </div>

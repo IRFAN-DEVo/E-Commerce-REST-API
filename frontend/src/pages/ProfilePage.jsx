@@ -14,6 +14,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { ordersApi } from '../api/orders';
 import { wishlistApi } from '../api/wishlist';
+import { getUserDisplayName, getUserInitial } from '../utils/user';
 
 export const ProfilePage = () => {
   const { user, logout } = useAuth();
@@ -80,11 +81,11 @@ export const ProfilePage = () => {
                   flexShrink: 0,
                 }}
               >
-                {user.first_name ? user.first_name[0].toUpperCase() : 'U'}
+                {getUserInitial(user)}
               </div>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 700, color: '#000000', fontSize: '0.9375rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {user.first_name ? `${user.first_name} ${user.last_name || ''}` : user.username || user.name}
+                  {getUserDisplayName(user)}
                 </div>
                 <div style={{ fontSize: '0.75rem', color: '#71717a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {user.email}
@@ -227,7 +228,7 @@ export const ProfilePage = () => {
             {/* Greeting Header */}
             <div style={{ marginBottom: '2rem' }}>
               <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#000000', letterSpacing: '-0.025em' }}>
-                Welcome back, {user.first_name || user.username || 'Friend'}!
+                Welcome back, {getUserDisplayName(user)}!
               </h1>
               <p style={{ color: '#71717a', fontSize: '0.9375rem', marginTop: '0.25rem' }}>
                 Here's what's happening with your account.

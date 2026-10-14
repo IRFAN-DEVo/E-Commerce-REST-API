@@ -17,6 +17,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { notificationsApi } from '../../api/notifications';
+import { getUserDisplayName, getUserInitial } from '../../utils/user';
 
 export const Navbar = () => {
   const { user, isAuthenticated, isOwner, logout } = useAuth();
@@ -362,10 +363,10 @@ export const Navbar = () => {
                     fontWeight: 600,
                   }}
                 >
-                  {user?.first_name ? user.first_name[0].toUpperCase() : 'U'}
+                  {getUserInitial(user)}
                 </div>
                 <span className="desktop-username" style={{ maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {user?.first_name || user?.username || 'Account'}
+                  {getUserDisplayName(user)}
                 </span>
               </button>
 
@@ -387,7 +388,7 @@ export const Navbar = () => {
                 >
                   <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid #f4f4f5' }}>
                     <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#000000' }}>
-                      {user?.first_name} {user?.last_name}
+                      {getUserDisplayName(user)}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: '#71717a', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {user?.email}

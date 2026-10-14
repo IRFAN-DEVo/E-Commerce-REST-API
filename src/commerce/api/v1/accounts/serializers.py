@@ -157,11 +157,15 @@ class ResetPasswordSerializer(serializers.Serializer):
 
 class UserProfileSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source='first_name', read_only=True)
+
     class Meta:
         model = User
         fields = [
             "id",
             "name",
+            "first_name",
+            "last_name",
+            "username",
             "email",
             "phone",
             "user_type",
