@@ -7,11 +7,12 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from drf_spectacular.utils import extend_schema
 
 from django.db.models import Count
-from products.models import Product, Category, Brand
+from products.models import Product, Category, Brand, ProductImage
 from products.filters import ProductFilter
 
 from .serializers import (
     ProductSerializer,
+    ProductImageSerializer,
     CategorySerializer,
     BrandSerializer,
 )
@@ -238,6 +239,7 @@ class ProductListView(generics.ListAPIView):
     queryset = (
         Product.objects
         .select_related("category", "brand")
+        .prefetch_related("images")
         .all()
     )
 
@@ -255,6 +257,7 @@ class ProductListView(generics.ListAPIView):
 
     search_fields = [
         "name",
+        "sku",
         "description",
         "category__name",
         "brand__name",
@@ -263,6 +266,7 @@ class ProductListView(generics.ListAPIView):
     ordering_fields = [
         "price",
         "stock",
+        "sku",
         "created_at",
         "updated_at",
     ]
@@ -281,6 +285,7 @@ class ProductDetailView(generics.RetrieveAPIView):
     queryset = (
         Product.objects
         .select_related("category", "brand")
+        .prefetch_related("images")
     )
 
     serializer_class = ProductSerializer
@@ -299,6 +304,16 @@ class ProductCreateView(generics.CreateAPIView):
     serializer_class = ProductSerializer
     permission_classes = [IsAuthenticated, IsOwner]
 
+    def perform_create(self, serializer):
+        product = serializer.save()
+        gallery_images = self.request.FILES.getlist("gallery_images")
+        for img in gallery_images:
+            ProductImage.objects.create(
+                product=product,
+                image=img,
+                alt_text=product.name
+            )
+
 
 @extend_schema(
     tags=["Products"],
@@ -312,6 +327,16 @@ class ProductUpdateView(generics.UpdateAPIView):
     serializer_class = ProductSerializer
     permission_classes = [IsAuthenticated, IsOwner]
 
+    def perform_update(self, serializer):
+        product = serializer.save()
+        gallery_images = self.request.FILES.getlist("gallery_images")
+        for img in gallery_images:
+            ProductImage.objects.create(
+                product=product,
+                image=img,
+                alt_text=product.name
+            )
+
 
 @extend_schema(
     tags=["Products"],
@@ -321,4 +346,15 @@ class ProductUpdateView(generics.UpdateAPIView):
 class ProductDestroyView(generics.DestroyAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
+    permission_classes = [IsAuthenticated, IsOwner]
+
+
+@extend_schema(
+    tags=["Products"],
+    summary="Delete Product Gallery Image",
+    description="Deletes an individual product gallery image. Owner only.",
+)
+class ProductImageDestroyView(generics.DestroyAPIView):
+    queryset = ProductImage.objects.all()
+    serializer_class = ProductImageSerializer
     permission_classes = [IsAuthenticated, IsOwner]

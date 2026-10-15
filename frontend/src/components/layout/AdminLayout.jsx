@@ -15,6 +15,8 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ArrowUpRight,
+  PlusCircle,
+  Upload,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getUserDisplayName, getUserInitial } from '../../utils/user';
@@ -133,7 +135,7 @@ export const AdminLayout = () => {
         </div>
 
         {/* Navigation Items */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem', flex: 1 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1, overflowY: 'auto' }}>
           {/* Home Option */}
           <Link
             to="/"
@@ -171,31 +173,52 @@ export const AdminLayout = () => {
             <span>Dashboard</span>
           </Link>
 
+          {/* CATALOG Section */}
+          <div
+            style={{
+              fontSize: '0.6875rem',
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              color: '#71717a',
+              padding: '1rem 0.875rem 0.25rem 0.875rem',
+              textTransform: 'uppercase',
+            }}
+          >
+            CATALOG
+          </div>
+
           {/* Products */}
           <Link
             to="/admin/products"
-            className={location.pathname.startsWith('/admin/products') ? 'active' : ''}
+            className={
+              location.pathname === '/admin/products' ||
+              (location.pathname.startsWith('/admin/products/') &&
+                location.pathname !== '/admin/products/new' &&
+                location.pathname !== '/admin/products/import')
+                ? 'active'
+                : ''
+            }
           >
             <Package size={18} />
             <span>Products</span>
           </Link>
 
-          {/* Orders */}
+          {/* Add Product */}
           <Link
-            to="/admin/orders"
-            className={location.pathname.startsWith('/admin/orders') ? 'active' : ''}
+            to="/admin/products/new"
+            className={location.pathname === '/admin/products/new' ? 'active' : ''}
           >
-            <ShoppingBag size={18} />
-            <span>Orders</span>
+            <PlusCircle size={18} />
+            <span>Add Product</span>
           </Link>
 
-          {/* Customers */}
+          {/* Import Products */}
           <Link
-            to="/admin/customers"
-            className={location.pathname.startsWith('/admin/customers') ? 'active' : ''}
+            to="/admin/products/import"
+            className={location.pathname === '/admin/products/import' ? 'active' : ''}
           >
-            <Users size={18} />
-            <span>Customers</span>
+            <Upload size={18} />
+            <span>Import Products</span>
           </Link>
 
           {/* Categories */}
@@ -216,6 +239,38 @@ export const AdminLayout = () => {
             <span>Brands</span>
           </Link>
 
+          {/* SALES Section */}
+          <div
+            style={{
+              fontSize: '0.6875rem',
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              color: '#71717a',
+              padding: '1rem 0.875rem 0.25rem 0.875rem',
+              textTransform: 'uppercase',
+            }}
+          >
+            SALES
+          </div>
+
+          {/* Orders */}
+          <Link
+            to="/admin/orders"
+            className={location.pathname.startsWith('/admin/orders') ? 'active' : ''}
+          >
+            <ShoppingBag size={18} />
+            <span>Orders</span>
+          </Link>
+
+          {/* Customers */}
+          <Link
+            to="/admin/customers"
+            className={location.pathname.startsWith('/admin/customers') ? 'active' : ''}
+          >
+            <Users size={18} />
+            <span>Customers</span>
+          </Link>
+
           {/* Coupons */}
           <Link
             to="/admin/coupons"
@@ -224,6 +279,20 @@ export const AdminLayout = () => {
             <Percent size={18} />
             <span>Coupons</span>
           </Link>
+
+          {/* SYSTEM Section */}
+          <div
+            style={{
+              fontSize: '0.6875rem',
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              color: '#71717a',
+              padding: '1rem 0.875rem 0.25rem 0.875rem',
+              textTransform: 'uppercase',
+            }}
+          >
+            SYSTEM
+          </div>
 
           {/* Settings */}
           <Link

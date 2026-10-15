@@ -26,7 +26,7 @@ class ProductFilter(django_filters.FilterSet):
         lookup_expr="lte"
     )
 
-    # Exact Filters
+    # Exact & choice filters
     category = django_filters.NumberFilter(
         field_name="category"
     )
@@ -35,11 +35,28 @@ class ProductFilter(django_filters.FilterSet):
         field_name="brand"
     )
 
+    sku = django_filters.CharFilter(
+        field_name="sku",
+        lookup_expr="icontains"
+    )
+
+    stock_status = django_filters.ChoiceFilter(
+        field_name="stock_status",
+        choices=Product.STOCK_STATUS
+    )
+
+    is_available = django_filters.BooleanFilter(
+        field_name="is_available"
+    )
+
     class Meta:
         model = Product
         fields = [
             "category",
             "brand",
+            "sku",
+            "stock_status",
+            "is_available",
             "min_price",
             "max_price",
             "min_stock",

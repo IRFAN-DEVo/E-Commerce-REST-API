@@ -44,6 +44,15 @@ class Product(models.Model):
 
     name = models.CharField(max_length=255)
 
+    sku = models.CharField(
+        max_length=100,
+        unique=True,
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="Unique Stock Keeping Unit code"
+    )
+
     description = models.TextField()
 
     price = models.DecimalField(

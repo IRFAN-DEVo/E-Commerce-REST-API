@@ -26,18 +26,58 @@ export const adminApi = {
     return response.data;
   },
 
+  // Products
+  async getAdminProducts(params = {}) {
+    const response = await apiClient.get('/products/products/', { params });
+    return response.data;
+  },
+
+  async getProduct(id) {
+    const response = await apiClient.get(`/products/products/${id}/`);
+    return response.data;
+  },
+
   async createProduct(data) {
-    const response = await apiClient.post('/products/products/create/', data);
+    const headers = data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {};
+    const response = await apiClient.post('/products/products/create/', data, { headers });
     return response.data;
   },
 
   async updateProduct(id, data) {
-    const response = await apiClient.patch(`/products/products/${id}/update/`, data);
+    const headers = data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {};
+    const response = await apiClient.patch(`/products/products/${id}/update/`, data, { headers });
     return response.data;
   },
 
   async deleteProduct(id) {
     const response = await apiClient.delete(`/products/products/${id}/delete/`);
+    return response.data;
+  },
+
+  async deleteProductImage(id) {
+    const response = await apiClient.delete(`/products/images/${id}/delete/`);
+    return response.data;
+  },
+
+  async downloadProductTemplate() {
+    const response = await apiClient.get('/products/template/', {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  async previewProductImport(formData) {
+    formData.set('dry_run', 'true');
+    const response = await apiClient.post('/products/import/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  async importProducts(formData) {
+    const response = await apiClient.post('/products/import/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return response.data;
   },
 
