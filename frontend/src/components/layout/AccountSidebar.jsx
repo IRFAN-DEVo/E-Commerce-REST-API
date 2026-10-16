@@ -24,7 +24,7 @@ export const AccountSidebar = ({ activeTab = 'dashboard', onTabChange }) => {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/profile?tab=dashboard' },
     { id: 'orders', label: 'My Orders', icon: Package, path: '/profile?tab=orders' },
     { id: 'addresses', label: 'Addresses', icon: MapPin, path: '/profile?tab=addresses' },
-    { id: 'wishlist', label: 'Wishlist', icon: Heart, linkTo: '/wishlist' },
+    { id: 'wishlist', label: 'Wishlist', icon: Heart, path: '/profile?tab=wishlist' },
     { id: 'settings', label: 'Profile Settings', icon: Settings, path: '/profile?tab=settings' },
   ];
 
@@ -97,38 +97,6 @@ export const AccountSidebar = ({ activeTab = 'dashboard', onTabChange }) => {
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
-
-          if (item.linkTo) {
-            return (
-              <Link
-                key={item.id}
-                to={item.linkTo}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  padding: '0.625rem 0.875rem',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  color: '#52525b',
-                  textDecoration: 'none',
-                  transition: 'all 150ms ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f4f4f5';
-                  e.currentTarget.style.color = '#000';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = '#52525b';
-                }}
-              >
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </Link>
-            );
-          }
 
           if (onTabChange) {
             return (

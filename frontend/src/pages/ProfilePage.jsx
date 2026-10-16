@@ -9,9 +9,13 @@ import {
   Phone,
   ShieldCheck,
   Ban,
+  Trash2,
+  ShoppingCart,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useWishlist } from '../context/WishlistContext';
+import { useCart } from '../context/CartContext';
 import { ordersApi } from '../api/orders';
 import { wishlistApi } from '../api/wishlist';
 import { getUserDisplayName } from '../utils/user';
@@ -24,10 +28,12 @@ export const ProfilePage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { wishlistItems, removeFromWishlist } = useWishlist();
+  const { addItem } = useCart();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const tabFromUrl = searchParams.get('tab');
-  const validTabs = ['dashboard', 'orders', 'addresses', 'settings'];
+  const validTabs = ['dashboard', 'orders', 'addresses', 'wishlist', 'settings'];
   const [activeTab, setActiveTab] = useState(
     validTabs.includes(tabFromUrl) ? tabFromUrl : 'dashboard'
   );
@@ -35,7 +41,7 @@ export const ProfilePage = () => {
   const [orders, setOrders] = useState([]);
   const [recentOrders, setRecentOrders] = useState([]);
   const [savedAddresses, setSavedAddresses] = useState([]);
-  const [wishlistCount, setWishlistCount] = useState(0);
+  const [backendWishlist, setBackendWishlist] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Keep activeTab in sync if URL query parameter changes
@@ -92,10 +98,11 @@ export const ProfilePage = () => {
       if (wishlistApi?.getWishlist) {
         const wData = await wishlistApi.getWishlist();
         const wList = Array.isArray(wData) ? wData : wData?.results || [];
-        setWishlistCount(wList.length);
+        setBackendWishlist(wList);
       }
     } catch (err) {
       console.error('Failed to load wishlist for profile:', err);
+      setBackendWishlist(null);
     } finally {
       setIsLoading(false);
     }
@@ -104,6 +111,9 @@ export const ProfilePage = () => {
   useEffect(() => {
     loadProfileData();
   }, []);
+
+  const currentWishlist =
+    backendWishlist && backendWishlist.length > 0 ? backendWishlist : wishlistItems;
 
   const handleCancelOrder = async (orderId) => {
     if (!window.confirm(`Are you sure you want to cancel Order #${orderId}? Product inventory will be restored.`)) {
@@ -117,6 +127,25 @@ export const ProfilePage = () => {
     } catch (err) {
       const msg = err.response?.data?.detail || 'Unable to cancel order.';
       showToast(msg, 'error');
+    }
+  };
+
+  const handleWishlistRemove = async (id, productId) => {
+    try {
+      await removeFromWishlist(productId || id, id);
+      setBackendWishlist((prev) => (prev ? prev.filter((item) => item.id !== id) : null));
+      showToast('Removed from wishlist.', 'info');
+    } catch (err) {
+      showToast('Failed to remove item.', 'error');
+    }
+  };
+
+  const handleWishlistMoveToCart = async (productId, wishlistId) => {
+    const success = await addItem(productId, 1);
+    if (success) {
+      await removeFromWishlist(productId, wishlistId);
+      setBackendWishlist((prev) => (prev ? prev.filter((item) => item.id !== wishlistId) : null));
+      showToast('Item moved to cart!', 'success');
     }
   };
 
@@ -226,15 +255,16 @@ export const ProfilePage = () => {
                         </div>
                       </button>
 
-                      <Link
-                        to="/wishlist"
+                      <button
+                        type="button"
+                        onClick={() => handleTabChange('wishlist')}
                         style={{
                           backgroundColor: '#ffffff',
                           border: '1px solid #e5e7eb',
                           borderRadius: '12px',
                           padding: '1.5rem',
-                          textDecoration: 'none',
-                          display: 'block',
+                          textAlign: 'left',
+                          cursor: 'pointer',
                           transition: 'border-color 150ms ease, box-shadow 150ms ease',
                         }}
                         onMouseEnter={(e) => {
@@ -255,9 +285,9 @@ export const ProfilePage = () => {
                             marginTop: '0.5rem',
                           }}
                         >
-                          {wishlistCount}
+                          {currentWishlist.length}
                         </div>
-                      </Link>
+                      </button>
 
                       <button
                         type="button"
@@ -550,6 +580,165 @@ export const ProfilePage = () => {
                                     <span>View Details</span>
                                     <ChevronRight size={14} />
                                   </Link>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* TAB: WISHLIST */}
+                {activeTab === 'wishlist' && (
+                  <div>
+                    <div style={{ marginBottom: '2rem' }}>
+                      <h1
+                        style={{
+                          fontSize: '1.75rem',
+                          fontWeight: 800,
+                          color: '#000000',
+                          letterSpacing: '-0.025em',
+                        }}
+                      >
+                        My Wishlist ({currentWishlist.length})
+                      </h1>
+                      <p style={{ color: '#71717a', fontSize: '0.9375rem', marginTop: '0.25rem' }}>
+                        Save items you love to revisit or purchase later.
+                      </p>
+                    </div>
+
+                    {currentWishlist.length === 0 ? (
+                      <div style={{ padding: '2rem 0' }}>
+                        <EmptyState
+                          icon={Heart}
+                          title="Your wishlist is empty"
+                          description="Save items you love to revisit or purchase later."
+                          actionText="Browse Catalog"
+                          actionLink="/products"
+                        />
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+                          gap: '1.5rem',
+                        }}
+                      >
+                        {currentWishlist.map((item, index) => {
+                          const product =
+                            item.product_details ||
+                            (typeof item.product === 'object' && item.product !== null
+                              ? item.product
+                              : item);
+                          const productId = product.id || item.product || item.id;
+                          const wishlistId =
+                            item.wishlist_id || (item.product && item.id ? item.id : null);
+                          const key = item.id || productId || index;
+
+                          return (
+                            <div
+                              key={key}
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                backgroundColor: '#ffffff',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '12px',
+                                overflow: 'hidden',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  height: '200px',
+                                  backgroundColor: '#f4f4f5',
+                                  overflow: 'hidden',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                {product.image ? (
+                                  <img
+                                    src={product.image}
+                                    alt={product.name}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                  />
+                                ) : (
+                                  <span style={{ color: '#a1a1aa' }}>No Image</span>
+                                )}
+                              </div>
+
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  flex: 1,
+                                  gap: '0.75rem',
+                                  padding: '1.25rem',
+                                }}
+                              >
+                                <Link
+                                  to={`/products/${productId}`}
+                                  style={{
+                                    fontWeight: 600,
+                                    fontSize: '1rem',
+                                    color: '#000000',
+                                    textDecoration: 'none',
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 1,
+                                    WebkitBoxOrient: 'vertical',
+                                    overflow: 'hidden',
+                                  }}
+                                >
+                                  {product.name || `Product #${productId}`}
+                                </Link>
+
+                                {product.price && (
+                                  <div style={{ fontWeight: 700, fontSize: '1.125rem' }}>
+                                    ₹{Number(product.price).toFixed(2)}
+                                  </div>
+                                )}
+
+                                <div
+                                  style={{
+                                    marginTop: 'auto',
+                                    display: 'flex',
+                                    gap: '0.5rem',
+                                    paddingTop: '0.5rem',
+                                  }}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleWishlistMoveToCart(productId, wishlistId || item.id)
+                                    }
+                                    className="btn btn-primary btn-sm"
+                                    style={{
+                                      flex: 1,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '0.35rem',
+                                    }}
+                                  >
+                                    <ShoppingCart size={14} />
+                                    <span>Move to Cart</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleWishlistRemove(wishlistId || item.id, productId)
+                                    }
+                                    className="btn btn-secondary btn-sm btn-icon"
+                                    title="Remove from wishlist"
+                                    aria-label="Remove item"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
                                 </div>
                               </div>
                             </div>
