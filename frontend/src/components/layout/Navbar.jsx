@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   ShoppingBag,
-  ShoppingCart,
-  Heart,
   Bell,
   User,
   LogOut,
@@ -13,15 +11,11 @@ import {
   X,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useCart } from '../../context/CartContext';
-import { useWishlist } from '../../context/WishlistContext';
 import { notificationsApi } from '../../api/notifications';
 import { getUserDisplayName, getUserInitial } from '../../utils/user';
 
 export const Navbar = () => {
   const { user, isAuthenticated, isOwner, logout } = useAuth();
-  const { totalItems } = useCart();
-  const { wishlistCount } = useWishlist();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -219,84 +213,6 @@ export const Navbar = () => {
 
         {/* Action Icons (Search/Wishlist/Cart/Account) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          {/* Wishlist Icon */}
-          <Link
-            to="/wishlist"
-            style={{
-              position: 'relative',
-              padding: '0.5rem',
-              color: '#18181b',
-              display: 'flex',
-              alignItems: 'center',
-              borderRadius: '9999px',
-              transition: 'background-color 150ms ease',
-            }}
-            aria-label="Wishlist"
-          >
-            <Heart size={20} strokeWidth={1.8} />
-            {wishlistCount > 0 && (
-              <span
-                style={{
-                  position: 'absolute',
-                  top: '2px',
-                  right: '0px',
-                  backgroundColor: '#000000',
-                  color: '#ffffff',
-                  fontSize: '0.6875rem',
-                  fontWeight: 700,
-                  borderRadius: '9999px',
-                  minWidth: '18px',
-                  height: '18px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '0 4px',
-                }}
-              >
-                {wishlistCount}
-              </span>
-            )}
-          </Link>
-
-          {/* Cart Icon & Badge */}
-          <Link
-            to="/cart"
-            style={{
-              position: 'relative',
-              padding: '0.5rem',
-              color: '#18181b',
-              display: 'flex',
-              alignItems: 'center',
-              borderRadius: '9999px',
-              transition: 'background-color 150ms ease',
-            }}
-            aria-label={`Cart with ${totalItems} items`}
-          >
-            <ShoppingCart size={20} strokeWidth={1.8} />
-            {totalItems > 0 && (
-              <span
-                style={{
-                  position: 'absolute',
-                  top: '2px',
-                  right: '0px',
-                  backgroundColor: '#000000',
-                  color: '#ffffff',
-                  fontSize: '0.6875rem',
-                  fontWeight: 700,
-                  borderRadius: '9999px',
-                  minWidth: '18px',
-                  height: '18px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '0 4px',
-                }}
-              >
-                {totalItems}
-              </span>
-            )}
-          </Link>
-
           {/* Notifications Icon (if logged in) */}
           {isAuthenticated && (
             <Link
