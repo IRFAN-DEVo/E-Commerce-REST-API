@@ -13,6 +13,10 @@ export const ordersApi = {
     return response.data;
   },
 
+  async getMyOrders() {
+    return this.getOrders();
+  },
+
   async getOrder(id) {
     const response = await apiClient.get(`/orders/orders/${id}/`);
     return response.data;
