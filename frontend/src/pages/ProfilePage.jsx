@@ -23,6 +23,7 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { EmptyState } from '../components/common/EmptyState';
 import { OrderStatusBadge } from '../components/common/Badge';
 import { AccountSidebar } from '../components/layout/AccountSidebar';
+import { AnimatedContent } from '../components/common/AnimatedContent';
 
 export const ProfilePage = () => {
   const { user } = useAuth();
@@ -180,8 +181,18 @@ export const ProfilePage = () => {
           }}
           className="account-layout"
         >
-          {/* Reusable Left Sidebar */}
-          <AccountSidebar activeTab={activeTab} onTabChange={handleTabChange} />
+          {/* Animated Left Sidebar */}
+          <AnimatedContent
+            distance={30}
+            direction="horizontal"
+            duration={0.65}
+            ease="power3.out"
+            initialOpacity={0}
+            animateOpacity
+            scale={0.98}
+          >
+            <AccountSidebar activeTab={activeTab} onTabChange={handleTabChange} />
+          </AnimatedContent>
 
           {/* Right Main Content */}
           <main style={{ minWidth: 0 }}>
@@ -195,910 +206,989 @@ export const ProfilePage = () => {
                 {activeTab === 'dashboard' && (
                   <div>
                     {/* Greeting Header */}
-                    <div style={{ marginBottom: '2rem' }}>
-                      <h1
-                        style={{
-                          fontSize: '1.75rem',
-                          fontWeight: 800,
-                          color: '#000000',
-                          letterSpacing: '-0.025em',
-                        }}
-                      >
-                        Welcome back, {getUserDisplayName(user)}!
-                      </h1>
-                      <p style={{ color: '#71717a', fontSize: '0.9375rem', marginTop: '0.25rem' }}>
-                        Here's what's happening with your account.
-                      </p>
-                    </div>
+                    <AnimatedContent
+                      key="dashboard-header"
+                      distance={25}
+                      direction="vertical"
+                      duration={0.55}
+                      ease="power3.out"
+                      initialOpacity={0}
+                      animateOpacity
+                      delay={0.05}
+                    >
+                      <div style={{ marginBottom: '2rem' }}>
+                        <h1
+                          style={{
+                            fontSize: '1.75rem',
+                            fontWeight: 800,
+                            color: '#000000',
+                            letterSpacing: '-0.025em',
+                          }}
+                        >
+                          Welcome back, {getUserDisplayName(user)}!
+                        </h1>
+                        <p style={{ color: '#71717a', fontSize: '0.9375rem', marginTop: '0.25rem' }}>
+                          Here's what's happening with your account.
+                        </p>
+                      </div>
+                    </AnimatedContent>
 
                     {/* Stat Cards */}
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(3, 1fr)',
-                        gap: '1.5rem',
-                        marginBottom: '2.5rem',
-                      }}
-                      className="stats-grid"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => handleTabChange('orders')}
-                        style={{
-                          backgroundColor: '#ffffff',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '12px',
-                          padding: '1.5rem',
-                          textAlign: 'left',
-                          cursor: 'pointer',
-                          transition: 'border-color 150ms ease, box-shadow 150ms ease',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.borderColor = '#000000';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.borderColor = '#e5e7eb';
-                        }}
-                      >
-                        <div style={{ fontSize: '0.8125rem', color: '#71717a', fontWeight: 500 }}>
-                          Total Orders
-                        </div>
-                        <div
-                          style={{
-                            fontSize: '2rem',
-                            fontWeight: 800,
-                            color: '#000000',
-                            marginTop: '0.5rem',
-                          }}
-                        >
-                          {orders.length}
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleTabChange('wishlist')}
-                        style={{
-                          backgroundColor: '#ffffff',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '12px',
-                          padding: '1.5rem',
-                          textAlign: 'left',
-                          cursor: 'pointer',
-                          transition: 'border-color 150ms ease, box-shadow 150ms ease',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.borderColor = '#000000';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.borderColor = '#e5e7eb';
-                        }}
-                      >
-                        <div style={{ fontSize: '0.8125rem', color: '#71717a', fontWeight: 500 }}>
-                          Wishlist Items
-                        </div>
-                        <div
-                          style={{
-                            fontSize: '2rem',
-                            fontWeight: 800,
-                            color: '#000000',
-                            marginTop: '0.5rem',
-                          }}
-                        >
-                          {currentWishlist.length}
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleTabChange('addresses')}
-                        style={{
-                          backgroundColor: '#ffffff',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '12px',
-                          padding: '1.5rem',
-                          textAlign: 'left',
-                          cursor: 'pointer',
-                          transition: 'border-color 150ms ease, box-shadow 150ms ease',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.borderColor = '#000000';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.borderColor = '#e5e7eb';
-                        }}
-                      >
-                        <div style={{ fontSize: '0.8125rem', color: '#71717a', fontWeight: 500 }}>
-                          Saved Addresses
-                        </div>
-                        <div
-                          style={{
-                            fontSize: '2rem',
-                            fontWeight: 800,
-                            color: '#000000',
-                            marginTop: '0.5rem',
-                          }}
-                        >
-                          {savedAddresses.length}
-                        </div>
-                      </button>
-                    </div>
-
-                    {/* Recent Orders Section */}
-                    <div
-                      style={{
-                        backgroundColor: '#ffffff',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '12px',
-                        padding: '1.75rem',
-                        marginBottom: '2rem',
-                      }}
+                    <AnimatedContent
+                      key="dashboard-stats"
+                      distance={30}
+                      direction="vertical"
+                      duration={0.65}
+                      ease="power3.out"
+                      initialOpacity={0}
+                      animateOpacity
+                      scale={0.98}
+                      delay={0.1}
                     >
                       <div
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          marginBottom: '1.5rem',
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(3, 1fr)',
+                          gap: '1.5rem',
+                          marginBottom: '2.5rem',
                         }}
+                        className="stats-grid"
                       >
-                        <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#000000' }}>
-                          Recent Orders
-                        </h2>
                         <button
                           type="button"
                           onClick={() => handleTabChange('orders')}
                           style={{
-                            fontSize: '0.875rem',
-                            fontWeight: 600,
-                            color: '#000000',
-                            backgroundColor: 'transparent',
-                            border: 'none',
+                            backgroundColor: '#ffffff',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '12px',
+                            padding: '1.5rem',
+                            textAlign: 'left',
                             cursor: 'pointer',
-                            padding: 0,
+                            transition: 'border-color 150ms ease, box-shadow 150ms ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#000000';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = '#e5e7eb';
                           }}
                         >
-                          View All →
+                          <div style={{ fontSize: '0.8125rem', color: '#71717a', fontWeight: 500 }}>
+                            Total Orders
+                          </div>
+                          <div
+                            style={{
+                              fontSize: '2rem',
+                              fontWeight: 800,
+                              color: '#000000',
+                              marginTop: '0.5rem',
+                            }}
+                          >
+                            {orders.length}
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleTabChange('wishlist')}
+                          style={{
+                            backgroundColor: '#ffffff',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '12px',
+                            padding: '1.5rem',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            transition: 'border-color 150ms ease, box-shadow 150ms ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#000000';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = '#e5e7eb';
+                          }}
+                        >
+                          <div style={{ fontSize: '0.8125rem', color: '#71717a', fontWeight: 500 }}>
+                            Wishlist Items
+                          </div>
+                          <div
+                            style={{
+                              fontSize: '2rem',
+                              fontWeight: 800,
+                              color: '#000000',
+                              marginTop: '0.5rem',
+                            }}
+                          >
+                            {currentWishlist.length}
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleTabChange('addresses')}
+                          style={{
+                            backgroundColor: '#ffffff',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '12px',
+                            padding: '1.5rem',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            transition: 'border-color 150ms ease, box-shadow 150ms ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#000000';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = '#e5e7eb';
+                          }}
+                        >
+                          <div style={{ fontSize: '0.8125rem', color: '#71717a', fontWeight: 500 }}>
+                            Saved Addresses
+                          </div>
+                          <div
+                            style={{
+                              fontSize: '2rem',
+                              fontWeight: 800,
+                              color: '#000000',
+                              marginTop: '0.5rem',
+                            }}
+                          >
+                            {savedAddresses.length}
+                          </div>
                         </button>
                       </div>
+                    </AnimatedContent>
 
-                      {recentOrders.length > 0 ? (
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          {recentOrders.map((order) => {
-                            const badge = getStatusBadgeStyle(order.status);
-                            return (
-                              <Link
-                                key={order.id}
-                                to={`/orders/${order.id}`}
-                                style={{
-                                  display: 'grid',
-                                  gridTemplateColumns: '1.2fr 1.2fr 1fr 1fr 40px',
-                                  alignItems: 'center',
-                                  padding: '1rem 0',
-                                  borderBottom: '1px solid #f4f4f5',
-                                  fontSize: '0.875rem',
-                                  color: '#000000',
-                                  textDecoration: 'none',
-                                  transition: 'background-color 150ms ease',
-                                }}
-                              >
-                                <div style={{ fontWeight: 600 }}>
-                                  #ORD{String(order.id).padStart(5, '0')}
-                                </div>
-                                <div style={{ color: '#71717a' }}>
-                                  {order.created_at
-                                    ? new Date(order.created_at).toLocaleDateString()
-                                    : 'Recent'}
-                                </div>
-                                <div style={{ fontWeight: 700 }}>
-                                  ₹{Number(order.total_price || 0).toFixed(2)}
-                                </div>
-                                <div>
-                                  <span
-                                    style={{
-                                      fontSize: '0.75rem',
-                                      fontWeight: 600,
-                                      padding: '0.2rem 0.5rem',
-                                      borderRadius: '4px',
-                                      backgroundColor: badge.bg,
-                                      color: badge.color,
-                                      border: `1px solid ${badge.border}`,
-                                    }}
-                                  >
-                                    {order.status || 'Pending'}
-                                  </span>
-                                </div>
-                                <div style={{ textAlign: 'right', color: '#a1a1aa' }}>
-                                  <ChevronRight size={16} />
-                                </div>
-                              </Link>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div
-                          style={{
-                            padding: '2.5rem 0',
-                            textAlign: 'center',
-                            color: '#71717a',
-                            fontSize: '0.875rem',
-                          }}
-                        >
-                          <ShoppingBag
-                            size={36}
-                            style={{ margin: '0 auto 0.75rem auto', color: '#a1a1aa' }}
-                          />
-                          <div>No recent orders placed yet.</div>
-                          <Link
-                            to="/products"
-                            style={{
-                              color: '#000000',
-                              fontWeight: 600,
-                              marginTop: '0.5rem',
-                              display: 'inline-block',
-                            }}
-                          >
-                            Explore Our Products →
-                          </Link>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* TAB: MY ORDERS */}
-                {activeTab === 'orders' && (
-                  <div>
-                    <div style={{ marginBottom: '2rem' }}>
-                      <h1
-                        style={{
-                          fontSize: '1.75rem',
-                          fontWeight: 800,
-                          color: '#000000',
-                          letterSpacing: '-0.025em',
-                        }}
-                      >
-                        My Order History
-                      </h1>
-                      <p style={{ color: '#71717a', fontSize: '0.9375rem', marginTop: '0.25rem' }}>
-                        Track, manage, and view receipts for all your placed orders.
-                      </p>
-                    </div>
-
-                    {orders.length === 0 ? (
-                      <div style={{ padding: '2rem 0' }}>
-                        <EmptyState
-                          icon={ShoppingBag}
-                          title="No orders placed yet"
-                          description="When you place orders, they will show up here with live status tracking."
-                          actionText="Browse Catalog"
-                          actionLink="/products"
-                        />
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                        {orders.map((order) => {
-                          const itemCount =
-                            order.items?.reduce((sum, item) => sum + item.quantity, 0) ||
-                            order.items?.length ||
-                            0;
-                          const isCancellable =
-                            order.status === 'PENDING' &&
-                            order.payment?.payment_status !== 'SUCCESS' &&
-                            order.payment_status !== 'SUCCESS';
-
-                          return (
-                            <div
-                              key={order.id}
-                              style={{
-                                padding: '1.5rem',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '1rem',
-                                backgroundColor: '#ffffff',
-                                border: '1px solid #e5e7eb',
-                                borderRadius: '12px',
-                              }}
-                            >
-                              <div
-                                style={{
-                                  display: 'flex',
-                                  flexWrap: 'wrap',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  gap: '1rem',
-                                  borderBottom: '1px solid #f4f4f5',
-                                  paddingBottom: '1rem',
-                                }}
-                              >
-                                <div>
-                                  <div style={{ fontWeight: 700, fontSize: '1.125rem' }}>
-                                    Order #{order.id}
-                                  </div>
-                                  <div style={{ fontSize: '0.8125rem', color: '#71717a' }}>
-                                    Placed on{' '}
-                                    {order.created_at
-                                      ? new Date(order.created_at).toLocaleDateString()
-                                      : 'Recent'}
-                                  </div>
-                                </div>
-
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                  <OrderStatusBadge status={order.status} />
-                                  <span style={{ fontWeight: 700, fontSize: '1.125rem' }}>
-                                    ₹{Number(order.total_price || 0).toFixed(2)}
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Items & action row */}
-                              <div
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  flexWrap: 'wrap',
-                                  gap: '1rem',
-                                }}
-                              >
-                                <div style={{ fontSize: '0.875rem', color: '#52525b' }}>
-                                  Contains <strong>{itemCount}</strong> items &bull; Payment:{' '}
-                                  <strong>
-                                    {order.payment_method ||
-                                      order.payment?.payment_method ||
-                                      'Unpaid / Pending'}
-                                  </strong>
-                                </div>
-
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                  {isCancellable && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleCancelOrder(order.id)}
-                                      className="btn btn-outline-danger btn-sm"
-                                      style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.25rem',
-                                      }}
-                                    >
-                                      <Ban size={14} />
-                                      <span>Cancel Order</span>
-                                    </button>
-                                  )}
-
-                                  <Link
-                                    to={`/orders/${order.id}`}
-                                    className="btn btn-secondary btn-sm"
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: '0.25rem',
-                                      textDecoration: 'none',
-                                    }}
-                                  >
-                                    <span>View Details</span>
-                                    <ChevronRight size={14} />
-                                  </Link>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* TAB: WISHLIST */}
-                {activeTab === 'wishlist' && (
-                  <div>
-                    <div style={{ marginBottom: '2rem' }}>
-                      <h1
-                        style={{
-                          fontSize: '1.75rem',
-                          fontWeight: 800,
-                          color: '#000000',
-                          letterSpacing: '-0.025em',
-                        }}
-                      >
-                        My Wishlist ({currentWishlist.length})
-                      </h1>
-                      <p style={{ color: '#71717a', fontSize: '0.9375rem', marginTop: '0.25rem' }}>
-                        Save items you love to revisit or purchase later.
-                      </p>
-                    </div>
-
-                    {currentWishlist.length === 0 ? (
-                      <div style={{ padding: '2rem 0' }}>
-                        <EmptyState
-                          icon={Heart}
-                          title="Your wishlist is empty"
-                          description="Save items you love to revisit or purchase later."
-                          actionText="Browse Catalog"
-                          actionLink="/products"
-                        />
-                      </div>
-                    ) : (
-                      <div
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-                          gap: '1.5rem',
-                        }}
-                      >
-                        {currentWishlist.map((item, index) => {
-                          const product =
-                            item.product_details ||
-                            (typeof item.product === 'object' && item.product !== null
-                              ? item.product
-                              : item);
-                          const productId = product.id || item.product || item.id;
-                          const wishlistId =
-                            item.wishlist_id || (item.product && item.id ? item.id : null);
-                          const key = item.id || productId || index;
-
-                          return (
-                            <div
-                              key={key}
-                              style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                backgroundColor: '#ffffff',
-                                border: '1px solid #e5e7eb',
-                                borderRadius: '12px',
-                                overflow: 'hidden',
-                              }}
-                            >
-                              <div
-                                style={{
-                                  height: '200px',
-                                  backgroundColor: '#f4f4f5',
-                                  overflow: 'hidden',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                              >
-                                {product.image ? (
-                                  <img
-                                    src={product.image}
-                                    alt={product.name}
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                  />
-                                ) : (
-                                  <span style={{ color: '#a1a1aa' }}>No Image</span>
-                                )}
-                              </div>
-
-                              <div
-                                style={{
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  flex: 1,
-                                  gap: '0.75rem',
-                                  padding: '1.25rem',
-                                }}
-                              >
-                                <Link
-                                  to={`/products/${productId}`}
-                                  style={{
-                                    fontWeight: 600,
-                                    fontSize: '1rem',
-                                    color: '#000000',
-                                    textDecoration: 'none',
-                                    display: '-webkit-box',
-                                    WebkitLineClamp: 1,
-                                    WebkitBoxOrient: 'vertical',
-                                    overflow: 'hidden',
-                                  }}
-                                >
-                                  {product.name || `Product #${productId}`}
-                                </Link>
-
-                                {product.price && (
-                                  <div style={{ fontWeight: 700, fontSize: '1.125rem' }}>
-                                    ₹{Number(product.price).toFixed(2)}
-                                  </div>
-                                )}
-
-                                <div
-                                  style={{
-                                    marginTop: 'auto',
-                                    display: 'flex',
-                                    gap: '0.5rem',
-                                    paddingTop: '0.5rem',
-                                  }}
-                                >
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      handleWishlistMoveToCart(productId, wishlistId || item.id)
-                                    }
-                                    className="btn btn-primary btn-sm"
-                                    style={{
-                                      flex: 1,
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      gap: '0.35rem',
-                                    }}
-                                  >
-                                    <ShoppingCart size={14} />
-                                    <span>Move to Cart</span>
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      handleWishlistRemove(wishlistId || item.id, productId)
-                                    }
-                                    className="btn btn-secondary btn-sm btn-icon"
-                                    title="Remove from wishlist"
-                                    aria-label="Remove item"
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* TAB: ADDRESSES */}
-                {activeTab === 'addresses' && (
-                  <div>
-                    <div style={{ marginBottom: '2rem' }}>
-                      <h1
-                        style={{
-                          fontSize: '1.75rem',
-                          fontWeight: 800,
-                          color: '#000000',
-                          letterSpacing: '-0.025em',
-                        }}
-                      >
-                        Delivery Addresses
-                      </h1>
-                      <p style={{ color: '#71717a', fontSize: '0.9375rem', marginTop: '0.25rem' }}>
-                        Saved delivery addresses used for your orders and checkout.
-                      </p>
-                    </div>
-
-                    {savedAddresses.length > 0 ? (
-                      <div
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                          gap: '1.5rem',
-                        }}
-                      >
-                        {savedAddresses.map((addr, idx) => (
-                          <div
-                            key={idx}
-                            style={{
-                              backgroundColor: '#ffffff',
-                              border: '1px solid #e5e7eb',
-                              borderRadius: '12px',
-                              padding: '1.5rem',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              justifyContent: 'space-between',
-                            }}
-                          >
-                            <div>
-                              <div
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  marginBottom: '0.75rem',
-                                }}
-                              >
-                                <span
-                                  style={{
-                                    fontSize: '0.75rem',
-                                    fontWeight: 700,
-                                    textTransform: 'uppercase',
-                                    padding: '0.2rem 0.5rem',
-                                    borderRadius: '4px',
-                                    backgroundColor: idx === 0 ? '#000000' : '#f4f4f5',
-                                    color: idx === 0 ? '#ffffff' : '#52525b',
-                                  }}
-                                >
-                                  {idx === 0 ? 'Primary Address' : `Address #${idx + 1}`}
-                                </span>
-                                {addr.orderId && (
-                                  <Link
-                                    to={`/orders/${addr.orderId}`}
-                                    style={{
-                                      fontSize: '0.75rem',
-                                      color: '#71717a',
-                                      textDecoration: 'none',
-                                    }}
-                                  >
-                                    Order #{addr.orderId}
-                                  </Link>
-                                )}
-                              </div>
-
-                              <div style={{ fontWeight: 700, color: '#000000', marginBottom: '0.25rem' }}>
-                                {addr.full_name || getUserDisplayName(user)}
-                              </div>
-                              <div style={{ fontSize: '0.875rem', color: '#52525b', lineHeight: 1.5 }}>
-                                {addr.address}
-                              </div>
-                              <div style={{ fontSize: '0.875rem', color: '#52525b', marginTop: '0.25rem' }}>
-                                {[addr.city, addr.state, addr.postal_code].filter(Boolean).join(', ')}
-                              </div>
-                              {addr.country && (
-                                <div style={{ fontSize: '0.875rem', color: '#71717a', marginTop: '0.25rem' }}>
-                                  {addr.country}
-                                </div>
-                              )}
-                              {addr.phone && (
-                                <div
-                                  style={{
-                                    fontSize: '0.8125rem',
-                                    color: '#71717a',
-                                    marginTop: '0.5rem',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.35rem',
-                                  }}
-                                >
-                                  <Phone size={14} />
-                                  <span>{addr.phone}</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div
-                        style={{
-                          backgroundColor: '#ffffff',
-                          border: '1px dashed #d4d4d8',
-                          borderRadius: '12px',
-                          padding: '3rem 2rem',
-                          textAlign: 'center',
-                        }}
-                      >
-                        <MapPin size={40} style={{ margin: '0 auto 1rem auto', color: '#a1a1aa' }} />
-                        <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#000000' }}>
-                          No Saved Addresses
-                        </h3>
-                        <p
-                          style={{
-                            color: '#71717a',
-                            fontSize: '0.875rem',
-                            marginTop: '0.5rem',
-                            maxWidth: '420px',
-                            margin: '0.5rem auto 1.5rem auto',
-                          }}
-                        >
-                          Delivery addresses entered during checkout are automatically saved here for
-                          quick reference and future deliveries.
-                        </p>
-                        <Link
-                          to="/products"
-                          className="btn btn-primary"
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            padding: '0.625rem 1.25rem',
-                            borderRadius: '6px',
-                            fontWeight: 600,
-                            textDecoration: 'none',
-                          }}
-                        >
-                          <ShoppingBag size={16} />
-                          <span>Start Shopping</span>
-                        </Link>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* TAB: SETTINGS */}
-                {activeTab === 'settings' && (
-                  <div>
-                    <div style={{ marginBottom: '2rem' }}>
-                      <h1
-                        style={{
-                          fontSize: '1.75rem',
-                          fontWeight: 800,
-                          color: '#000000',
-                          letterSpacing: '-0.025em',
-                        }}
-                      >
-                        Profile Settings
-                      </h1>
-                      <p style={{ color: '#71717a', fontSize: '0.9375rem', marginTop: '0.25rem' }}>
-                        Manage your account information and preferences.
-                      </p>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                      {/* Personal Information (Account Role removed as requested) */}
+                    {/* Recent Orders Section */}
+                    <AnimatedContent
+                      key="dashboard-orders"
+                      distance={35}
+                      direction="vertical"
+                      duration={0.7}
+                      ease="power3.out"
+                      initialOpacity={0}
+                      animateOpacity
+                      scale={0.99}
+                      delay={0.15}
+                    >
                       <div
                         style={{
                           backgroundColor: '#ffffff',
                           border: '1px solid #e5e7eb',
                           borderRadius: '12px',
                           padding: '1.75rem',
+                          marginBottom: '2rem',
                         }}
                       >
-                        <h2
-                          style={{
-                            fontSize: '1.125rem',
-                            fontWeight: 700,
-                            color: '#000000',
-                            marginBottom: '1.5rem',
-                          }}
-                        >
-                          Personal Information
-                        </h2>
-
-                        <div
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(2, 1fr)',
-                            gap: '1.5rem',
-                          }}
-                          className="profile-form-grid"
-                        >
-                          <div>
-                            <label
-                              style={{
-                                display: 'block',
-                                fontSize: '0.8125rem',
-                                fontWeight: 600,
-                                color: '#71717a',
-                                marginBottom: '0.375rem',
-                              }}
-                            >
-                              Display Name
-                            </label>
-                            <div
-                              style={{
-                                padding: '0.75rem 1rem',
-                                backgroundColor: '#f4f4f5',
-                                borderRadius: '6px',
-                                fontSize: '0.9375rem',
-                                color: '#18181b',
-                                fontWeight: 500,
-                              }}
-                            >
-                              {getUserDisplayName(user)}
-                            </div>
-                          </div>
-
-                          <div>
-                            <label
-                              style={{
-                                display: 'block',
-                                fontSize: '0.8125rem',
-                                fontWeight: 600,
-                                color: '#71717a',
-                                marginBottom: '0.375rem',
-                              }}
-                            >
-                              Email Address
-                            </label>
-                            <div
-                              style={{
-                                padding: '0.75rem 1rem',
-                                backgroundColor: '#f4f4f5',
-                                borderRadius: '6px',
-                                fontSize: '0.9375rem',
-                                color: '#18181b',
-                                fontWeight: 500,
-                              }}
-                            >
-                              {user?.email}
-                            </div>
-                          </div>
-
-                          <div style={{ gridColumn: 'span 2' }}>
-                            <label
-                              style={{
-                                display: 'block',
-                                fontSize: '0.8125rem',
-                                fontWeight: 600,
-                                color: '#71717a',
-                                marginBottom: '0.375rem',
-                              }}
-                            >
-                              Phone Number
-                            </label>
-                            <div
-                              style={{
-                                padding: '0.75rem 1rem',
-                                backgroundColor: '#f4f4f5',
-                                borderRadius: '6px',
-                                fontSize: '0.9375rem',
-                                color: '#18181b',
-                                fontWeight: 500,
-                              }}
-                            >
-                              {user?.phone || 'Not provided'}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Security & Credentials */}
-                      <div
-                        style={{
-                          backgroundColor: '#ffffff',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '12px',
-                          padding: '1.75rem',
-                        }}
-                      >
-                        <h2
-                          style={{
-                            fontSize: '1.125rem',
-                            fontWeight: 700,
-                            color: '#000000',
-                            marginBottom: '0.5rem',
-                          }}
-                        >
-                          Security & Password
-                        </h2>
-                        <p style={{ color: '#71717a', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
-                          Manage your login security and authentication methods.
-                        </p>
-
                         <div
                           style={{
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
-                            padding: '1rem',
-                            backgroundColor: '#fafafa',
-                            borderRadius: '8px',
-                            border: '1px solid #f4f4f5',
+                            marginBottom: '1.5rem',
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <ShieldCheck size={20} style={{ color: '#16a34a' }} />
-                            <div>
-                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#000000' }}>
-                                Account Authentication
+                          <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#000000' }}>
+                            Recent Orders
+                          </h2>
+                          <button
+                            type="button"
+                            onClick={() => handleTabChange('orders')}
+                            style={{
+                              fontSize: '0.875rem',
+                              fontWeight: 600,
+                              color: '#000000',
+                              backgroundColor: 'transparent',
+                              border: 'none',
+                              cursor: 'pointer',
+                              padding: 0,
+                            }}
+                          >
+                            View All →
+                          </button>
+                        </div>
+
+                        {recentOrders.length > 0 ? (
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            {recentOrders.map((order) => {
+                              const badge = getStatusBadgeStyle(order.status);
+                              return (
+                                <Link
+                                  key={order.id}
+                                  to={`/orders/${order.id}`}
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: '1.2fr 1.2fr 1fr 1fr 40px',
+                                    alignItems: 'center',
+                                    padding: '1rem 0',
+                                    borderBottom: '1px solid #f4f4f5',
+                                    fontSize: '0.875rem',
+                                    color: '#000000',
+                                    textDecoration: 'none',
+                                    transition: 'background-color 150ms ease',
+                                  }}
+                                >
+                                  <div style={{ fontWeight: 600 }}>
+                                    #ORD{String(order.id).padStart(5, '0')}
+                                  </div>
+                                  <div style={{ color: '#71717a' }}>
+                                    {order.created_at
+                                      ? new Date(order.created_at).toLocaleDateString()
+                                      : 'Recent'}
+                                  </div>
+                                  <div style={{ fontWeight: 700 }}>
+                                    ₹{Number(order.total_price || 0).toFixed(2)}
+                                  </div>
+                                  <div>
+                                    <span
+                                      style={{
+                                        fontSize: '0.75rem',
+                                        fontWeight: 600,
+                                        padding: '0.2rem 0.5rem',
+                                        borderRadius: '4px',
+                                        backgroundColor: badge.bg,
+                                        color: badge.color,
+                                        border: `1px solid ${badge.border}`,
+                                      }}
+                                    >
+                                      {order.status || 'Pending'}
+                                    </span>
+                                  </div>
+                                  <div style={{ textAlign: 'right', color: '#a1a1aa' }}>
+                                    <ChevronRight size={16} />
+                                  </div>
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div
+                            style={{
+                              padding: '2.5rem 0',
+                              textAlign: 'center',
+                              color: '#71717a',
+                              fontSize: '0.875rem',
+                            }}
+                          >
+                            <ShoppingBag
+                              size={36}
+                              style={{ margin: '0 auto 0.75rem auto', color: '#a1a1aa' }}
+                            />
+                            <div>No recent orders placed yet.</div>
+                            <Link
+                              to="/products"
+                              style={{
+                                color: '#000000',
+                                fontWeight: 600,
+                                marginTop: '0.5rem',
+                                display: 'inline-block',
+                              }}
+                            >
+                              Explore Our Products →
+                            </Link>
+                          </div>
+                        )}
+                      </div>
+                    </AnimatedContent>
+                  </div>
+                )}
+
+                {/* TAB: MY ORDERS */}
+                {activeTab === 'orders' && (
+                  <AnimatedContent
+                    key="tab-orders"
+                    distance={35}
+                    direction="vertical"
+                    duration={0.65}
+                    ease="power3.out"
+                    initialOpacity={0}
+                    animateOpacity
+                    scale={0.99}
+                  >
+                    <div>
+                      <div style={{ marginBottom: '2rem' }}>
+                        <h1
+                          style={{
+                            fontSize: '1.75rem',
+                            fontWeight: 800,
+                            color: '#000000',
+                            letterSpacing: '-0.025em',
+                          }}
+                        >
+                          My Order History
+                        </h1>
+                        <p style={{ color: '#71717a', fontSize: '0.9375rem', marginTop: '0.25rem' }}>
+                          Track, manage, and view receipts for all your placed orders.
+                        </p>
+                      </div>
+
+                      {orders.length === 0 ? (
+                        <div style={{ padding: '2rem 0' }}>
+                          <EmptyState
+                            icon={ShoppingBag}
+                            title="No orders placed yet"
+                            description="When you place orders, they will show up here with live status tracking."
+                            actionText="Browse Catalog"
+                            actionLink="/products"
+                          />
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                          {orders.map((order) => {
+                            const itemCount =
+                              order.items?.reduce((sum, item) => sum + item.quantity, 0) ||
+                              order.items?.length ||
+                              0;
+                            const isCancellable =
+                              order.status === 'PENDING' &&
+                              order.payment?.payment_status !== 'SUCCESS' &&
+                              order.payment_status !== 'SUCCESS';
+
+                            return (
+                              <div
+                                key={order.id}
+                                style={{
+                                  padding: '1.5rem',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '1rem',
+                                  backgroundColor: '#ffffff',
+                                  border: '1px solid #e5e7eb',
+                                  borderRadius: '12px',
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    flexWrap: 'wrap',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: '1rem',
+                                    borderBottom: '1px solid #f4f4f5',
+                                    paddingBottom: '1rem',
+                                  }}
+                                >
+                                  <div>
+                                    <div style={{ fontWeight: 700, fontSize: '1.125rem' }}>
+                                      Order #{order.id}
+                                    </div>
+                                    <div style={{ fontSize: '0.8125rem', color: '#71717a' }}>
+                                      Placed on{' '}
+                                      {order.created_at
+                                        ? new Date(order.created_at).toLocaleDateString()
+                                        : 'Recent'}
+                                    </div>
+                                  </div>
+
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                    <OrderStatusBadge status={order.status} />
+                                    <span style={{ fontWeight: 700, fontSize: '1.125rem' }}>
+                                      ₹{Number(order.total_price || 0).toFixed(2)}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Items & action row */}
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    flexWrap: 'wrap',
+                                    gap: '1rem',
+                                  }}
+                                >
+                                  <div style={{ fontSize: '0.875rem', color: '#52525b' }}>
+                                    Contains <strong>{itemCount}</strong> items &bull; Payment:{' '}
+                                    <strong>
+                                      {order.payment_method ||
+                                        order.payment?.payment_method ||
+                                        'Unpaid / Pending'}
+                                    </strong>
+                                  </div>
+
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    {isCancellable && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCancelOrder(order.id)}
+                                        className="btn btn-outline-danger btn-sm"
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '0.25rem',
+                                        }}
+                                      >
+                                        <Ban size={14} />
+                                        <span>Cancel Order</span>
+                                      </button>
+                                    )}
+
+                                    <Link
+                                      to={`/orders/${order.id}`}
+                                      className="btn btn-secondary btn-sm"
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.25rem',
+                                        textDecoration: 'none',
+                                      }}
+                                    >
+                                      <span>View Details</span>
+                                      <ChevronRight size={14} />
+                                    </Link>
+                                  </div>
+                                </div>
                               </div>
-                              <div style={{ fontSize: '0.8125rem', color: '#71717a' }}>
-                                Secured with JWT authentication and encrypted credentials.
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </AnimatedContent>
+                )}
+
+                {/* TAB: WISHLIST */}
+                {activeTab === 'wishlist' && (
+                  <AnimatedContent
+                    key="tab-wishlist"
+                    distance={35}
+                    direction="vertical"
+                    duration={0.65}
+                    ease="power3.out"
+                    initialOpacity={0}
+                    animateOpacity
+                    scale={0.99}
+                  >
+                    <div>
+                      <div style={{ marginBottom: '2rem' }}>
+                        <h1
+                          style={{
+                            fontSize: '1.75rem',
+                            fontWeight: 800,
+                            color: '#000000',
+                            letterSpacing: '-0.025em',
+                          }}
+                        >
+                          My Wishlist ({currentWishlist.length})
+                        </h1>
+                        <p style={{ color: '#71717a', fontSize: '0.9375rem', marginTop: '0.25rem' }}>
+                          Save items you love to revisit or purchase later.
+                        </p>
+                      </div>
+
+                      {currentWishlist.length === 0 ? (
+                        <div style={{ padding: '2rem 0' }}>
+                          <EmptyState
+                            icon={Heart}
+                            title="Your wishlist is empty"
+                            description="Save items you love to revisit or purchase later."
+                            actionText="Browse Catalog"
+                            actionLink="/products"
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+                            gap: '1.5rem',
+                          }}
+                        >
+                          {currentWishlist.map((item, index) => {
+                            const product =
+                              item.product_details ||
+                              (typeof item.product === 'object' && item.product !== null
+                                ? item.product
+                                : item);
+                            const productId = product.id || item.product || item.id;
+                            const wishlistId =
+                              item.wishlist_id || (item.product && item.id ? item.id : null);
+                            const key = item.id || productId || index;
+
+                            return (
+                              <div
+                                key={key}
+                                style={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  backgroundColor: '#ffffff',
+                                  border: '1px solid #e5e7eb',
+                                  borderRadius: '12px',
+                                  overflow: 'hidden',
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    height: '200px',
+                                    backgroundColor: '#f4f4f5',
+                                    overflow: 'hidden',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                  }}
+                                >
+                                  {product.image ? (
+                                    <img
+                                      src={product.image}
+                                      alt={product.name}
+                                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                    />
+                                  ) : (
+                                    <span style={{ color: '#a1a1aa' }}>No Image</span>
+                                  )}
+                                </div>
+
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    flex: 1,
+                                    gap: '0.75rem',
+                                    padding: '1.25rem',
+                                  }}
+                                >
+                                  <Link
+                                    to={`/products/${productId}`}
+                                    style={{
+                                      fontWeight: 600,
+                                      fontSize: '1rem',
+                                      color: '#000000',
+                                      textDecoration: 'none',
+                                      display: '-webkit-box',
+                                      WebkitLineClamp: 1,
+                                      WebkitBoxOrient: 'vertical',
+                                      overflow: 'hidden',
+                                    }}
+                                  >
+                                    {product.name || `Product #${productId}`}
+                                  </Link>
+
+                                  {product.price && (
+                                    <div style={{ fontWeight: 700, fontSize: '1.125rem' }}>
+                                      ₹{Number(product.price).toFixed(2)}
+                                    </div>
+                                  )}
+
+                                  <div
+                                    style={{
+                                      marginTop: 'auto',
+                                      display: 'flex',
+                                      gap: '0.5rem',
+                                      paddingTop: '0.5rem',
+                                    }}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleWishlistMoveToCart(productId, wishlistId || item.id)
+                                      }
+                                      className="btn btn-primary btn-sm"
+                                      style={{
+                                        flex: 1,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.35rem',
+                                      }}
+                                    >
+                                      <ShoppingCart size={14} />
+                                      <span>Move to Cart</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleWishlistRemove(wishlistId || item.id, productId)
+                                      }
+                                      className="btn btn-secondary btn-sm btn-icon"
+                                      title="Remove from wishlist"
+                                      aria-label="Remove item"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </AnimatedContent>
+                )}
+
+                {/* TAB: ADDRESSES */}
+                {activeTab === 'addresses' && (
+                  <AnimatedContent
+                    key="tab-addresses"
+                    distance={35}
+                    direction="vertical"
+                    duration={0.65}
+                    ease="power3.out"
+                    initialOpacity={0}
+                    animateOpacity
+                    scale={0.99}
+                  >
+                    <div>
+                      <div style={{ marginBottom: '2rem' }}>
+                        <h1
+                          style={{
+                            fontSize: '1.75rem',
+                            fontWeight: 800,
+                            color: '#000000',
+                            letterSpacing: '-0.025em',
+                          }}
+                        >
+                          Delivery Addresses
+                        </h1>
+                        <p style={{ color: '#71717a', fontSize: '0.9375rem', marginTop: '0.25rem' }}>
+                          Saved delivery addresses used for your orders and checkout.
+                        </p>
+                      </div>
+
+                      {savedAddresses.length > 0 ? (
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                            gap: '1.5rem',
+                          }}
+                        >
+                          {savedAddresses.map((addr, idx) => (
+                            <div
+                              key={idx}
+                              style={{
+                                backgroundColor: '#ffffff',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '12px',
+                                padding: '1.5rem',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'space-between',
+                              }}
+                            >
+                              <div>
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    marginBottom: '0.75rem',
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      fontSize: '0.75rem',
+                                      fontWeight: 700,
+                                      textTransform: 'uppercase',
+                                      padding: '0.2rem 0.5rem',
+                                      borderRadius: '4px',
+                                      backgroundColor: idx === 0 ? '#000000' : '#f4f4f5',
+                                      color: idx === 0 ? '#ffffff' : '#52525b',
+                                    }}
+                                  >
+                                    {idx === 0 ? 'Primary Address' : `Address #${idx + 1}`}
+                                  </span>
+                                  {addr.orderId && (
+                                    <Link
+                                      to={`/orders/${addr.orderId}`}
+                                      style={{
+                                        fontSize: '0.75rem',
+                                        color: '#71717a',
+                                        textDecoration: 'none',
+                                      }}
+                                    >
+                                      Order #{addr.orderId}
+                                    </Link>
+                                  )}
+                                </div>
+
+                                <div style={{ fontWeight: 700, color: '#000000', marginBottom: '0.25rem' }}>
+                                  {addr.full_name || getUserDisplayName(user)}
+                                </div>
+                                <div style={{ fontSize: '0.875rem', color: '#52525b', lineHeight: 1.5 }}>
+                                  {addr.address}
+                                </div>
+                                <div style={{ fontSize: '0.875rem', color: '#52525b', marginTop: '0.25rem' }}>
+                                  {[addr.city, addr.state, addr.postal_code].filter(Boolean).join(', ')}
+                                </div>
+                                {addr.country && (
+                                  <div style={{ fontSize: '0.875rem', color: '#71717a', marginTop: '0.25rem' }}>
+                                    {addr.country}
+                                  </div>
+                                )}
+                                {addr.phone && (
+                                  <div
+                                    style={{
+                                      fontSize: '0.8125rem',
+                                      color: '#71717a',
+                                      marginTop: '0.5rem',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '0.35rem',
+                                    }}
+                                  >
+                                    <Phone size={14} />
+                                    <span>{addr.phone}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div
+                          style={{
+                            backgroundColor: '#ffffff',
+                            border: '1px dashed #d4d4d8',
+                            borderRadius: '12px',
+                            padding: '3rem 2rem',
+                            textAlign: 'center',
+                          }}
+                        >
+                          <MapPin size={40} style={{ margin: '0 auto 1rem auto', color: '#a1a1aa' }} />
+                          <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#000000' }}>
+                            No Saved Addresses
+                          </h3>
+                          <p
+                            style={{
+                              color: '#71717a',
+                              fontSize: '0.875rem',
+                              marginTop: '0.5rem',
+                              maxWidth: '420px',
+                              margin: '0.5rem auto 1.5rem auto',
+                            }}
+                          >
+                            Delivery addresses entered during checkout are automatically saved here for
+                            quick reference and future deliveries.
+                          </p>
+                          <Link
+                            to="/products"
+                            className="btn btn-primary"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              padding: '0.625rem 1.25rem',
+                              borderRadius: '6px',
+                              fontWeight: 600,
+                              textDecoration: 'none',
+                            }}
+                          >
+                            <ShoppingBag size={16} />
+                            <span>Start Shopping</span>
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+                  </AnimatedContent>
+                )}
+
+                {/* TAB: SETTINGS */}
+                {activeTab === 'settings' && (
+                  <AnimatedContent
+                    key="tab-settings"
+                    distance={35}
+                    direction="vertical"
+                    duration={0.65}
+                    ease="power3.out"
+                    initialOpacity={0}
+                    animateOpacity
+                    scale={0.99}
+                  >
+                    <div>
+                      <div style={{ marginBottom: '2rem' }}>
+                        <h1
+                          style={{
+                            fontSize: '1.75rem',
+                            fontWeight: 800,
+                            color: '#000000',
+                            letterSpacing: '-0.025em',
+                          }}
+                        >
+                          Profile Settings
+                        </h1>
+                        <p style={{ color: '#71717a', fontSize: '0.9375rem', marginTop: '0.25rem' }}>
+                          Manage your account information and preferences.
+                        </p>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                        {/* Personal Information */}
+                        <div
+                          style={{
+                            backgroundColor: '#ffffff',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '12px',
+                            padding: '1.75rem',
+                          }}
+                        >
+                          <h2
+                            style={{
+                              fontSize: '1.125rem',
+                              fontWeight: 700,
+                              color: '#000000',
+                              marginBottom: '1.5rem',
+                            }}
+                          >
+                            Personal Information
+                          </h2>
+
+                          <div
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: 'repeat(2, 1fr)',
+                              gap: '1.5rem',
+                            }}
+                            className="profile-form-grid"
+                          >
+                            <div>
+                              <label
+                                style={{
+                                  display: 'block',
+                                  fontSize: '0.8125rem',
+                                  fontWeight: 600,
+                                  color: '#71717a',
+                                  marginBottom: '0.375rem',
+                                }}
+                              >
+                                Display Name
+                              </label>
+                              <div
+                                style={{
+                                  padding: '0.75rem 1rem',
+                                  backgroundColor: '#f4f4f5',
+                                  borderRadius: '6px',
+                                  fontSize: '0.9375rem',
+                                  color: '#18181b',
+                                  fontWeight: 500,
+                                }}
+                              >
+                                {getUserDisplayName(user)}
+                              </div>
+                            </div>
+
+                            <div>
+                              <label
+                                style={{
+                                  display: 'block',
+                                  fontSize: '0.8125rem',
+                                  fontWeight: 600,
+                                  color: '#71717a',
+                                  marginBottom: '0.375rem',
+                                }}
+                              >
+                                Email Address
+                              </label>
+                              <div
+                                style={{
+                                  padding: '0.75rem 1rem',
+                                  backgroundColor: '#f4f4f5',
+                                  borderRadius: '6px',
+                                  fontSize: '0.9375rem',
+                                  color: '#18181b',
+                                  fontWeight: 500,
+                                }}
+                              >
+                                {user?.email}
+                              </div>
+                            </div>
+
+                            <div style={{ gridColumn: 'span 2' }}>
+                              <label
+                                style={{
+                                  display: 'block',
+                                  fontSize: '0.8125rem',
+                                  fontWeight: 600,
+                                  color: '#71717a',
+                                  marginBottom: '0.375rem',
+                                }}
+                              >
+                                Phone Number
+                              </label>
+                              <div
+                                style={{
+                                  padding: '0.75rem 1rem',
+                                  backgroundColor: '#f4f4f5',
+                                  borderRadius: '6px',
+                                  fontSize: '0.9375rem',
+                                  color: '#18181b',
+                                  fontWeight: 500,
+                                }}
+                              >
+                                {user?.phone || 'Not provided'}
                               </div>
                             </div>
                           </div>
+                        </div>
 
-                          <Link
-                            to="/forgot-password"
+                        {/* Security & Credentials */}
+                        <div
+                          style={{
+                            backgroundColor: '#ffffff',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '12px',
+                            padding: '1.75rem',
+                          }}
+                        >
+                          <h2
                             style={{
-                              fontSize: '0.8125rem',
-                              fontWeight: 600,
+                              fontSize: '1.125rem',
+                              fontWeight: 700,
                               color: '#000000',
-                              padding: '0.5rem 0.875rem',
-                              borderRadius: '6px',
-                              backgroundColor: '#ffffff',
-                              border: '1px solid #d4d4d8',
-                              textDecoration: 'none',
-                              whiteSpace: 'nowrap',
+                              marginBottom: '0.5rem',
                             }}
                           >
-                            Reset Password
-                          </Link>
+                            Security & Password
+                          </h2>
+                          <p style={{ color: '#71717a', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+                            Manage your login security and authentication methods.
+                          </p>
+
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '1rem',
+                              backgroundColor: '#fafafa',
+                              borderRadius: '8px',
+                              border: '1px solid #f4f4f5',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <ShieldCheck size={20} style={{ color: '#16a34a' }} />
+                              <div>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#000000' }}>
+                                  Account Authentication
+                                </div>
+                                <div style={{ fontSize: '0.8125rem', color: '#71717a' }}>
+                                  Secured with JWT authentication and encrypted credentials.
+                                </div>
+                              </div>
+                            </div>
+
+                            <Link
+                              to="/forgot-password"
+                              style={{
+                                fontSize: '0.8125rem',
+                                fontWeight: 600,
+                                color: '#000000',
+                                padding: '0.5rem 0.875rem',
+                                borderRadius: '6px',
+                                backgroundColor: '#ffffff',
+                                border: '1px solid #d4d4d8',
+                                textDecoration: 'none',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              Reset Password
+                            </Link>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </AnimatedContent>
                 )}
               </>
             )}

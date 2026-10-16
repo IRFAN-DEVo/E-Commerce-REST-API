@@ -8,6 +8,7 @@ import { useToast } from '../context/ToastContext';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { EmptyState } from '../components/common/EmptyState';
 import { AccountSidebar } from '../components/layout/AccountSidebar';
+import { AnimatedContent } from '../components/common/AnimatedContent';
 
 export const WishlistPage = () => {
   const { wishlistItems, removeFromWishlist } = useWishlist();
@@ -64,7 +65,17 @@ export const WishlistPage = () => {
           }}
           className="account-layout"
         >
-          <AccountSidebar activeTab="wishlist" />
+          <AnimatedContent
+            distance={30}
+            direction="horizontal"
+            duration={0.65}
+            ease="power3.out"
+            initialOpacity={0}
+            animateOpacity
+            scale={0.98}
+          >
+            <AccountSidebar activeTab="wishlist" />
+          </AnimatedContent>
 
           <main style={{ minWidth: 0 }}>
             {isLoading ? (
@@ -72,134 +83,154 @@ export const WishlistPage = () => {
                 <LoadingSpinner message="Loading your saved items..." />
               </div>
             ) : items.length === 0 ? (
-              <div style={{ padding: '2rem 0' }}>
-                <EmptyState
-                  icon={Heart}
-                  title="Your wishlist is empty"
-                  description="Save items you love to revisit or purchase later."
-                  actionText="Browse Catalog"
-                  actionLink="/products"
-                />
-              </div>
+              <AnimatedContent
+                distance={35}
+                direction="vertical"
+                duration={0.6}
+                ease="power3.out"
+                initialOpacity={0}
+                animateOpacity
+                scale={0.98}
+              >
+                <div style={{ padding: '2rem 0' }}>
+                  <EmptyState
+                    icon={Heart}
+                    title="Your wishlist is empty"
+                    description="Save items you love to revisit or purchase later."
+                    actionText="Browse Catalog"
+                    actionLink="/products"
+                  />
+                </div>
+              </AnimatedContent>
             ) : (
-              <div>
-                <h1 style={{ fontSize: '1.875rem', fontWeight: 700, marginBottom: '2rem' }}>
-                  My Wishlist ({items.length})
-                </h1>
+              <AnimatedContent
+                distance={35}
+                direction="vertical"
+                duration={0.65}
+                ease="power3.out"
+                initialOpacity={0}
+                animateOpacity
+                scale={0.99}
+              >
+                <div>
+                  <h1 style={{ fontSize: '1.875rem', fontWeight: 700, marginBottom: '2rem' }}>
+                    My Wishlist ({items.length})
+                  </h1>
 
-                <div className="grid-products">
-                  {items.map((item, index) => {
-                    const product =
-                      item.product_details ||
-                      (typeof item.product === 'object' && item.product !== null ? item.product : item);
-                    const productId = product.id || item.product || item.id;
-                    const wishlistId = item.wishlist_id || (item.product && item.id ? item.id : null);
-                    const key = item.id || productId || index;
+                  <div className="grid-products">
+                    {items.map((item, index) => {
+                      const product =
+                        item.product_details ||
+                        (typeof item.product === 'object' && item.product !== null ? item.product : item);
+                      const productId = product.id || item.product || item.id;
+                      const wishlistId = item.wishlist_id || (item.product && item.id ? item.id : null);
+                      const key = item.id || productId || index;
 
-                    return (
-                      <div
-                        key={key}
-                        className="card"
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          backgroundColor: '#ffffff',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '12px',
-                          overflow: 'hidden',
-                        }}
-                      >
+                      return (
                         <div
-                          style={{
-                            height: '200px',
-                            backgroundColor: '#f4f4f5',
-                            overflow: 'hidden',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          {product.image ? (
-                            <img
-                              src={product.image}
-                              alt={product.name}
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            />
-                          ) : (
-                            <span style={{ color: '#a1a1aa' }}>No Image</span>
-                          )}
-                        </div>
-
-                        <div
-                          className="card-body"
+                          key={key}
+                          className="card"
                           style={{
                             display: 'flex',
                             flexDirection: 'column',
-                            flex: 1,
-                            gap: '0.75rem',
-                            padding: '1.25rem',
+                            backgroundColor: '#ffffff',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '12px',
+                            overflow: 'hidden',
                           }}
                         >
-                          <Link
-                            to={`/products/${productId}`}
-                            style={{
-                              fontWeight: 600,
-                              fontSize: '1rem',
-                              color: '#000000',
-                              textDecoration: 'none',
-                              display: '-webkit-box',
-                              WebkitLineClamp: 1,
-                              WebkitBoxOrient: 'vertical',
-                              overflow: 'hidden',
-                            }}
-                          >
-                            {product.name || `Product #${productId}`}
-                          </Link>
-
-                          {product.price && (
-                            <div style={{ fontWeight: 700, fontSize: '1.125rem' }}>
-                              ₹{Number(product.price).toFixed(2)}
-                            </div>
-                          )}
-
                           <div
                             style={{
-                              marginTop: 'auto',
+                              height: '200px',
+                              backgroundColor: '#f4f4f5',
+                              overflow: 'hidden',
                               display: 'flex',
-                              gap: '0.5rem',
-                              paddingTop: '0.5rem',
+                              alignItems: 'center',
+                              justifyContent: 'center',
                             }}
                           >
-                            <button
-                              onClick={() => handleMoveToCart(productId, wishlistId || item.id)}
-                              className="btn btn-primary btn-sm"
+                            {product.image ? (
+                              <img
+                                src={product.image}
+                                alt={product.name}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              />
+                            ) : (
+                              <span style={{ color: '#a1a1aa' }}>No Image</span>
+                            )}
+                          </div>
+
+                          <div
+                            className="card-body"
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              flex: 1,
+                              gap: '0.75rem',
+                              padding: '1.25rem',
+                            }}
+                          >
+                            <Link
+                              to={`/products/${productId}`}
                               style={{
-                                flex: 1,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.35rem',
+                                fontWeight: 600,
+                                fontSize: '1rem',
+                                color: '#000000',
+                                textDecoration: 'none',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 1,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
                               }}
                             >
-                              <ShoppingCart size={14} />
-                              <span>Move to Cart</span>
-                            </button>
+                              {product.name || `Product #${productId}`}
+                            </Link>
 
-                            <button
-                              onClick={() => handleRemove(wishlistId || item.id, productId)}
-                              className="btn btn-secondary btn-sm btn-icon"
-                              title="Remove from wishlist"
-                              aria-label="Remove item"
+                            {product.price && (
+                              <div style={{ fontWeight: 700, fontSize: '1.125rem' }}>
+                                ₹{Number(product.price).toFixed(2)}
+                              </div>
+                            )}
+
+                            <div
+                              style={{
+                                marginTop: 'auto',
+                                display: 'flex',
+                                gap: '0.5rem',
+                                paddingTop: '0.5rem',
+                              }}
                             >
-                              <Trash2 size={16} />
-                            </button>
+                              <button
+                                onClick={() => handleMoveToCart(productId, wishlistId || item.id)}
+                                className="btn btn-primary btn-sm"
+                                style={{
+                                  flex: 1,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '0.35rem',
+                                }}
+                              >
+                                <ShoppingCart size={14} />
+                                <span>Move to Cart</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleRemove(wishlistId || item.id, productId)}
+                                className="btn btn-secondary btn-sm btn-icon"
+                                title="Remove from wishlist"
+                                aria-label="Remove item"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              </AnimatedContent>
             )}
           </main>
         </div>
