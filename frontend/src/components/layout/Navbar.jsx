@@ -11,7 +11,6 @@ import {
   Search,
   Menu,
   X,
-  Package,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
@@ -409,22 +408,6 @@ export const Navbar = () => {
                   >
                     <User size={16} />
                     <span>My Account</span>
-                  </Link>
-
-                  <Link
-                    to="/orders"
-                    onClick={() => setUserDropdownOpen(false)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.625rem',
-                      padding: '0.5rem 1rem',
-                      fontSize: '0.875rem',
-                      color: '#27272a',
-                    }}
-                  >
-                    <Package size={16} />
-                    <span>My Orders</span>
                   </Link>
 
                   {isOwner && (
