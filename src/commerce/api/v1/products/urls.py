@@ -25,8 +25,11 @@ urlpatterns = [
     path("products/<int:pk>/update/", views.ProductUpdateView.as_view(), name="product-update"),
     path("products/<int:pk>/delete/", views.ProductDestroyView.as_view(), name="product-delete"),
     path("products/images/<int:pk>/delete/", views.ProductImageDestroyView.as_view(), name="product-image-delete"),
+    path("images/<int:pk>/delete/", views.ProductImageDestroyView.as_view(), name="product-image-delete-alias"),
     path("products/import/", ProductImportView.as_view(), name="product-import"),
+    path("import/", ProductImportView.as_view(), name="product-import-alias"),
     path("products/export/csv/", ProductExportCSVView.as_view(), name="product-export-csv"),
     path("products/export/excel/", ProductExportExcelView.as_view(), name="product-export-excel"),
     path("products/template/", ProductTemplateView.as_view(), name="product-template"),
+    path("template/", ProductTemplateView.as_view(), name="product-template-alias"),
 ]
