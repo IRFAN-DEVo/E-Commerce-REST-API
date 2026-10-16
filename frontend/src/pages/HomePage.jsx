@@ -190,18 +190,6 @@ export const HomePage = () => {
                     <span>Shop Now</span>
                     <ArrowRight size={18} />
                   </Link>
-
-                  <Link
-                    to="/products?category=all"
-                    className="btn btn-secondary"
-                    style={{
-                      padding: '0.875rem 1.75rem',
-                      fontSize: '0.9375rem',
-                      borderRadius: '9999px',
-                    }}
-                  >
-                    Explore Categories
-                  </Link>
                 </div>
               </div>
             </AnimatedContent>
