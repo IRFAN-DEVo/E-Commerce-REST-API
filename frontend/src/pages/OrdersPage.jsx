@@ -6,6 +6,7 @@ import { useToast } from '../context/ToastContext';
 import { OrderStatusBadge } from '../components/common/Badge';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { EmptyState } from '../components/common/EmptyState';
+import { AccountSidebar } from '../components/layout/AccountSidebar';
 
 export const OrdersPage = () => {
   const [orders, setOrders] = useState([]);
@@ -43,106 +44,132 @@ export const OrdersPage = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="container" style={{ padding: '4rem 1.5rem' }}>
-        <LoadingSpinner message="Loading your orders..." />
-      </div>
-    );
-  }
-
-  if (orders.length === 0) {
-    return (
-      <div className="container" style={{ padding: '4rem 1.5rem' }}>
-        <EmptyState
-          icon={ShoppingBag}
-          title="No orders placed yet"
-          description="When you place orders, they will show up here with live status tracking."
-          actionText="Browse Catalog"
-          actionLink="/products"
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className="container" style={{ padding: '2.5rem 1.5rem' }}>
-      <h1 style={{ fontSize: '1.875rem', fontWeight: 700, marginBottom: '2rem' }}>
-        My Order History
-      </h1>
+    <div style={{ backgroundColor: '#ffffff', minHeight: '80vh', padding: '3rem 0 6rem 0' }}>
+      <div className="container">
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '260px 1fr',
+            gap: '3rem',
+            alignItems: 'start',
+          }}
+          className="account-layout"
+        >
+          <AccountSidebar activeTab="orders" />
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        {orders.map((order) => {
-          const itemCount = order.items?.reduce((sum, item) => sum + item.quantity, 0) || order.items?.length || 0;
-          const isCancellable = order.status === 'PENDING' && (order.payment?.payment_status !== 'SUCCESS' && order.payment_status !== 'SUCCESS');
+          <main style={{ minWidth: 0 }}>
+            {isLoading ? (
+              <div style={{ padding: '4rem 0' }}>
+                <LoadingSpinner message="Loading your orders..." />
+              </div>
+            ) : orders.length === 0 ? (
+              <div style={{ padding: '2rem 0' }}>
+                <EmptyState
+                  icon={ShoppingBag}
+                  title="No orders placed yet"
+                  description="When you place orders, they will show up here with live status tracking."
+                  actionText="Browse Catalog"
+                  actionLink="/products"
+                />
+              </div>
+            ) : (
+              <div>
+                <h1 style={{ fontSize: '1.875rem', fontWeight: 700, marginBottom: '2rem' }}>
+                  My Order History
+                </h1>
 
-          return (
-            <div
-              key={order.id}
-              className="card"
-              style={{
-                padding: '1.5rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1rem',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '1rem',
-                  borderBottom: '1px solid var(--border-color)',
-                  paddingBottom: '1rem',
-                }}
-              >
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '1.125rem' }}>
-                    Order #{order.id}
-                  </div>
-                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                    Placed on {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'Recent'}
-                  </div>
-                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {orders.map((order) => {
+                    const itemCount = order.items?.reduce((sum, item) => sum + item.quantity, 0) || order.items?.length || 0;
+                    const isCancellable = order.status === 'PENDING' && (order.payment?.payment_status !== 'SUCCESS' && order.payment_status !== 'SUCCESS');
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <OrderStatusBadge status={order.status} />
-                  <span style={{ fontWeight: 700, fontSize: '1.125rem' }}>
-                    ₹{Number(order.total_price || 0).toFixed(2)}
-                  </span>
+                    return (
+                      <div
+                        key={order.id}
+                        className="card"
+                        style={{
+                          padding: '1.5rem',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '1rem',
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '12px',
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '1rem',
+                            borderBottom: '1px solid #f4f4f5',
+                            paddingBottom: '1rem',
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: '1.125rem' }}>
+                              Order #{order.id}
+                            </div>
+                            <div style={{ fontSize: '0.8125rem', color: '#71717a' }}>
+                              Placed on {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'Recent'}
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <OrderStatusBadge status={order.status} />
+                            <span style={{ fontWeight: 700, fontSize: '1.125rem' }}>
+                              ₹{Number(order.total_price || 0).toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Items summary */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+                          <div style={{ fontSize: '0.875rem', color: '#52525b' }}>
+                            Contains <strong>{itemCount}</strong> items &bull; Payment: <strong>{order.payment_method || order.payment?.payment_method || 'Unpaid / Pending'}</strong>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            {isCancellable && (
+                              <button
+                                onClick={() => handleCancelOrder(order.id)}
+                                className="btn btn-outline-danger btn-sm"
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                              >
+                                <Ban size={14} />
+                                <span>Cancel Order</span>
+                              </button>
+                            )}
+
+                            <Link to={`/orders/${order.id}`} className="btn btn-secondary btn-sm">
+                              <span>View Details</span>
+                              <ChevronRight size={14} />
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-
-              {/* Items summary */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-                <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                  Contains <strong>{itemCount}</strong> items &bull; Payment: <strong>{order.payment_method || order.payment?.payment_method || 'Unpaid / Pending'}</strong>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  {isCancellable && (
-                    <button
-                      onClick={() => handleCancelOrder(order.id)}
-                      className="btn btn-outline-danger btn-sm"
-                      style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-                    >
-                      <Ban size={14} />
-                      <span>Cancel Order</span>
-                    </button>
-                  )}
-
-                  <Link to={`/orders/${order.id}`} className="btn btn-secondary btn-sm">
-                    <span>View Details</span>
-                    <ChevronRight size={14} />
-                  </Link>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+            )}
+          </main>
+        </div>
       </div>
+
+      <style>{`
+        @media (max-width: 900px) {
+          .account-layout {
+            grid-template-columns: 1fr !important;
+            gap: 2rem !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };
+
+export default OrdersPage;

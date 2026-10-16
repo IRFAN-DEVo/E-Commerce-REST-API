@@ -1,102 +1,123 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  LayoutDashboard,
   Package,
   MapPin,
   Heart,
-  Settings,
-  LogOut,
   ChevronRight,
-  User,
   ShoppingBag,
-  Mail,
   Phone,
-  Calendar,
   ShieldCheck,
-  Plus,
+  Ban,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { ordersApi } from '../api/orders';
 import { wishlistApi } from '../api/wishlist';
-import { getUserDisplayName, getUserInitial } from '../utils/user';
+import { getUserDisplayName } from '../utils/user';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { EmptyState } from '../components/common/EmptyState';
+import { OrderStatusBadge } from '../components/common/Badge';
+import { AccountSidebar } from '../components/layout/AccountSidebar';
 
 export const ProfilePage = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const { showToast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const tabFromUrl = searchParams.get('tab');
+  const validTabs = ['dashboard', 'orders', 'addresses', 'settings'];
+  const [activeTab, setActiveTab] = useState(
+    validTabs.includes(tabFromUrl) ? tabFromUrl : 'dashboard'
+  );
 
   const [orders, setOrders] = useState([]);
   const [recentOrders, setRecentOrders] = useState([]);
   const [savedAddresses, setSavedAddresses] = useState([]);
   const [wishlistCount, setWishlistCount] = useState(0);
-  const [activeTab, setActiveTab] = useState('dashboard');
   const [isLoading, setIsLoading] = useState(true);
 
+  // Keep activeTab in sync if URL query parameter changes
   useEffect(() => {
-    let isMounted = true;
+    if (tabFromUrl && validTabs.includes(tabFromUrl) && tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
 
-    const loadProfileData = async () => {
-      try {
-        const fetcher = ordersApi?.getMyOrders || ordersApi?.getOrders;
-        if (typeof fetcher === 'function') {
-          const data = await fetcher.call(ordersApi);
-          const list = Array.isArray(data) ? data : data?.results || [];
-          if (isMounted) {
-            setOrders(list);
-            setRecentOrders(list.slice(0, 5));
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (tab === 'dashboard') {
+      searchParams.delete('tab');
+      setSearchParams(searchParams);
+    } else {
+      setSearchParams({ tab });
+    }
+  };
 
-            // Extract unique delivery addresses from previous order records
-            const extractedAddresses = [];
-            const seen = new Set();
-            for (const ord of list) {
-              const addr = ord.shipping_address;
-              if (addr && addr.address) {
-                const key = `${addr.address}-${addr.city}-${addr.postal_code}`.toLowerCase();
-                if (!seen.has(key)) {
-                  seen.add(key);
-                  extractedAddresses.push({
-                    ...addr,
-                    orderId: ord.id,
-                    date: ord.created_at,
-                  });
-                }
-              }
+  const loadProfileData = async () => {
+    setIsLoading(true);
+    try {
+      const fetcher = ordersApi?.getMyOrders || ordersApi?.getOrders;
+      if (typeof fetcher === 'function') {
+        const data = await fetcher.call(ordersApi);
+        const list = Array.isArray(data) ? data : data?.results || [];
+        setOrders(list);
+        setRecentOrders(list.slice(0, 5));
+
+        // Extract unique delivery addresses from previous order records
+        const extractedAddresses = [];
+        const seen = new Set();
+        for (const ord of list) {
+          const addr = ord.shipping_address;
+          if (addr && addr.address) {
+            const key = `${addr.address}-${addr.city}-${addr.postal_code}`.toLowerCase();
+            if (!seen.has(key)) {
+              seen.add(key);
+              extractedAddresses.push({
+                ...addr,
+                orderId: ord.id,
+                date: ord.created_at,
+              });
             }
-            setSavedAddresses(extractedAddresses);
           }
         }
-      } catch (err) {
-        console.error('Failed to load orders for profile:', err);
+        setSavedAddresses(extractedAddresses);
       }
+    } catch (err) {
+      console.error('Failed to load orders for profile:', err);
+    }
 
-      try {
-        if (wishlistApi?.getWishlist) {
-          const wData = await wishlistApi.getWishlist();
-          const wList = Array.isArray(wData) ? wData : wData?.results || [];
-          if (isMounted) {
-            setWishlistCount(wList.length);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load wishlist for profile:', err);
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+    try {
+      if (wishlistApi?.getWishlist) {
+        const wData = await wishlistApi.getWishlist();
+        const wList = Array.isArray(wData) ? wData : wData?.results || [];
+        setWishlistCount(wList.length);
       }
-    };
+    } catch (err) {
+      console.error('Failed to load wishlist for profile:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadProfileData();
-
-    return () => {
-      isMounted = false;
-    };
   }, []);
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/');
+  const handleCancelOrder = async (orderId) => {
+    if (!window.confirm(`Are you sure you want to cancel Order #${orderId}? Product inventory will be restored.`)) {
+      return;
+    }
+
+    try {
+      await ordersApi.cancelOrder(orderId);
+      showToast(`Order #${orderId} has been cancelled.`, 'success');
+      loadProfileData();
+    } catch (err) {
+      const msg = err.response?.data?.detail || 'Unable to cancel order.';
+      showToast(msg, 'error');
+    }
   };
 
   if (!user && !isLoading) {
@@ -130,226 +151,8 @@ export const ProfilePage = () => {
           }}
           className="account-layout"
         >
-          {/* Left Sidebar */}
-          <aside
-            style={{
-              backgroundColor: '#ffffff',
-              border: '1px solid #e5e7eb',
-              borderRadius: '12px',
-              padding: '1.75rem 1.25rem',
-            }}
-          >
-            {/* User Profile Card Header */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '1rem',
-                paddingBottom: '1.5rem',
-                borderBottom: '1px solid #f4f4f5',
-                marginBottom: '1.25rem',
-              }}
-            >
-              <div
-                style={{
-                  width: '46px',
-                  height: '46px',
-                  borderRadius: '50%',
-                  backgroundColor: '#18181b',
-                  color: '#ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 700,
-                  fontSize: '1.125rem',
-                  flexShrink: 0,
-                }}
-              >
-                {getUserInitial(user)}
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <div
-                  style={{
-                    fontWeight: 700,
-                    color: '#000000',
-                    fontSize: '0.9375rem',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {getUserDisplayName(user)}
-                </div>
-                <div
-                  style={{
-                    fontSize: '0.75rem',
-                    color: '#71717a',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {user?.email}
-                </div>
-              </div>
-            </div>
-
-            {/* Navigation Menu */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              <button
-                type="button"
-                onClick={() => setActiveTab('dashboard')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  padding: '0.625rem 0.875rem',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  fontWeight: activeTab === 'dashboard' ? 600 : 500,
-                  backgroundColor: activeTab === 'dashboard' ? '#000000' : 'transparent',
-                  color: activeTab === 'dashboard' ? '#ffffff' : '#52525b',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  border: 'none',
-                  transition: 'all 150ms ease',
-                  width: '100%',
-                }}
-              >
-                <LayoutDashboard size={18} />
-                <span>Dashboard</span>
-              </button>
-
-              <Link
-                to="/orders"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  padding: '0.625rem 0.875rem',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  color: '#52525b',
-                  textDecoration: 'none',
-                  transition: 'all 150ms ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f4f4f5';
-                  e.currentTarget.style.color = '#000';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = '#52525b';
-                }}
-              >
-                <Package size={18} />
-                <span>My Orders</span>
-              </Link>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('addresses')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  padding: '0.625rem 0.875rem',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  fontWeight: activeTab === 'addresses' ? 600 : 500,
-                  backgroundColor: activeTab === 'addresses' ? '#000000' : 'transparent',
-                  color: activeTab === 'addresses' ? '#ffffff' : '#52525b',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  border: 'none',
-                  transition: 'all 150ms ease',
-                  width: '100%',
-                }}
-              >
-                <MapPin size={18} />
-                <span>Addresses</span>
-              </button>
-
-              <Link
-                to="/wishlist"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  padding: '0.625rem 0.875rem',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  color: '#52525b',
-                  textDecoration: 'none',
-                  transition: 'all 150ms ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f4f4f5';
-                  e.currentTarget.style.color = '#000';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = '#52525b';
-                }}
-              >
-                <Heart size={18} />
-                <span>Wishlist</span>
-              </Link>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('settings')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  padding: '0.625rem 0.875rem',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  fontWeight: activeTab === 'settings' ? 600 : 500,
-                  backgroundColor: activeTab === 'settings' ? '#000000' : 'transparent',
-                  color: activeTab === 'settings' ? '#ffffff' : '#52525b',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  border: 'none',
-                  transition: 'all 150ms ease',
-                  width: '100%',
-                }}
-              >
-                <Settings size={18} />
-                <span>Profile Settings</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleLogout}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  padding: '0.625rem 0.875rem',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  color: '#dc2626',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  marginTop: '0.5rem',
-                  borderTop: '1px solid #f4f4f5',
-                  borderLeft: 'none',
-                  borderRight: 'none',
-                  borderBottom: 'none',
-                  backgroundColor: 'transparent',
-                  width: '100%',
-                }}
-              >
-                <LogOut size={18} />
-                <span>Logout</span>
-              </button>
-            </div>
-          </aside>
+          {/* Reusable Left Sidebar */}
+          <AccountSidebar activeTab={activeTab} onTabChange={handleTabChange} />
 
           {/* Right Main Content */}
           <main style={{ minWidth: 0 }}>
@@ -389,12 +192,23 @@ export const ProfilePage = () => {
                       }}
                       className="stats-grid"
                     >
-                      <div
+                      <button
+                        type="button"
+                        onClick={() => handleTabChange('orders')}
                         style={{
                           backgroundColor: '#ffffff',
                           border: '1px solid #e5e7eb',
                           borderRadius: '12px',
                           padding: '1.5rem',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          transition: 'border-color 150ms ease, box-shadow 150ms ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = '#000000';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = '#e5e7eb';
                         }}
                       >
                         <div style={{ fontSize: '0.8125rem', color: '#71717a', fontWeight: 500 }}>
@@ -410,14 +224,24 @@ export const ProfilePage = () => {
                         >
                           {orders.length}
                         </div>
-                      </div>
+                      </button>
 
-                      <div
+                      <Link
+                        to="/wishlist"
                         style={{
                           backgroundColor: '#ffffff',
                           border: '1px solid #e5e7eb',
                           borderRadius: '12px',
                           padding: '1.5rem',
+                          textDecoration: 'none',
+                          display: 'block',
+                          transition: 'border-color 150ms ease, box-shadow 150ms ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = '#000000';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = '#e5e7eb';
                         }}
                       >
                         <div style={{ fontSize: '0.8125rem', color: '#71717a', fontWeight: 500 }}>
@@ -433,14 +257,25 @@ export const ProfilePage = () => {
                         >
                           {wishlistCount}
                         </div>
-                      </div>
+                      </Link>
 
-                      <div
+                      <button
+                        type="button"
+                        onClick={() => handleTabChange('addresses')}
                         style={{
                           backgroundColor: '#ffffff',
                           border: '1px solid #e5e7eb',
                           borderRadius: '12px',
                           padding: '1.5rem',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          transition: 'border-color 150ms ease, box-shadow 150ms ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = '#000000';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = '#e5e7eb';
                         }}
                       >
                         <div style={{ fontSize: '0.8125rem', color: '#71717a', fontWeight: 500 }}>
@@ -456,7 +291,7 @@ export const ProfilePage = () => {
                         >
                           {savedAddresses.length}
                         </div>
-                      </div>
+                      </button>
                     </div>
 
                     {/* Recent Orders Section */}
@@ -480,17 +315,21 @@ export const ProfilePage = () => {
                         <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#000000' }}>
                           Recent Orders
                         </h2>
-                        <Link
-                          to="/orders"
+                        <button
+                          type="button"
+                          onClick={() => handleTabChange('orders')}
                           style={{
                             fontSize: '0.875rem',
                             fontWeight: 600,
                             color: '#000000',
-                            textDecoration: 'none',
+                            backgroundColor: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: 0,
                           }}
                         >
                           View All →
-                        </Link>
+                        </button>
                       </div>
 
                       {recentOrders.length > 0 ? (
@@ -522,7 +361,7 @@ export const ProfilePage = () => {
                                     : 'Recent'}
                                 </div>
                                 <div style={{ fontWeight: 700 }}>
-                                  ${Number(order.total_price || 0).toFixed(2)}
+                                  ₹{Number(order.total_price || 0).toFixed(2)}
                                 </div>
                                 <div>
                                   <span
@@ -574,6 +413,150 @@ export const ProfilePage = () => {
                         </div>
                       )}
                     </div>
+                  </div>
+                )}
+
+                {/* TAB: MY ORDERS */}
+                {activeTab === 'orders' && (
+                  <div>
+                    <div style={{ marginBottom: '2rem' }}>
+                      <h1
+                        style={{
+                          fontSize: '1.75rem',
+                          fontWeight: 800,
+                          color: '#000000',
+                          letterSpacing: '-0.025em',
+                        }}
+                      >
+                        My Order History
+                      </h1>
+                      <p style={{ color: '#71717a', fontSize: '0.9375rem', marginTop: '0.25rem' }}>
+                        Track, manage, and view receipts for all your placed orders.
+                      </p>
+                    </div>
+
+                    {orders.length === 0 ? (
+                      <div style={{ padding: '2rem 0' }}>
+                        <EmptyState
+                          icon={ShoppingBag}
+                          title="No orders placed yet"
+                          description="When you place orders, they will show up here with live status tracking."
+                          actionText="Browse Catalog"
+                          actionLink="/products"
+                        />
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        {orders.map((order) => {
+                          const itemCount =
+                            order.items?.reduce((sum, item) => sum + item.quantity, 0) ||
+                            order.items?.length ||
+                            0;
+                          const isCancellable =
+                            order.status === 'PENDING' &&
+                            order.payment?.payment_status !== 'SUCCESS' &&
+                            order.payment_status !== 'SUCCESS';
+
+                          return (
+                            <div
+                              key={order.id}
+                              style={{
+                                padding: '1.5rem',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '1rem',
+                                backgroundColor: '#ffffff',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '12px',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  flexWrap: 'wrap',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  gap: '1rem',
+                                  borderBottom: '1px solid #f4f4f5',
+                                  paddingBottom: '1rem',
+                                }}
+                              >
+                                <div>
+                                  <div style={{ fontWeight: 700, fontSize: '1.125rem' }}>
+                                    Order #{order.id}
+                                  </div>
+                                  <div style={{ fontSize: '0.8125rem', color: '#71717a' }}>
+                                    Placed on{' '}
+                                    {order.created_at
+                                      ? new Date(order.created_at).toLocaleDateString()
+                                      : 'Recent'}
+                                  </div>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                  <OrderStatusBadge status={order.status} />
+                                  <span style={{ fontWeight: 700, fontSize: '1.125rem' }}>
+                                    ₹{Number(order.total_price || 0).toFixed(2)}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Items & action row */}
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  flexWrap: 'wrap',
+                                  gap: '1rem',
+                                }}
+                              >
+                                <div style={{ fontSize: '0.875rem', color: '#52525b' }}>
+                                  Contains <strong>{itemCount}</strong> items &bull; Payment:{' '}
+                                  <strong>
+                                    {order.payment_method ||
+                                      order.payment?.payment_method ||
+                                      'Unpaid / Pending'}
+                                  </strong>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                  {isCancellable && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCancelOrder(order.id)}
+                                      className="btn btn-outline-danger btn-sm"
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.25rem',
+                                      }}
+                                    >
+                                      <Ban size={14} />
+                                      <span>Cancel Order</span>
+                                    </button>
+                                  )}
+
+                                  <Link
+                                    to={`/orders/${order.id}`}
+                                    className="btn btn-secondary btn-sm"
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '0.25rem',
+                                      textDecoration: 'none',
+                                    }}
+                                  >
+                                    <span>View Details</span>
+                                    <ChevronRight size={14} />
+                                  </Link>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -700,8 +683,17 @@ export const ProfilePage = () => {
                         <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#000000' }}>
                           No Saved Addresses
                         </h3>
-                        <p style={{ color: '#71717a', fontSize: '0.875rem', marginTop: '0.5rem', maxWidth: '420px', margin: '0.5rem auto 1.5rem auto' }}>
-                          Delivery addresses entered during checkout are automatically saved here for quick reference and future deliveries.
+                        <p
+                          style={{
+                            color: '#71717a',
+                            fontSize: '0.875rem',
+                            marginTop: '0.5rem',
+                            maxWidth: '420px',
+                            margin: '0.5rem auto 1.5rem auto',
+                          }}
+                        >
+                          Delivery addresses entered during checkout are automatically saved here for
+                          quick reference and future deliveries.
                         </p>
                         <Link
                           to="/products"
@@ -744,7 +736,7 @@ export const ProfilePage = () => {
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                      {/* Personal Information */}
+                      {/* Personal Information (Account Role removed as requested) */}
                       <div
                         style={{
                           backgroundColor: '#ffffff',
@@ -824,7 +816,7 @@ export const ProfilePage = () => {
                             </div>
                           </div>
 
-                          <div>
+                          <div style={{ gridColumn: 'span 2' }}>
                             <label
                               style={{
                                 display: 'block',
@@ -847,33 +839,6 @@ export const ProfilePage = () => {
                               }}
                             >
                               {user?.phone || 'Not provided'}
-                            </div>
-                          </div>
-
-                          <div>
-                            <label
-                              style={{
-                                display: 'block',
-                                fontSize: '0.8125rem',
-                                fontWeight: 600,
-                                color: '#71717a',
-                                marginBottom: '0.375rem',
-                              }}
-                            >
-                              Account Role
-                            </label>
-                            <div
-                              style={{
-                                padding: '0.75rem 1rem',
-                                backgroundColor: '#f4f4f5',
-                                borderRadius: '6px',
-                                fontSize: '0.9375rem',
-                                color: '#18181b',
-                                fontWeight: 600,
-                                textTransform: 'capitalize',
-                              }}
-                            >
-                              {user?.user_type === 'owner' ? 'Store Administrator' : 'Customer'}
                             </div>
                           </div>
                         </div>
@@ -963,6 +928,9 @@ export const ProfilePage = () => {
           }
           .profile-form-grid {
             grid-template-columns: 1fr !important;
+          }
+          .profile-form-grid > div {
+            grid-column: span 1 !important;
           }
         }
       `}</style>
