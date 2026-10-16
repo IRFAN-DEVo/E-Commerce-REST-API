@@ -30,11 +30,11 @@ export const ProfilePage = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { wishlistItems, removeFromWishlist } = useWishlist();
-  const { addItem } = useCart();
+  const { cartItems, totalItems, totalPrice, updateItem, removeItem, addItem } = useCart();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const tabFromUrl = searchParams.get('tab');
-  const validTabs = ['dashboard', 'orders', 'addresses', 'wishlist', 'settings'];
+  const validTabs = ['dashboard', 'orders', 'addresses', 'wishlist', 'cart', 'settings'];
   const [activeTab, setActiveTab] = useState(
     validTabs.includes(tabFromUrl) ? tabFromUrl : 'dashboard'
   );
@@ -324,7 +324,7 @@ export const ProfilePage = () => {
 
                         <button
                           type="button"
-                          onClick={() => handleTabChange('addresses')}
+                          onClick={() => handleTabChange('cart')}
                           style={{
                             backgroundColor: '#ffffff',
                             border: '1px solid #e5e7eb',
@@ -342,7 +342,7 @@ export const ProfilePage = () => {
                           }}
                         >
                           <div style={{ fontSize: '0.8125rem', color: '#71717a', fontWeight: 500 }}>
-                            Saved Addresses
+                            Cart Items
                           </div>
                           <div
                             style={{
@@ -352,7 +352,7 @@ export const ProfilePage = () => {
                               marginTop: '0.5rem',
                             }}
                           >
-                            {savedAddresses.length}
+                            {totalItems}
                           </div>
                         </button>
                       </div>
@@ -817,6 +817,310 @@ export const ProfilePage = () => {
                   </AnimatedContent>
                 )}
 
+                {/* TAB: CART */}
+                {activeTab === 'cart' && (
+                  <AnimatedContent
+                    key="tab-cart"
+                    distance={35}
+                    direction="vertical"
+                    duration={0.65}
+                    ease="power3.out"
+                    initialOpacity={0}
+                    animateOpacity
+                    scale={0.99}
+                  >
+                    <div>
+                      <div style={{ marginBottom: '2rem' }}>
+                        <h1
+                          style={{
+                            fontSize: '1.75rem',
+                            fontWeight: 800,
+                            color: '#000000',
+                            letterSpacing: '-0.025em',
+                          }}
+                        >
+                          Shopping Cart ({totalItems})
+                        </h1>
+                        <p style={{ color: '#71717a', fontSize: '0.9375rem', marginTop: '0.25rem' }}>
+                          Review your items and proceed to checkout.
+                        </p>
+                      </div>
+
+                      {cartItems.length === 0 ? (
+                        <div style={{ padding: '2rem 0' }}>
+                          <EmptyState
+                            icon={ShoppingBag}
+                            title="Your shopping cart is empty"
+                            description="Looks like you haven't added any items to your bag yet."
+                            actionText="Start Shopping"
+                            actionLink="/products"
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: '1.7fr 1fr',
+                            gap: '2.5rem',
+                            alignItems: 'start',
+                          }}
+                          className="profile-cart-grid"
+                        >
+                          {/* Cart items list */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            {cartItems.map((item) => {
+                              const product = item.product || {};
+                              const itemPrice = item.price || product.price || 0;
+                              const itemSubtotal =
+                                item.sub_total || Number(itemPrice) * item.quantity;
+                              return (
+                                <div
+                                  key={item.id}
+                                  style={{
+                                    display: 'flex',
+                                    gap: '1rem',
+                                    padding: '1.25rem',
+                                    backgroundColor: '#ffffff',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '12px',
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      width: '72px',
+                                      height: '72px',
+                                      borderRadius: '8px',
+                                      backgroundColor: '#f4f4f5',
+                                      overflow: 'hidden',
+                                      flexShrink: 0,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                    }}
+                                  >
+                                    {product.image ? (
+                                      <img
+                                        src={product.image}
+                                        alt={product.name}
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                      />
+                                    ) : (
+                                      <ShoppingBag size={20} style={{ color: '#a1a1aa' }} />
+                                    )}
+                                  </div>
+
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <Link
+                                      to={`/products/${product.id || item.product_id}`}
+                                      style={{
+                                        fontWeight: 600,
+                                        fontSize: '0.9375rem',
+                                        color: '#000000',
+                                        textDecoration: 'none',
+                                        display: 'block',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                      }}
+                                    >
+                                      {product.name || `Product #${item.product_id}`}
+                                    </Link>
+                                    <div
+                                      style={{
+                                        fontSize: '0.8125rem',
+                                        color: '#71717a',
+                                        marginTop: '0.25rem',
+                                      }}
+                                    >
+                                      Unit Price: ₹{Number(itemPrice).toFixed(2)}
+                                    </div>
+
+                                    <div
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        marginTop: '0.75rem',
+                                      }}
+                                    >
+                                      {/* Quantity stepper */}
+                                      <div
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          border: '1px solid #e5e7eb',
+                                          borderRadius: '6px',
+                                          backgroundColor: '#ffffff',
+                                        }}
+                                      >
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            updateItem(item.id, Math.max(1, item.quantity - 1))
+                                          }
+                                          disabled={item.quantity <= 1}
+                                          style={{
+                                            padding: '0.25rem 0.6rem',
+                                            border: 'none',
+                                            background: 'transparent',
+                                            cursor: item.quantity <= 1 ? 'not-allowed' : 'pointer',
+                                            color: item.quantity <= 1 ? '#d4d4d8' : '#000000',
+                                            fontWeight: 700,
+                                          }}
+                                        >
+                                          -
+                                        </button>
+                                        <span
+                                          style={{
+                                            padding: '0.25rem 0.5rem',
+                                            fontSize: '0.875rem',
+                                            fontWeight: 600,
+                                          }}
+                                        >
+                                          {item.quantity}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => updateItem(item.id, item.quantity + 1)}
+                                          style={{
+                                            padding: '0.25rem 0.6rem',
+                                            border: 'none',
+                                            background: 'transparent',
+                                            cursor: 'pointer',
+                                            fontWeight: 700,
+                                            color: '#000000',
+                                          }}
+                                        >
+                                          +
+                                        </button>
+                                      </div>
+
+                                      <div
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '1rem',
+                                        }}
+                                      >
+                                        <span
+                                          style={{
+                                            fontWeight: 700,
+                                            fontSize: '0.9375rem',
+                                            color: '#000000',
+                                          }}
+                                        >
+                                          ₹{Number(itemSubtotal).toFixed(2)}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => removeItem(item.id)}
+                                          style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: '#dc2626',
+                                            cursor: 'pointer',
+                                            padding: '0.25rem',
+                                          }}
+                                          title="Remove from cart"
+                                        >
+                                          <Trash2 size={16} />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Order Summary */}
+                          <div
+                            style={{
+                              backgroundColor: '#ffffff',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '12px',
+                              padding: '1.5rem',
+                            }}
+                          >
+                            <h2
+                              style={{
+                                fontSize: '1.125rem',
+                                fontWeight: 700,
+                                color: '#000000',
+                                marginBottom: '1.25rem',
+                              }}
+                            >
+                              Order Summary
+                            </h2>
+                            <div
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.75rem',
+                                fontSize: '0.875rem',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  color: '#71717a',
+                                }}
+                              >
+                                <span>Subtotal</span>
+                                <span style={{ fontWeight: 600, color: '#000000' }}>
+                                  ₹{Number(totalPrice).toFixed(2)}
+                                </span>
+                              </div>
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  color: '#71717a',
+                                }}
+                              >
+                                <span>Estimated Shipping</span>
+                                <span style={{ color: '#16a34a', fontWeight: 600 }}>Free</span>
+                              </div>
+                              <div
+                                style={{
+                                  borderTop: '1px solid #f4f4f5',
+                                  paddingTop: '0.75rem',
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  fontSize: '1rem',
+                                  fontWeight: 700,
+                                  color: '#000000',
+                                }}
+                              >
+                                <span>Total</span>
+                                <span>₹{Number(totalPrice).toFixed(2)}</span>
+                              </div>
+                            </div>
+
+                            <Link
+                              to="/checkout"
+                              className="btn btn-primary"
+                              style={{
+                                width: '100%',
+                                marginTop: '1.5rem',
+                                padding: '0.75rem 1rem',
+                                borderRadius: '8px',
+                                fontWeight: 600,
+                                textAlign: 'center',
+                                textDecoration: 'none',
+                                display: 'block',
+                              }}
+                            >
+                              Proceed to Checkout →
+                            </Link>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </AnimatedContent>
+                )}
+
                 {/* TAB: ADDRESSES */}
                 {activeTab === 'addresses' && (
                   <AnimatedContent
@@ -1210,6 +1514,9 @@ export const ProfilePage = () => {
           }
           .profile-form-grid > div {
             grid-column: span 1 !important;
+          }
+          .profile-cart-grid {
+            grid-template-columns: 1fr !important;
           }
         }
       `}</style>

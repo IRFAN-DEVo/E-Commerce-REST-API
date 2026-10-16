@@ -1,18 +1,22 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Package,
   MapPin,
   Heart,
+  ShoppingCart,
   Settings,
   LogOut,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { CartContext } from '../../context/CartContext';
 import { getUserDisplayName, getUserInitial } from '../../utils/user';
 
 export const AccountSidebar = ({ activeTab = 'dashboard', onTabChange }) => {
   const { user, logout } = useAuth();
+  const cartContext = useContext(CartContext);
+  const totalItems = cartContext?.totalItems || 0;
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -25,6 +29,7 @@ export const AccountSidebar = ({ activeTab = 'dashboard', onTabChange }) => {
     { id: 'orders', label: 'My Orders', icon: Package, path: '/profile?tab=orders' },
     { id: 'addresses', label: 'Addresses', icon: MapPin, path: '/profile?tab=addresses' },
     { id: 'wishlist', label: 'Wishlist', icon: Heart, path: '/profile?tab=wishlist' },
+    { id: 'cart', label: 'Cart', icon: ShoppingCart, path: '/profile?tab=cart', badge: totalItems },
     { id: 'settings', label: 'Profile Settings', icon: Settings, path: '/profile?tab=settings' },
   ];
 
@@ -123,6 +128,22 @@ export const AccountSidebar = ({ activeTab = 'dashboard', onTabChange }) => {
               >
                 <Icon size={18} />
                 <span>{item.label}</span>
+                {Boolean(item.badge) && item.badge > 0 && (
+                  <span
+                    style={{
+                      marginLeft: 'auto',
+                      backgroundColor: isActive ? '#27272a' : '#f4f4f5',
+                      color: isActive ? '#ffffff' : '#18181b',
+                      fontSize: '0.6875rem',
+                      fontWeight: 700,
+                      padding: '0.1rem 0.45rem',
+                      borderRadius: '9999px',
+                      border: isActive ? '1px solid #3f3f46' : '1px solid #e5e7eb',
+                    }}
+                  >
+                    {item.badge}
+                  </span>
+                )}
               </button>
             );
           }
@@ -147,6 +168,22 @@ export const AccountSidebar = ({ activeTab = 'dashboard', onTabChange }) => {
             >
               <Icon size={18} />
               <span>{item.label}</span>
+              {Boolean(item.badge) && item.badge > 0 && (
+                <span
+                  style={{
+                    marginLeft: 'auto',
+                    backgroundColor: isActive ? '#27272a' : '#f4f4f5',
+                    color: isActive ? '#ffffff' : '#18181b',
+                    fontSize: '0.6875rem',
+                    fontWeight: 700,
+                    padding: '0.1rem 0.45rem',
+                    borderRadius: '9999px',
+                    border: isActive ? '1px solid #3f3f46' : '1px solid #e5e7eb',
+                  }}
+                >
+                  {item.badge}
+                </span>
+              )}
             </Link>
           );
         })}
