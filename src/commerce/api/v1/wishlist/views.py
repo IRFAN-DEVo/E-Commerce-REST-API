@@ -52,7 +52,8 @@ class WishlistListView(generics.ListAPIView):
         return (
             Wishlist.objects
             .filter(user=self.request.user)
-            .select_related("product")
+            .select_related("product__category", "product__brand")
+            .prefetch_related("product__images")
             .order_by("-created_at")
         )
 

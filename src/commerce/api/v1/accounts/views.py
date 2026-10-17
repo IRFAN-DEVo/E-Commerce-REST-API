@@ -249,7 +249,7 @@ class AdminCustomerListView(generics.ListAPIView):
     serializer_class = UserProfileSerializer
 
     def get_queryset(self):
-        queryset = User.objects.all().order_by("-date_joined")
+        queryset = User.objects.filter(user_type="customer").order_by("-date_joined")
         search_query = self.request.query_params.get("search", None)
         if search_query:
             queryset = queryset.filter(

@@ -3,12 +3,10 @@ import { useParams, Link } from 'react-router-dom';
 import { ShoppingCart, Heart, ShieldCheck, Truck, RotateCcw, MessageSquarePlus, ChevronRight } from 'lucide-react';
 import { productsApi } from '../api/products';
 import { reviewsApi } from '../api/reviews';
-import { wishlistApi } from '../api/wishlist';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { StockBadge } from '../components/common/Badge';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { StarRating } from '../components/common/StarRating';
 

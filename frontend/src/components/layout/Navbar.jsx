@@ -24,7 +24,8 @@ export const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
-  // Fetch unread notifications count if logged in
+  // Fetch unread notifications count if logged in (avoid firing on every arbitrary route)
+  const isNotificationsPage = location.pathname === '/notifications';
   useEffect(() => {
     if (isAuthenticated) {
       notificationsApi
@@ -38,7 +39,7 @@ export const Navbar = () => {
     } else {
       setUnreadNotifications(0);
     }
-  }, [isAuthenticated, location.pathname]);
+  }, [isAuthenticated, isNotificationsPage]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();

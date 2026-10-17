@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
-  Package,
   MapPin,
   Heart,
   ChevronRight,
@@ -27,7 +26,6 @@ import { AnimatedContent } from '../components/common/AnimatedContent';
 
 export const ProfilePage = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const { showToast } = useToast();
   const { wishlistItems, removeFromWishlist } = useWishlist();
   const { cartItems, totalItems, totalPrice, updateItem, removeItem, addItem } = useCart();

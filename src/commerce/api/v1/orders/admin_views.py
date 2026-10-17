@@ -35,6 +35,7 @@ class AdminOrderListView(APIView):
 
 
     def get(self, request):
+        status_param = request.query_params.get("status")
 
         orders = (
             Order.objects
@@ -50,6 +51,9 @@ class AdminOrderListView(APIView):
                 "-created_at"
             )
         )
+
+        if status_param:
+            orders = orders.filter(status=status_param)
 
 
         serializer = OrderSerializer(
@@ -186,6 +190,12 @@ class UpdateOrderStatusView(APIView):
                 if payment and payment.payment_status == "PENDING":
                     payment.payment_status = "FAILED"
                     payment.save(update_fields=["payment_status"])
+
+        elif new_status == "DELIVERED":
+            if payment and payment.payment_method == "COD" and payment.payment_status == "PENDING":
+                payment.payment_status = "SUCCESS"
+                payment.paid_at = timezone.now()
+                payment.save(update_fields=["payment_status", "paid_at"])
 
         serializer.save()
 

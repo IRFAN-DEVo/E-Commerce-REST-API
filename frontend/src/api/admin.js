@@ -1,4 +1,5 @@
 import apiClient from './client';
+import { productsApi } from './products';
 
 export const adminApi = {
   async getDashboard() {
@@ -89,33 +90,35 @@ export const adminApi = {
 
   // Categories
   async getCategories() {
-    const response = await apiClient.get('/products/categories/');
-    return response.data;
+    return productsApi.getCategories();
   },
 
   async createCategory(data) {
     const response = await apiClient.post('/products/categories/create/', data);
+    productsApi.invalidateCategories();
     return response.data;
   },
 
   async deleteCategory(id) {
     const response = await apiClient.delete(`/products/categories/${id}/delete/`);
+    productsApi.invalidateCategories();
     return response.data;
   },
 
   // Brands
   async getBrands() {
-    const response = await apiClient.get('/products/brands/');
-    return response.data;
+    return productsApi.getBrands();
   },
 
   async createBrand(data) {
     const response = await apiClient.post('/products/brands/create/', data);
+    productsApi.invalidateBrands();
     return response.data;
   },
 
   async deleteBrand(id) {
     const response = await apiClient.delete(`/products/brands/${id}/delete/`);
+    productsApi.invalidateBrands();
     return response.data;
   },
 

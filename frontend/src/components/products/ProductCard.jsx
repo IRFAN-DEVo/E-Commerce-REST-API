@@ -1,15 +1,14 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { ShoppingCart, Heart } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { wishlistApi } from '../../api/wishlist';
 import { useWishlist } from '../../context/WishlistContext';
 import { StockBadge } from '../common/Badge';
 import { StarRating } from '../common/StarRating';
 
-export const ProductCard = ({ product, inWishlist = false, onWishlistToggle }) => {
+export const ProductCard = memo(({ product, inWishlist = false, onWishlistToggle }) => {
   const { addItem } = useCart();
   const { isAuthenticated } = useAuth();
   const { showToast } = useToast();
@@ -252,5 +251,5 @@ export const ProductCard = ({ product, inWishlist = false, onWishlistToggle }) =
       </div>
     </div>
   );
-};
+});
 export default ProductCard;

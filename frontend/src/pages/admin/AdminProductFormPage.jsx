@@ -4,10 +4,6 @@ import {
   ArrowLeft,
   Upload,
   X,
-  Package,
-  Image as ImageIcon,
-  AlertCircle,
-  Check,
   Trash2,
   Plus,
 } from 'lucide-react';
@@ -39,7 +35,6 @@ export const AdminProductFormPage = () => {
   const [price, setPrice] = useState('');
   const [discountPrice, setDiscountPrice] = useState('');
   const [stock, setStock] = useState('0');
-  const [stockStatus, setStockStatus] = useState('IN_STOCK');
   const [categoryId, setCategoryId] = useState('');
   const [brandId, setBrandId] = useState('');
   const [isAvailable, setIsAvailable] = useState(true);

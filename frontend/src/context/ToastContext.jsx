@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
 
 const ToastContext = createContext(null);
@@ -19,8 +19,10 @@ export const ToastProvider = ({ children }) => {
     }, 4500);
   }, [removeToast]);
 
+  const value = useMemo(() => ({ showToast, removeToast }), [showToast, removeToast]);
+
   return (
-    <ToastContext.Provider value={{ showToast, removeToast }}>
+    <ToastContext.Provider value={value}>
       {children}
       <div className="toast-container" aria-live="polite">
         {toasts.map((toast) => {

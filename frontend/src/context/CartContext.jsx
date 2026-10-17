@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { cartApi } from '../api/cart';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
@@ -96,18 +96,21 @@ export const CartProvider = ({ children }) => {
     setCart(null);
   }, []);
 
-  const value = {
-    cart,
-    cartItems: cart?.cart_items || [],
-    totalItems: cart?.total_items || 0,
-    totalPrice: cart?.total_price || '0.00',
-    isLoading,
-    fetchCart,
-    addItem,
-    updateItem,
-    removeItem,
-    clearCartState,
-  };
+  const value = useMemo(
+    () => ({
+      cart,
+      cartItems: cart?.cart_items || [],
+      totalItems: cart?.total_items || 0,
+      totalPrice: cart?.total_price || '0.00',
+      isLoading,
+      fetchCart,
+      addItem,
+      updateItem,
+      removeItem,
+      clearCartState,
+    }),
+    [cart, isLoading, fetchCart, addItem, updateItem, removeItem, clearCartState]
+  );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 };

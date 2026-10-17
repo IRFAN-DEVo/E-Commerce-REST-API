@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { authApi } from '../api/auth';
 
 const AuthContext = createContext(null);
@@ -87,16 +87,19 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const value = {
-    user,
-    token,
-    isAuthenticated: !!token && !!user,
-    isOwner: user?.user_type === 'owner',
-    isLoading,
-    login,
-    register,
-    logout,
-  };
+  const value = useMemo(
+    () => ({
+      user,
+      token,
+      isAuthenticated: !!token && !!user,
+      isOwner: user?.user_type === 'owner',
+      isLoading,
+      login,
+      register,
+      logout,
+    }),
+    [user, token, isLoading, login, register, logout]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

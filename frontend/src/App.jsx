@@ -5,10 +5,12 @@ import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
 import { Layout } from './components/layout/Layout';
-import { AdminLayout } from './components/layout/AdminLayout';
 import { ProtectedRoute, AdminRoute } from './components/common/ProtectedRoute';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 import { ScrollToTop } from './components/common/ScrollToTop';
+
+// Lazy load AdminLayout so public storefront bundles don't download admin shell
+const AdminLayout = lazy(() => import('./components/layout/AdminLayout').then((m) => ({ default: m.AdminLayout })));
 
 // Route Lazy Loading for optimized bundle performance
 const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })));

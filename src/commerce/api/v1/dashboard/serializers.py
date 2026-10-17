@@ -60,13 +60,18 @@ class DashboardSerializer(serializers.Serializer):
     statistics = DashboardStatisticsSerializer()
     coupons = DashboardCouponsSerializer()
 
+    # Growth indicators
+    growth = serializers.DictField(read_only=True, required=False)
+
     # Dynamic chart data
     chart_7days = serializers.DictField(read_only=True)
+    chart_30days = serializers.DictField(read_only=True, required=False)
     chart_monthly = serializers.DictField(read_only=True)
     chart_orders = serializers.DictField(read_only=True)
     chart_payments = serializers.DictField(read_only=True)
     
-    # We also add top_products and recent_orders to this endpoint as they were in the view context
+    # Activity, top products and recent orders
+    recent_activity = serializers.ListField(child=serializers.DictField(), read_only=True, required=False)
     top_products = serializers.ListField(child=serializers.DictField(), read_only=True)
     recent_orders = serializers.ListField(child=serializers.DictField(), read_only=True)
 
@@ -80,6 +85,8 @@ class FluctuationSerializer(serializers.Serializer):
 
     # Charts for fluctuation
     chart_7days = serializers.DictField(read_only=True)
+    chart_30days = serializers.DictField(read_only=True, required=False)
     chart_monthly = serializers.DictField(read_only=True)
     chart_orders = serializers.DictField(read_only=True)
     chart_payments = serializers.DictField(read_only=True)
+    recent_activity = serializers.ListField(child=serializers.DictField(), read_only=True, required=False)

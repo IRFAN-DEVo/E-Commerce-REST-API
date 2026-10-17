@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Package,
   Plus,
@@ -12,17 +12,13 @@ import {
   Trash2,
   Eye,
   AlertCircle,
-  CheckCircle2,
-  ChevronDown,
 } from 'lucide-react';
 import { adminApi } from '../../api/admin';
 import { useToast } from '../../context/ToastContext';
-import { StockBadge } from '../../components/common/Badge';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { Pagination } from '../../components/common/Pagination';
 
 export const AdminProductsPage = () => {
-  const navigate = useNavigate();
   const { showToast } = useToast();
 
   // Data states

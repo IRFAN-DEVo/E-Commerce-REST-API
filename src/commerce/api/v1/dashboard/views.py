@@ -42,20 +42,35 @@ class DashboardView(APIView):
 
         # Add chart data
         data['chart_7days'] = DashboardService.get_last7days_chart()
+        data['chart_30days'] = DashboardService.get_last30days_chart()
         data['chart_monthly'] = DashboardService.get_monthly_revenue_chart()
         data['chart_orders'] = DashboardService.get_order_status_chart()
         data['chart_payments'] = DashboardService.get_payment_status_chart()
 
-        # Add recent orders
-        recent_orders = Order.objects.select_related('user').order_by('-created_at')[:10]
+        # Add growth indicators
+        data['growth'] = DashboardService.get_growth_data()
+
+        # Add real recent activity stream
+        data['recent_activity'] = DashboardService.get_recent_activity()
+
+        # Add recent orders with customer and payment info
+        recent_orders = (
+            Order.objects
+            .select_related('user', 'payment')
+            .order_by('-created_at')[:8]
+        )
         data['recent_orders'] = [
             {
                 "id": o.id,
+                "order_number": f"#ORD{o.id:05d}",
                 "customer": o.user.get_full_name() or o.user.username,
                 "email": o.user.email,
                 "total": float(o.total_price),
                 "status": o.status,
-                "date": o.created_at.strftime("%b %d, %Y")
+                "payment_status": getattr(getattr(o, 'payment', None), 'payment_status', 'PENDING'),
+                "payment_method": getattr(getattr(o, 'payment', None), 'payment_method', 'COD'),
+                "date": o.created_at.strftime("%b %d, %Y"),
+                "created_at": o.created_at.isoformat(),
             }
             for o in recent_orders
         ]
@@ -116,9 +131,11 @@ class FluctuationView(APIView):
 
         # Add chart data for the fluctuation dashboard
         data['chart_7days'] = DashboardService.get_last7days_chart()
+        data['chart_30days'] = DashboardService.get_last30days_chart()
         data['chart_monthly'] = DashboardService.get_monthly_revenue_chart()
         data['chart_orders'] = DashboardService.get_order_status_chart()
         data['chart_payments'] = DashboardService.get_payment_status_chart()
+        data['recent_activity'] = DashboardService.get_recent_activity()
 
         serializer = FluctuationSerializer(instance=data)
 

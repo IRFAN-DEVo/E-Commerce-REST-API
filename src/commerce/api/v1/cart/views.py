@@ -39,18 +39,6 @@ class CartView(generics.RetrieveAPIView):
         401: OpenApiResponse(description="Authentication credentials were not provided.")
     }
 )
-
-@extend_schema(
-    tags=["Cart"],
-    summary="Add Item to Cart",
-    description="Adds a product to the authenticated user's cart. If the product already exists in the cart, its quantity is increased.",
-    request=CartItemSerializer,
-    responses={
-        201: CartItemSerializer,
-        400: OpenApiResponse(description="Invalid request or insufficient stock."),
-        401: OpenApiResponse(description="Authentication credentials were not provided.")
-    }
-)
 class AddCartItemView(generics.CreateAPIView):
     serializer_class = CartItemSerializer
     permission_classes = [IsAuthenticated]
