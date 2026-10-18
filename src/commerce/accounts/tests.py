@@ -337,3 +337,173 @@ class LogoutEndpointTests(TestCase):
         resp2 = self.client.post(self.url, {"refresh": str(self.refresh)}, format="json")
         self.assertEqual(resp2.status_code, status.HTTP_401_UNAUTHORIZED)
 
+
+# ---------------------------------------------------------------------------
+# VerifyOTPView Tests
+# ---------------------------------------------------------------------------
+@override_settings(
+    DEFAULT_THROTTLE_RATES={
+        "anon": None,
+        "user": None,
+        "forgot_password": None,
+        "verify_otp": None,
+    },
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+)
+class VerifyOTPViewTests(TestCase):
+    """Integration tests for the VerifyOTPView endpoint."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.url = reverse("verify-otp")
+        self.user = User.objects.create_user(
+            username="verifyuser",
+            email="verify@example.com",
+            password="VerifyPass123!",
+            first_name="Verify",
+        )
+        self.otp_record, self.plain_otp = PasswordResetOTP.create_otp(self.user)
+
+    def test_verify_otp_success_returns_reset_token(self):
+        """Valid OTP returns 200 and a cryptographic reset_token."""
+        resp = self.client.post(self.url, {"email": "verify@example.com", "otp": self.plain_otp})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertIn("reset_token", resp.data)
+        self.assertTrue(resp.data["reset_token"])
+        self.otp_record.refresh_from_db()
+        self.assertTrue(self.otp_record.is_verified)
+
+    def test_verify_otp_fails_with_wrong_code(self):
+        """Incorrect OTP returns 400 and increments attempt count."""
+        resp = self.client.post(self.url, {"email": "verify@example.com", "otp": "999999"})
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.otp_record.refresh_from_db()
+        self.assertEqual(self.otp_record.attempts, 1)
+
+    def test_verify_otp_fails_when_expired(self):
+        """Expired OTP returns 400."""
+        self.otp_record.expires_at = timezone.now() - timedelta(seconds=1)
+        self.otp_record.save(update_fields=["expires_at"])
+        resp = self.client.post(self.url, {"email": "verify@example.com", "otp": self.plain_otp})
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_verify_otp_fails_after_max_attempts(self):
+        """5 incorrect attempts permanently invalidate the OTP challenge."""
+        for _ in range(5):
+            self.client.post(self.url, {"email": "verify@example.com", "otp": "000000"})
+
+        # Now try with the correct OTP
+        resp = self.client.post(self.url, {"email": "verify@example.com", "otp": self.plain_otp})
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_verify_otp_cannot_be_reused(self):
+        """Once verified, calling verify-otp again with same code is rejected."""
+        resp1 = self.client.post(self.url, {"email": "verify@example.com", "otp": self.plain_otp})
+        self.assertEqual(resp1.status_code, status.HTTP_200_OK)
+
+        resp2 = self.client.post(self.url, {"email": "verify@example.com", "otp": self.plain_otp})
+        self.assertEqual(resp2.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_verify_otp_unknown_email(self):
+        """Attempting verification with unknown email returns 400."""
+        resp = self.client.post(self.url, {"email": "nobody@example.com", "otp": "123456"})
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+# ---------------------------------------------------------------------------
+# ResetPasswordWithTokenTests
+# ---------------------------------------------------------------------------
+@override_settings(
+    DEFAULT_THROTTLE_RATES={
+        "anon": None,
+        "user": None,
+        "forgot_password": None,
+        "verify_otp": None,
+    },
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+)
+class ResetPasswordWithTokenTests(TestCase):
+    """Integration tests for resetting password using a signed reset_token."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.verify_url = reverse("verify-otp")
+        self.reset_url = reverse("reset-password")
+        self.user = User.objects.create_user(
+            username="tokenuser",
+            email="tokenuser@example.com",
+            password="OldPass123!",
+            first_name="TokenUser",
+        )
+        self.otp_record, self.plain_otp = PasswordResetOTP.create_otp(self.user)
+        # Verify and obtain token
+        v_resp = self.client.post(
+            self.verify_url,
+            {"email": "tokenuser@example.com", "otp": self.plain_otp}
+        )
+        self.assertEqual(v_resp.status_code, status.HTTP_200_OK)
+        self.reset_token = v_resp.data["reset_token"]
+
+    def test_reset_with_valid_token_succeeds(self):
+        """A valid reset_token resets the user's password."""
+        payload = {
+            "reset_token": self.reset_token,
+            "password": "BrandNewSecret789!",
+            "confirm_password": "BrandNewSecret789!",
+        }
+        resp = self.client.post(self.reset_url, payload)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("BrandNewSecret789!"))
+        # All OTPs for the user should be cleared
+        self.assertEqual(PasswordResetOTP.objects.filter(user=self.user).count(), 0)
+
+    def test_token_cannot_be_reused(self):
+        """A reset_token cannot be used twice (single-use guarantee)."""
+        payload = {
+            "reset_token": self.reset_token,
+            "password": "BrandNewSecret789!",
+            "confirm_password": "BrandNewSecret789!",
+        }
+        resp1 = self.client.post(self.reset_url, payload)
+        self.assertEqual(resp1.status_code, status.HTTP_200_OK)
+
+        resp2 = self.client.post(self.reset_url, {
+            "reset_token": self.reset_token,
+            "password": "AnotherNewSecret000!",
+            "confirm_password": "AnotherNewSecret000!",
+        })
+        self.assertEqual(resp2.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_tampered_token_is_rejected(self):
+        """Altering characters in reset_token causes cryptographic signature verification to fail."""
+        tampered = self.reset_token[:-5] + "XXXXX"
+        payload = {
+            "reset_token": tampered,
+            "password": "BrandNewSecret789!",
+            "confirm_password": "BrandNewSecret789!",
+        }
+        resp = self.client.post(self.reset_url, payload)
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_password_confirmation_mismatch_with_token(self):
+        """Mismatched passwords return 400 even with a valid token."""
+        payload = {
+            "reset_token": self.reset_token,
+            "password": "BrandNewSecret789!",
+            "confirm_password": "MismatchSecret999!",
+        }
+        resp = self.client.post(self.reset_url, payload)
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_weak_password_with_token(self):
+        """Password failing validators returns 400."""
+        payload = {
+            "reset_token": self.reset_token,
+            "password": "123",
+            "confirm_password": "123",
+        }
+        resp = self.client.post(self.reset_url, payload)
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+

@@ -167,6 +167,7 @@ REST_FRAMEWORK = {
         "api-login": "10/minute",
         "api-register": "5/minute",
         "forgot_password": "5/hour",
+        "verify_otp": "20/minute",
     }
 }
 
@@ -276,3 +277,19 @@ if not DEBUG:
         if not _proxy_ssl_header.startswith("HTTP_"):
             _proxy_ssl_header = f"HTTP_{_proxy_ssl_header.upper().replace('-', '_')}"
         SECURE_PROXY_SSL_HEADER = (_proxy_ssl_header, "https")
+
+# ---------------------------------------------------------------------------
+# Email Configuration
+# ---------------------------------------------------------------------------
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend" if DEBUG else "django.core.mail.backends.smtp.EmailBackend",
+)
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "localhost")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", 587))
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True").lower() in ("true", "1", "yes")
+EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "False").lower() in ("true", "1", "yes")
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@djangomart.com")
+

@@ -111,20 +111,12 @@ class ForgotPasswordSerializer(serializers.Serializer):
         return value.lower().strip()
 
 
-class ResetPasswordSerializer(serializers.Serializer):
+class VerifyOTPSerializer(serializers.Serializer):
     email = serializers.EmailField()
     otp = serializers.CharField(
         min_length=6,
         max_length=6,
         write_only=True,
-    )
-    password = serializers.CharField(
-        write_only=True,
-        style={"input_type": "password"},
-    )
-    confirm_password = serializers.CharField(
-        write_only=True,
-        style={"input_type": "password"},
     )
 
     def validate_email(self, value):
@@ -137,7 +129,49 @@ class ResetPasswordSerializer(serializers.Serializer):
             )
         return value
 
+
+class ResetPasswordSerializer(serializers.Serializer):
+    reset_token = serializers.CharField(
+        required=False,
+        allow_blank=False,
+        write_only=True,
+    )
+    email = serializers.EmailField(
+        required=False,
+    )
+    otp = serializers.CharField(
+        min_length=6,
+        max_length=6,
+        required=False,
+        write_only=True,
+    )
+    password = serializers.CharField(
+        write_only=True,
+        style={"input_type": "password"},
+    )
+    confirm_password = serializers.CharField(
+        write_only=True,
+        style={"input_type": "password"},
+    )
+
+    def validate_email(self, value):
+        if value:
+            return value.lower().strip()
+        return value
+
+    def validate_otp(self, value):
+        if value and not value.isdigit():
+            raise serializers.ValidationError(
+                "OTP must contain only numbers."
+            )
+        return value
+
     def validate(self, attrs):
+        if not attrs.get("reset_token") and (not attrs.get("email") or not attrs.get("otp")):
+            raise serializers.ValidationError(
+                "Either reset_token or (email and otp) is required."
+            )
+
         if attrs["password"] != attrs["confirm_password"]:
             raise serializers.ValidationError(
                 {

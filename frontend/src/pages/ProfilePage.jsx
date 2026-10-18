@@ -1471,7 +1471,8 @@ export const ProfilePage = () => {
                             </div>
 
                             <Link
-                              to="/forgot-password"
+                              to="/reset-password"
+                              state={{ email: user?.email, autoSend: true }}
                               style={{
                                 fontSize: '0.8125rem',
                                 fontWeight: 600,

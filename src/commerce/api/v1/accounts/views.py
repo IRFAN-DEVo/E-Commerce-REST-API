@@ -14,10 +14,12 @@ from drf_spectacular.utils import (
 )
 from rest_framework import permissions
 
-from accounts.throttles import ForgotPasswordThrottle
+from accounts.throttles import ForgotPasswordThrottle, VerifyOTPThrottle
+from accounts.tokens import generate_reset_token, verify_reset_token
 from .serializers import (
     RegisterSerializer,
     ForgotPasswordSerializer,
+    VerifyOTPSerializer,
     ResetPasswordSerializer,
     EmailTokenObtainPairSerializer,
     UserProfileSerializer,
@@ -143,16 +145,83 @@ class ForgotPasswordView(APIView):
 
 
 @extend_schema(
+    summary="Verify OTP",
+    description="Validates a six-digit OTP and issues a short-lived, single-use password reset authorization token.",
+    request=VerifyOTPSerializer,
+    tags=["Authentication"],
+)
+class VerifyOTPView(APIView):
+    """
+    Dedicated OTP verification endpoint.
+    Validates challenge, enforces expiration and attempt limits,
+    and returns a short-lived reset authorization token.
+    """
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [VerifyOTPThrottle]
+
+    @transaction.atomic
+    def post(self, request):
+        serializer = VerifyOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data["email"]
+        otp = serializer.validated_data["otp"]
+
+        user = User.objects.filter(email__iexact=email.strip()).first()
+        if not user:
+            return Response(
+                {"detail": "Invalid OTP or email."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        otp_record = (
+            PasswordResetOTP.objects
+            .select_for_update()
+            .filter(user=user, is_verified=False)
+            .order_by("-created_at")
+            .first()
+        )
+
+        if otp_record is None:
+            return Response(
+                {"detail": "Invalid or expired OTP."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not otp_record.verify(otp):
+            if otp_record.attempts >= 5:
+                return Response(
+                    {"detail": "Maximum verification attempts exceeded. Please request a new OTP."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            return Response(
+                {"detail": "Invalid or expired OTP."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        reset_token = generate_reset_token(user, otp_record)
+
+        return Response(
+            {
+                "detail": "OTP verified successfully.",
+                "reset_token": reset_token,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+@extend_schema(
     summary="Reset Password",
-    description="Verifies the OTP and resets the user's password.",
+    description="Resets the user's password using the single-use reset authorization token or direct OTP verification.",
     request=ResetPasswordSerializer,
     tags=["Authentication"],
 )
 class ResetPasswordView(APIView):
     """
-    Verify the OTP and reset the user's password.
+    Confirm password reset.
+    Validates the single-use authorization token (or verified OTP), updates the password,
+    invalidates all pending OTP challenges, and blacklists all outstanding JWT tokens.
     """
-
     permission_classes = [permissions.AllowAny]
 
     @transaction.atomic
@@ -160,58 +229,49 @@ class ResetPasswordView(APIView):
         serializer = ResetPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        email = serializer.validated_data["email"]
-        otp = serializer.validated_data["otp"]
+        reset_token = serializer.validated_data.get("reset_token")
         password = serializer.validated_data["password"]
 
-        user = User.objects.filter(
-            email__iexact=email.strip()
-        ).first()
+        if reset_token:
+            try:
+                user, otp_record = verify_reset_token(reset_token)
+            except ValueError as e:
+                return Response(
+                    {"detail": str(e)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            email = serializer.validated_data.get("email")
+            otp = serializer.validated_data.get("otp")
 
-        if not user:
-            return Response(
-                {
-                    "detail": "Invalid OTP or email."
-                },
-                status=status.HTTP_400_BAD_REQUEST,
+            user = User.objects.filter(email__iexact=email.strip()).first()
+            if not user:
+                return Response(
+                    {"detail": "Invalid OTP or email."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            otp_record = (
+                PasswordResetOTP.objects
+                .select_for_update()
+                .filter(user=user, is_verified=False)
+                .order_by("-created_at")
+                .first()
             )
 
-        otp_record = (
-            PasswordResetOTP.objects
-            .select_for_update()
-            .filter(
-                user=user,
-                is_verified=False,
-            )
-            .order_by("-created_at")
-            .first()
-        )
-
-        if otp_record is None:
-            return Response(
-                {
-                    "detail": "Invalid OTP or email."
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if not otp_record.verify(otp):
-            return Response(
-                {
-                    "detail": "Invalid or expired OTP."
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            if otp_record is None or not otp_record.verify(otp):
+                return Response(
+                    {"detail": "Invalid or expired OTP."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         user.set_password(password)
         user.save(update_fields=["password"])
 
-        PasswordResetOTP.objects.filter(
-            user=user
-        ).delete()
+        # Delete all OTP records for this user (preventing reuse of token or OTP)
+        PasswordResetOTP.objects.filter(user=user).delete()
 
         # Invalidate all outstanding JWT refresh tokens for this user
-        # so that previously-issued tokens cannot be used after password reset.
         try:
             from rest_framework_simplejwt.token_blacklist.models import (
                 BlacklistedToken,
@@ -228,7 +288,7 @@ class ResetPasswordView(APIView):
 
         return Response(
             {
-                "detail": "Password reset successfully."
+                "detail": "Password reset successfully. Please sign in with your new password."
             },
             status=status.HTTP_200_OK,
         )
