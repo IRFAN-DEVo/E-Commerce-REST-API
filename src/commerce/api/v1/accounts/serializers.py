@@ -36,13 +36,12 @@ class RegisterSerializer(serializers.ModelSerializer):
         ]
 
     def validate_email(self, value):
-
-        if User.objects.filter(email=value).exists():
+        normalized = value.lower().strip()
+        if User.objects.filter(email__iexact=normalized, is_active=True).exists():
             raise serializers.ValidationError(
                 "Email already exists."
             )
-
-        return value
+        return normalized
 
     def validate(self, attrs):
         if attrs.get('password') != attrs.get('confirm_password'):
@@ -51,21 +50,58 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         import uuid
-        email = validated_data["email"]
-        # Generate a unique username
-        generated_username = f"user_{uuid.uuid4().hex[:15]}"
-        
-        name = validated_data.get("name", "")
+        email = validated_data["email"].lower().strip()
+        name = validated_data.get("name", "").strip()
 
+        # If an unverified/inactive account already exists with this email, update credentials
+        existing_user = User.objects.filter(email__iexact=email, is_active=False).first()
+        if existing_user:
+            existing_user.first_name = name
+            existing_user.phone = validated_data.get("phone", "")
+            existing_user.set_password(validated_data["password"])
+            existing_user.is_email_verified = False
+            existing_user.save()
+            return existing_user
+
+        generated_username = f"user_{uuid.uuid4().hex[:15]}"
         user = User.objects.create_user(
             username=generated_username,
             email=email,
             phone=validated_data.get("phone"),
             password=validated_data["password"],
             first_name=name,
+            is_active=False,
+            is_email_verified=False,
         )
 
         return user
+
+
+class VerifyEmailSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    otp = serializers.CharField(
+        min_length=6,
+        max_length=6,
+        required=True,
+        write_only=True,
+    )
+
+    def validate_email(self, value):
+        return value.lower().strip()
+
+    def validate_otp(self, value):
+        if not value.isdigit():
+            raise serializers.ValidationError(
+                "OTP must contain only digits."
+            )
+        return value
+
+
+class ResendVerificationOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+
+    def validate_email(self, value):
+        return value.lower().strip()
 
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -87,6 +123,15 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
         )
 
         if user is None:
+            try:
+                candidate = User.objects.get(email__iexact=email)
+                if candidate.check_password(password) and not candidate.is_active:
+                    raise serializers.ValidationError(
+                        "Please verify your email address before signing in."
+                    )
+            except User.DoesNotExist:
+                pass
+
             raise serializers.ValidationError(
                 "Invalid email or password."
             )

@@ -11,6 +11,16 @@ export const authApi = {
     return response.data;
   },
 
+  async verifyEmail(data) {
+    const response = await apiClient.post('/accounts/verify-email/', data);
+    return response.data;
+  },
+
+  async resendVerificationOtp(data) {
+    const response = await apiClient.post('/accounts/resend-verification-otp/', data);
+    return response.data;
+  },
+
   async logout(refreshToken) {
     try {
       if (refreshToken) {

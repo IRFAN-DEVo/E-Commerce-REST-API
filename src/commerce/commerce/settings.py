@@ -168,6 +168,7 @@ REST_FRAMEWORK = {
         "api-register": "5/minute",
         "forgot_password": "5/hour",
         "verify_otp": "20/minute",
+        "resend_verification": "5/minute",
     }
 }
 

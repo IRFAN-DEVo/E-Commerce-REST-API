@@ -43,8 +43,8 @@ export const RegisterPage = () => {
         confirm_password: formData.confirm_password,
       });
 
-      showToast('Account created successfully! Please sign in.', 'success');
-      navigate('/login');
+      showToast('Registration successful! Please verify your email.', 'success');
+      navigate('/verify-email', { state: { email: formData.email.trim() } });
     } catch (err) {
       const data = err.response?.data;
       let msg = 'Registration failed. Please check the form fields.';

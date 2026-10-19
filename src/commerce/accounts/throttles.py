@@ -32,3 +32,17 @@ class VerifyOTPThrottle(SimpleRateThrottle):
             "scope": self.scope,
             "ident": ident,
         }
+
+
+class ResendVerificationThrottle(SimpleRateThrottle):
+    """
+    Limits how often users can request a resend of their email verification OTP.
+    """
+    scope = "resend_verification"
+
+    def get_cache_key(self, request, view):
+        ident = self.get_ident(request)
+        return self.cache_format % {
+            "scope": self.scope,
+            "ident": ident,
+        }

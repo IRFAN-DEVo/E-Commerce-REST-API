@@ -12,6 +12,8 @@ from .views import (
 
 urlpatterns = [
     path('register/', views.SignupView.as_view(), name='user-create'),
+    path('verify-email/', views.VerifyEmailView.as_view(), name='verify-email'),
+    path('resend-verification-otp/', views.ResendVerificationOTPView.as_view(), name='resend-verification-otp'),
     path('login/', views.CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('forgot-password/', ForgotPasswordView.as_view(), name='forgot-password'),
