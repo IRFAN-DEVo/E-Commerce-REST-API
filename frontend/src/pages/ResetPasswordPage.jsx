@@ -3,11 +3,35 @@ import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { ShieldCheck, Lock, Mail, Key, ArrowLeft, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { authApi } from '../api/auth';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
 
 export const ResetPasswordPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { showToast } = useToast();
+
+  let isAuthenticated = false;
+  try {
+    const auth = useAuth();
+    isAuthenticated = Boolean(auth?.isAuthenticated);
+  } catch {
+    isAuthenticated = Boolean(localStorage.getItem('access_token'));
+  }
+
+  const requestedReturnTo = location.state?.returnTo;
+  const isFromProfile =
+    location.state?.from === 'profile' ||
+    requestedReturnTo === '/profile?tab=settings' ||
+    requestedReturnTo === '/profile' ||
+    (Boolean(location.state?.autoSend) && isAuthenticated);
+
+  const ALLOWED_RETURN_PATHS = ['/profile?tab=settings', '/profile', '/forgot-password', '/login'];
+
+  const backDestination = isFromProfile
+    ? '/profile?tab=settings'
+    : (ALLOWED_RETURN_PATHS.includes(requestedReturnTo) ? requestedReturnTo : '/login');
+
+  const backLabel = isFromProfile ? 'Back to Profile Settings' : 'Back to Sign In';
 
   const initialEmail = location.state?.email || '';
   const autoSend = Boolean(location.state?.autoSend);
@@ -403,7 +427,7 @@ export const ResetPasswordPage = () => {
         {/* Back Link */}
         <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
           <Link
-            to="/login"
+            to={backDestination}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -415,7 +439,7 @@ export const ResetPasswordPage = () => {
             }}
           >
             <ArrowLeft size={16} />
-            <span>Back to Sign In</span>
+            <span>{backLabel}</span>
           </Link>
         </div>
       </div>

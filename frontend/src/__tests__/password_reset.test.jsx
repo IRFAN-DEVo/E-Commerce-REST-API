@@ -21,6 +21,7 @@ const renderResetPasswordPage = (initialEntries = ['/reset-password']) => {
         <Routes>
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/login" element={<div>Login Page Mock</div>} />
+          <Route path="/profile" element={<div>Profile Page Mock</div>} />
         </Routes>
       </ToastProvider>
     </MemoryRouter>
@@ -213,5 +214,49 @@ describe('ResetPasswordPage Flow', () => {
       });
       expect(screen.getByText('Login Page Mock')).toBeInTheDocument();
     });
+  });
+
+  it('renders "Back to Profile Settings" and navigates to profile when entering from Profile Settings', async () => {
+    authApi.forgotPassword.mockResolvedValueOnce({
+      detail: 'If an account exists, an OTP has been sent.',
+    });
+
+    renderResetPasswordPage([
+      {
+        pathname: '/reset-password',
+        state: {
+          email: 'user@example.com',
+          autoSend: true,
+          from: 'profile',
+          returnTo: '/profile?tab=settings',
+        },
+      },
+    ]);
+
+    const backLink = screen.getByRole('link', { name: /Back to Profile Settings/i });
+    expect(backLink).toBeInTheDocument();
+    expect(backLink.getAttribute('href')).toBe('/profile?tab=settings');
+
+    fireEvent.click(backLink);
+
+    await waitFor(() => {
+      expect(screen.getByText('Profile Page Mock')).toBeInTheDocument();
+    });
+  });
+
+  it('renders "Back to Sign In" and navigates to login when entering from unauthenticated flow', () => {
+    renderResetPasswordPage([
+      {
+        pathname: '/reset-password',
+        state: { email: 'user@example.com' },
+      },
+    ]);
+
+    const backLink = screen.getByRole('link', { name: /Back to Sign In/i });
+    expect(backLink).toBeInTheDocument();
+    expect(backLink.getAttribute('href')).toBe('/login');
+
+    fireEvent.click(backLink);
+    expect(screen.getByText('Login Page Mock')).toBeInTheDocument();
   });
 });

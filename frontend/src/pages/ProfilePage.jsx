@@ -1472,7 +1472,12 @@ export const ProfilePage = () => {
 
                             <Link
                               to="/reset-password"
-                              state={{ email: user?.email, autoSend: true }}
+                              state={{
+                                email: user?.email,
+                                autoSend: true,
+                                from: 'profile',
+                                returnTo: '/profile?tab=settings',
+                              }}
                               style={{
                                 fontSize: '0.8125rem',
                                 fontWeight: 600,
