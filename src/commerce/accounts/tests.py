@@ -764,4 +764,64 @@ class RegistrationAndEmailVerificationTests(TestCase):
         self.assertIn("email", resp.data)
 
 
+# ---------------------------------------------------------------------------
+# Email Configuration & Utility Tests
+# ---------------------------------------------------------------------------
+class EmailConfigurationTests(TestCase):
+    """Verifies email settings resolution and OTP email dispatching."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="mailtestuser",
+            email="mailtest@example.com",
+            password="StrongPassword123!",
+            first_name="MailTester",
+        )
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        DEFAULT_FROM_EMAIL="noreply@djangomart.com",
+    )
+    def test_send_password_reset_email_dispatches_multipart(self):
+        from django.core import mail
+        from accounts.email import send_password_reset_email
+
+        mail.outbox.clear()
+        send_password_reset_email(user=self.user, otp="654321")
+
+        self.assertEqual(len(mail.outbox), 1)
+        sent = mail.outbox[0]
+        self.assertIn("mailtest@example.com", sent.to)
+        self.assertIn("654321", sent.body)
+        self.assertEqual(sent.from_email, "noreply@djangomart.com")
+        self.assertIn("Password Reset", sent.subject)
+        self.assertTrue(any(content_type == "text/html" for _, content_type in sent.alternatives))
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        DEFAULT_FROM_EMAIL="noreply@djangomart.com",
+    )
+    def test_send_verification_email_dispatches_multipart(self):
+        from django.core import mail
+        from accounts.email import send_verification_email
+
+        mail.outbox.clear()
+        send_verification_email(user=self.user, otp="123456")
+
+        self.assertEqual(len(mail.outbox), 1)
+        sent = mail.outbox[0]
+        self.assertIn("mailtest@example.com", sent.to)
+        self.assertIn("123456", sent.body)
+        self.assertEqual(sent.from_email, "noreply@djangomart.com")
+        self.assertIn("Verification", sent.subject)
+        self.assertTrue(any(content_type == "text/html" for _, content_type in sent.alternatives))
+
+    def test_settings_have_server_email_and_default_from_email(self):
+        from django.conf import settings
+        self.assertTrue(hasattr(settings, "DEFAULT_FROM_EMAIL"))
+        self.assertTrue(hasattr(settings, "SERVER_EMAIL"))
+        self.assertTrue(hasattr(settings, "EMAIL_TIMEOUT"))
+
+
+
 
