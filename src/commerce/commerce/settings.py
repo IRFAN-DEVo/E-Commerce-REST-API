@@ -10,20 +10,36 @@ from django.core.exceptions import ImproperlyConfigured
 BASE_DIR = Path(__file__).resolve().parent.parent
 ROOT_DIR = BASE_DIR.parent.parent
 
+_root_env = ROOT_DIR / ".env"
+_commerce_env = BASE_DIR / ".env"
+
+def _fallback_load_env(filepath):
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                k = k.strip()
+                v = v.strip().strip("'\"")
+                if k:
+                    os.environ[k] = v
+    except Exception:
+        pass
+
 try:
     from dotenv import load_dotenv
-
-    # Primary / canonical backend .env is located at the project root.
-    # Fall back to src/commerce/.env if present for legacy setups.
-    _root_env = ROOT_DIR / ".env"
-    _commerce_env = BASE_DIR / ".env"
 
     if _root_env.is_file():
         load_dotenv(_root_env, override=True)
     if _commerce_env.is_file():
         load_dotenv(_commerce_env, override=True)
 except ImportError:
-    pass
+    if _root_env.is_file():
+        _fallback_load_env(_root_env)
+    if _commerce_env.is_file():
+        _fallback_load_env(_commerce_env)
 
 
 # Quick-start development settings - unsuitable for production
