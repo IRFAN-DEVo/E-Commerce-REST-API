@@ -80,32 +80,37 @@ def send_password_reset_email(*, user, otp: str):
         f"- The DjangoMart Team"
     )
 
+    from email.utils import parseaddr
+    _, reply_addr = parseaddr(from_email)
+    clean_reply_to = [reply_addr] if reply_addr else [from_email]
+
     email = EmailMultiAlternatives(
         subject=subject,
         body=text_message,
         from_email=from_email,
         to=[user.email],
-        reply_to=[from_email],
-        headers={
-            "Auto-Submitted": "auto-generated",
-            "X-Auto-Response-Suppress": "All",
-        },
+        reply_to=clean_reply_to,
     )
 
     email.attach_alternative(html_message, "text/html")
     email.send(fail_silently=False)
 
 
-def send_verification_email(*, user, otp: str):
+def send_verification_email(*, user=None, email: str = None, name: str = "", otp: str):
     """
     Send an email verification 6-digit OTP email using the configured email backend.
     Styled according to DjangoMart's minimalist black-and-white brand design.
     Includes anti-spam transactional headers and high-deliverability formatting.
     """
+    if user is not None:
+        email = user.email
+        name = user.first_name or user.username or "Customer"
+
+    recipient_email = (email or "").strip()
+    recipient_name = name or "Customer"
+
     from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@djangomart.com")
     subject = f"DjangoMart - Email Verification OTP Code: {otp}"
-
-    recipient_name = user.first_name or user.username or "Customer"
 
     html_message = f"""<!DOCTYPE html>
 <html lang="en">
@@ -170,18 +175,17 @@ def send_verification_email(*, user, otp: str):
         f"- The DjangoMart Team"
     )
 
-    email = EmailMultiAlternatives(
+    from email.utils import parseaddr
+    _, reply_addr = parseaddr(from_email)
+    clean_reply_to = [reply_addr] if reply_addr else [from_email]
+
+    email_msg = EmailMultiAlternatives(
         subject=subject,
         body=text_message,
         from_email=from_email,
-        to=[user.email],
-        reply_to=[from_email],
-        headers={
-            "Auto-Submitted": "auto-generated",
-            "X-Auto-Response-Suppress": "All",
-        },
+        to=[recipient_email],
+        reply_to=clean_reply_to,
     )
 
-    email.attach_alternative(html_message, "text/html")
-    email.send(fail_silently=False)
-
+    email_msg.attach_alternative(html_message, "text/html")
+    email_msg.send(fail_silently=False)

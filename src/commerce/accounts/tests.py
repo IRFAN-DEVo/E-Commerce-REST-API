@@ -618,21 +618,21 @@ class RegistrationAndEmailVerificationTests(TestCase):
         data.update(overrides)
         return data
 
-    def test_registration_creates_unverified_user_and_sends_email(self):
-        """Registration should create an inactive user and dispatch an email containing OTP."""
+    def test_registration_does_not_create_user_in_db_before_verification(self):
+        """Registration should NOT create a user in User table before email verification, but send OTP email."""
         from django.core import mail
 
         resp = self.client.post(self.register_url, self._reg_payload())
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
         self.assertTrue(resp.data.get("requires_verification"))
 
-        user = User.objects.get(email="jane@example.com")
-        self.assertFalse(user.is_active)
-        self.assertFalse(user.is_email_verified)
+        # User MUST NOT exist in the User model table yet
+        self.assertFalse(User.objects.filter(email="jane@example.com").exists())
 
-        # Check that OTP record was created
-        otp_record = EmailVerificationOTP.objects.filter(user=user).first()
+        # Check that OTP record was created with pending registration details
+        otp_record = EmailVerificationOTP.objects.filter(email="jane@example.com").first()
         self.assertIsNotNone(otp_record)
+        self.assertEqual(otp_record.name, "Jane Doe")
 
         # Check email was dispatched
         self.assertEqual(len(mail.outbox), 1)
@@ -640,7 +640,7 @@ class RegistrationAndEmailVerificationTests(TestCase):
         self.assertIn("Verification", mail.outbox[0].subject)
 
     def test_unverified_user_cannot_log_in(self):
-        """An unverified user attempting to sign in should be rejected."""
+        """A user who has not verified email cannot log in."""
         self.client.post(self.register_url, self._reg_payload())
 
         login_resp = self.client.post(
@@ -648,13 +648,19 @@ class RegistrationAndEmailVerificationTests(TestCase):
             {"email": "jane@example.com", "password": "SecurePassword123!"},
         )
         self.assertEqual(login_resp.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("verify your email", str(login_resp.data))
+        self.assertIn("verify your email", str(login_resp.data).lower())
 
     def test_valid_otp_verifies_email_activates_user_and_returns_jwt(self):
-        """Submitting the correct OTP activates the user and returns tokens."""
+        """Submitting the correct OTP creates the user, marks active and verified, and returns tokens."""
         self.client.post(self.register_url, self._reg_payload())
-        user = User.objects.get(email="jane@example.com")
-        otp_record, plain_otp = EmailVerificationOTP.create_otp(user)
+        self.assertFalse(User.objects.filter(email="jane@example.com").exists())
+
+        otp_record, plain_otp = EmailVerificationOTP.create_otp(
+            email="jane@example.com",
+            name="Jane Doe",
+            phone="9876543210",
+            password="SecurePassword123!",
+        )
 
         resp = self.client.post(
             self.verify_url,
@@ -664,12 +670,14 @@ class RegistrationAndEmailVerificationTests(TestCase):
         self.assertIn("access", resp.data)
         self.assertIn("refresh", resp.data)
 
-        user.refresh_from_db()
+        # User is now created in User model
+        user = User.objects.get(email="jane@example.com")
         self.assertTrue(user.is_active)
         self.assertTrue(user.is_email_verified)
+        self.assertEqual(user.first_name, "Jane Doe")
 
         # Verification OTP records should be cleaned up
-        self.assertEqual(EmailVerificationOTP.objects.filter(user=user).count(), 0)
+        self.assertEqual(EmailVerificationOTP.objects.filter(email="jane@example.com").count(), 0)
 
         # User should now be able to log in normally
         login_resp = self.client.post(
@@ -679,7 +687,7 @@ class RegistrationAndEmailVerificationTests(TestCase):
         self.assertEqual(login_resp.status_code, status.HTTP_200_OK)
 
     def test_invalid_otp_is_rejected(self):
-        """An incorrect OTP code should return 400 and not activate user."""
+        """An incorrect OTP code should return 400 and not create user in DB."""
         self.client.post(self.register_url, self._reg_payload())
 
         resp = self.client.post(
@@ -687,15 +695,17 @@ class RegistrationAndEmailVerificationTests(TestCase):
             {"email": "jane@example.com", "otp": "000000"},
         )
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
-
-        user = User.objects.get(email="jane@example.com")
-        self.assertFalse(user.is_active)
+        self.assertFalse(User.objects.filter(email="jane@example.com").exists())
 
     def test_expired_otp_is_rejected(self):
         """Expired verification OTP should return 400."""
         self.client.post(self.register_url, self._reg_payload())
-        user = User.objects.get(email="jane@example.com")
-        otp_record, plain_otp = EmailVerificationOTP.create_otp(user)
+        otp_record, plain_otp = EmailVerificationOTP.create_otp(
+            email="jane@example.com",
+            name="Jane Doe",
+            phone="9876543210",
+            password="SecurePassword123!",
+        )
         otp_record.expires_at = timezone.now() - timedelta(seconds=1)
         otp_record.save(update_fields=["expires_at"])
 
@@ -704,12 +714,17 @@ class RegistrationAndEmailVerificationTests(TestCase):
             {"email": "jane@example.com", "otp": plain_otp},
         )
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(User.objects.filter(email="jane@example.com").exists())
 
     def test_max_attempts_locks_out_challenge(self):
         """5 failed attempts permanently lock out the challenge."""
         self.client.post(self.register_url, self._reg_payload())
-        user = User.objects.get(email="jane@example.com")
-        otp_record, plain_otp = EmailVerificationOTP.create_otp(user)
+        otp_record, plain_otp = EmailVerificationOTP.create_otp(
+            email="jane@example.com",
+            name="Jane Doe",
+            phone="9876543210",
+            password="SecurePassword123!",
+        )
 
         for _ in range(5):
             self.client.post(
@@ -723,6 +738,7 @@ class RegistrationAndEmailVerificationTests(TestCase):
             {"email": "jane@example.com", "otp": plain_otp},
         )
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(User.objects.filter(email="jane@example.com").exists())
 
     def test_resend_verification_otp_sends_new_code(self):
         """Resend endpoint dispatches a new code and clears previous unverified OTP."""
@@ -740,11 +756,13 @@ class RegistrationAndEmailVerificationTests(TestCase):
 
     def test_resend_verification_otp_rejects_already_verified_user(self):
         """Resend endpoint rejects a user whose email is already verified."""
-        self.client.post(self.register_url, self._reg_payload())
-        user = User.objects.get(email="jane@example.com")
-        user.is_active = True
-        user.is_email_verified = True
-        user.save()
+        user = User.objects.create_user(
+            username="jane_verified",
+            email="jane@example.com",
+            password="SecurePassword123!",
+            is_active=True,
+            is_email_verified=True,
+        )
 
         resend_resp = self.client.post(
             self.resend_url,
@@ -754,16 +772,17 @@ class RegistrationAndEmailVerificationTests(TestCase):
 
     def test_duplicate_registration_for_active_user_fails(self):
         """Attempting to register with an existing active email returns 400."""
-        self.client.post(self.register_url, self._reg_payload())
-        user = User.objects.get(email="jane@example.com")
-        user.is_active = True
-        user.save()
+        user = User.objects.create_user(
+            username="jane_active",
+            email="jane@example.com",
+            password="SecurePassword123!",
+            is_active=True,
+            is_email_verified=True,
+        )
 
         resp = self.client.post(self.register_url, self._reg_payload())
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("email", resp.data)
-
-
 # ---------------------------------------------------------------------------
 # Email Configuration & Utility Tests
 # ---------------------------------------------------------------------------
@@ -821,6 +840,73 @@ class EmailConfigurationTests(TestCase):
         self.assertTrue(hasattr(settings, "DEFAULT_FROM_EMAIL"))
         self.assertTrue(hasattr(settings, "SERVER_EMAIL"))
         self.assertTrue(hasattr(settings, "EMAIL_TIMEOUT"))
+
+
+# ---------------------------------------------------------------------------
+# ForgotPasswordView Tests
+# ---------------------------------------------------------------------------
+@override_settings(
+    DEFAULT_THROTTLE_RATES={
+        "anon": None,
+        "user": None,
+        "forgot_password": None,
+    },
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+    DEFAULT_FROM_EMAIL="noreply@djangomart.com",
+)
+class ForgotPasswordViewTests(TestCase):
+    """Regression tests for ForgotPasswordView endpoint and email dispatching."""
+
+    def setUp(self):
+        cache.clear()
+        self.client = APIClient()
+        self.url = reverse("forgot-password")
+        self.user = User.objects.create_user(
+            username="fpuser",
+            email="fpuser@example.com",
+            password="StrongPassword123!",
+            first_name="FPUser",
+        )
+
+    def test_forgot_password_success_dispatches_email(self):
+        """When an account exists, an OTP is generated and emailed, returning 200."""
+        from django.core import mail
+
+        mail.outbox.clear()
+        resp = self.client.post(self.url, {"email": "fpuser@example.com"}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertIn("detail", resp.data)
+
+        # Verify OTP was created in database
+        otp_records = PasswordResetOTP.objects.filter(user=self.user)
+        self.assertEqual(otp_records.count(), 1)
+
+        # Verify email was dispatched
+        self.assertEqual(len(mail.outbox), 1)
+        sent = mail.outbox[0]
+        self.assertIn("fpuser@example.com", sent.to)
+        self.assertIn("Password Reset", sent.subject)
+
+    def test_forgot_password_nonexistent_email_returns_200_safely(self):
+        """When account does not exist, returns 200 without creating OTP or email (anti-enumeration)."""
+        from django.core import mail
+
+        mail.outbox.clear()
+        resp = self.client.post(self.url, {"email": "nonexistent@example.com"}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertEqual(PasswordResetOTP.objects.filter(user__email="nonexistent@example.com").count(), 0)
+
+    @patch("api.v1.accounts.views.send_password_reset_email")
+    def test_forgot_password_email_dispatch_failure_returns_500(self, mock_send):
+        """When email delivery raises an exception, the API must return 500 rather than false success."""
+        mock_send.side_effect = Exception("SMTP connection failure")
+
+        resp = self.client.post(self.url, {"email": "fpuser@example.com"}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        self.assertIn("detail", resp.data)
+        self.assertIn("Unable to dispatch", resp.data["detail"])
+
 
 
 

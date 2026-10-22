@@ -77,6 +77,26 @@ describe('ResetPasswordPage Flow', () => {
     });
   });
 
+  it('falls back to Step 1 and resets cooldown if autoSend fails on mount', async () => {
+    authApi.forgotPassword.mockRejectedValueOnce({
+      response: {
+        data: {
+          detail: 'Unable to dispatch password reset email. Please try again shortly.',
+        },
+      },
+    });
+
+    renderResetPasswordPage([
+      { pathname: '/reset-password', state: { email: 'profile@example.com', autoSend: true } },
+    ]);
+
+    await waitFor(() => {
+      expect(authApi.forgotPassword).toHaveBeenCalledWith('profile@example.com');
+      expect(screen.getByRole('heading', { name: /Reset Password/i })).toBeInTheDocument();
+      expect(screen.getAllByText(/Unable to dispatch password reset email/i).length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
   it('disables Verify button until 6 digits are entered in Step 2', async () => {
     renderResetPasswordPage([
       { pathname: '/reset-password', state: { email: 'user@example.com' } },

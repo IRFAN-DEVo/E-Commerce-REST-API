@@ -6,14 +6,27 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from accounts.models import User
+from accounts.models import User, EmailVerificationOTP
 
 
-class RegisterSerializer(serializers.ModelSerializer):
+class RegisterSerializer(serializers.Serializer):
+    """
+    Validates user registration input.
+    The actual User object is created ONLY after the user verifies their email via OTP.
+    """
 
     name = serializers.CharField(
         write_only=True,
         required=True,
+        max_length=150,
+    )
+    email = serializers.EmailField(
+        required=True,
+    )
+    phone = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=20,
     )
     password = serializers.CharField(
         write_only=True,
@@ -25,18 +38,9 @@ class RegisterSerializer(serializers.ModelSerializer):
         style={"input_type": "password"},
     )
 
-    class Meta:
-        model = User
-        fields = [
-            "name",
-            "email",
-            "phone",
-            "password",
-            "confirm_password",
-        ]
-
     def validate_email(self, value):
         normalized = value.lower().strip()
+        # Active and verified accounts cannot be re-registered
         if User.objects.filter(email__iexact=normalized, is_active=True).exists():
             raise serializers.ValidationError(
                 "Email already exists."
@@ -44,37 +48,9 @@ class RegisterSerializer(serializers.ModelSerializer):
         return normalized
 
     def validate(self, attrs):
-        if attrs.get('password') != attrs.get('confirm_password'):
+        if attrs.get("password") != attrs.get("confirm_password"):
             raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
         return attrs
-
-    def create(self, validated_data):
-        import uuid
-        email = validated_data["email"].lower().strip()
-        name = validated_data.get("name", "").strip()
-
-        # If an unverified/inactive account already exists with this email, update credentials
-        existing_user = User.objects.filter(email__iexact=email, is_active=False).first()
-        if existing_user:
-            existing_user.first_name = name
-            existing_user.phone = validated_data.get("phone", "")
-            existing_user.set_password(validated_data["password"])
-            existing_user.is_email_verified = False
-            existing_user.save()
-            return existing_user
-
-        generated_username = f"user_{uuid.uuid4().hex[:15]}"
-        user = User.objects.create_user(
-            username=generated_username,
-            email=email,
-            phone=validated_data.get("phone"),
-            password=validated_data["password"],
-            first_name=name,
-            is_active=False,
-            is_email_verified=False,
-        )
-
-        return user
 
 
 class VerifyEmailSerializer(serializers.Serializer):
@@ -130,7 +106,11 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
                         "Please verify your email address before signing in."
                     )
             except User.DoesNotExist:
-                pass
+                # Check if registration is still pending verification
+                if EmailVerificationOTP.objects.filter(email__iexact=email, is_verified=False).exists():
+                    raise serializers.ValidationError(
+                        "Please verify your email address before signing in."
+                    )
 
             raise serializers.ValidationError(
                 "Invalid email or password."
@@ -235,7 +215,7 @@ class ResetPasswordSerializer(serializers.Serializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    name = serializers.CharField(source='first_name', read_only=True)
+    name = serializers.CharField(source="first_name", read_only=True)
 
     class Meta:
         model = User

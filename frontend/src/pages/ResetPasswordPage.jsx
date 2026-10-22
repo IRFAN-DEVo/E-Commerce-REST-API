@@ -69,6 +69,7 @@ export const ResetPasswordPage = () => {
       const msg = err.response?.data?.detail || 'Failed to send OTP code. Please try again.';
       setErrorMessage(msg);
       showToast(msg, 'error');
+      setResendCooldown(0);
       return false;
     } finally {
       setIsSubmitting(false);
@@ -79,7 +80,11 @@ export const ResetPasswordPage = () => {
   useEffect(() => {
     if (autoSend && initialEmail && !autoSendTriggered.current) {
       autoSendTriggered.current = true;
-      handleSendOtp(initialEmail);
+      handleSendOtp(initialEmail).then((success) => {
+        if (!success) {
+          setStep(1);
+        }
+      });
     }
   }, [autoSend, initialEmail, handleSendOtp]);
 

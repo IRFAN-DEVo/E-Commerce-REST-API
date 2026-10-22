@@ -43,46 +43,95 @@ export const VerifyEmailPage = () => {
 
   const otpString = otp.join('');
 
-  // Handle single digit input
-  const handleChange = (index, value) => {
-    const char = value.slice(-1);
+  // Handle keydown for digits, backspace, delete, and arrow navigation
+  const handleKeyDown = (index, e) => {
+    // Digits 0-9: overwrite current digit and advance focus
+    if (/^[0-9]$/.test(e.key)) {
+      e.preventDefault();
+      const nextOtp = [...otp];
+      nextOtp[index] = e.key;
+      setOtp(nextOtp);
+      setErrorMessage('');
 
-    // Reject non-numeric characters
-    if (char && !/^\d$/.test(char)) {
+      if (index < 5) {
+        inputRefs.current[index + 1]?.focus();
+      }
+      return;
+    }
+
+    if (e.key === 'Backspace') {
+      e.preventDefault();
+      const nextOtp = [...otp];
+      if (otp[index]) {
+        // Clear current box if filled
+        nextOtp[index] = '';
+        setOtp(nextOtp);
+      } else if (index > 0) {
+        // If current box is empty, clear previous box and move focus back
+        nextOtp[index - 1] = '';
+        setOtp(nextOtp);
+        inputRefs.current[index - 1]?.focus();
+      }
+      return;
+    }
+
+    if (e.key === 'Delete') {
+      e.preventDefault();
+      const nextOtp = [...otp];
+      nextOtp[index] = '';
+      setOtp(nextOtp);
+      return;
+    }
+
+    if (e.key === 'ArrowLeft' && index > 0) {
+      e.preventDefault();
+      inputRefs.current[index - 1]?.focus();
+      return;
+    }
+
+    if (e.key === 'ArrowRight' && index < 5) {
+      e.preventDefault();
+      inputRefs.current[index + 1]?.focus();
+      return;
+    }
+  };
+
+  // Fallback onChange for mobile keyboards, autofill, etc.
+  const handleChange = (index, e) => {
+    const raw = typeof e === 'string' ? e : e?.target?.value || '';
+    const cleanDigits = raw.replace(/\D/g, '');
+    if (!cleanDigits) {
+      const nextOtp = [...otp];
+      nextOtp[index] = '';
+      setOtp(nextOtp);
+      return;
+    }
+
+    // If 6 digits were pasted or autofilled into an input
+    if (cleanDigits.length === 6) {
+      setOtp(cleanDigits.split(''));
+      setErrorMessage('');
+      inputRefs.current[5]?.focus();
+      return;
+    }
+
+    if (cleanDigits.length > 1) {
+      const nextOtp = [...otp];
+      for (let i = 0; i < cleanDigits.length && index + i < 6; i++) {
+        nextOtp[index + i] = cleanDigits[i];
+      }
+      setOtp(nextOtp);
+      setErrorMessage('');
+      const targetFocus = Math.min(index + cleanDigits.length, 5);
+      inputRefs.current[targetFocus]?.focus();
       return;
     }
 
     const nextOtp = [...otp];
-    nextOtp[index] = char;
+    nextOtp[index] = cleanDigits;
     setOtp(nextOtp);
     setErrorMessage('');
-
-    // Advance focus to next input if digit entered
-    if (char && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-  };
-
-  // Handle keydown for backspace and navigation
-  const handleKeyDown = (index, e) => {
-    if (e.key === 'Backspace') {
-      if (!otp[index] && index > 0) {
-        // Move to previous box if current is empty
-        const nextOtp = [...otp];
-        nextOtp[index - 1] = '';
-        setOtp(nextOtp);
-        inputRefs.current[index - 1]?.focus();
-      } else if (otp[index]) {
-        // Clear current box
-        const nextOtp = [...otp];
-        nextOtp[index] = '';
-        setOtp(nextOtp);
-      }
-    } else if (e.key === 'ArrowLeft' && index > 0) {
-      e.preventDefault();
-      inputRefs.current[index - 1]?.focus();
-    } else if (e.key === 'ArrowRight' && index < 5) {
-      e.preventDefault();
+    if (index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
   };
@@ -90,20 +139,28 @@ export const VerifyEmailPage = () => {
   // Handle paste complete 6-digit OTP
   const handlePaste = (e) => {
     e.preventDefault();
-    const pasted = e.clipboardData.getData('text').trim();
+    const pasted = (e.clipboardData || window.clipboardData).getData('text').trim();
     const digits = pasted.replace(/\D/g, '').slice(0, 6);
 
     if (!digits) return;
 
     const nextOtp = [...otp];
-    for (let i = 0; i < 6; i++) {
-      nextOtp[i] = digits[i] || '';
+    if (digits.length === 6) {
+      for (let i = 0; i < 6; i++) {
+        nextOtp[i] = digits[i];
+      }
+      setOtp(nextOtp);
+      setErrorMessage('');
+      inputRefs.current[5]?.focus();
+    } else {
+      for (let i = 0; i < digits.length && index < 6; i++) {
+        nextOtp[i] = digits[i];
+      }
+      setOtp(nextOtp);
+      setErrorMessage('');
+      const targetFocusIndex = Math.min(digits.length, 5);
+      inputRefs.current[targetFocusIndex]?.focus();
     }
-    setOtp(nextOtp);
-    setErrorMessage('');
-
-    const targetFocusIndex = Math.min(digits.length, 5);
-    inputRefs.current[targetFocusIndex]?.focus();
   };
 
   // Submit verification to backend
@@ -346,10 +403,10 @@ export const VerifyEmailPage = () => {
                 inputMode="numeric"
                 pattern="[0-9]*"
                 autoComplete="one-time-code"
-                maxLength={1}
+                maxLength={2}
                 aria-label={`Digit ${idx + 1}`}
                 value={digit}
-                onChange={(e) => handleChange(idx, e.target.value)}
+                onChange={(e) => handleChange(idx, e)}
                 onKeyDown={(e) => handleKeyDown(idx, e)}
                 onPaste={handlePaste}
                 style={{

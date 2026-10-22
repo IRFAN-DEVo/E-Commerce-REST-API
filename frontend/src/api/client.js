@@ -25,12 +25,28 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-// Request interceptor: Attach access token
+// Public authentication endpoints that should never carry Authorization headers
+const isPublicAuthEndpoint = (url) => {
+  if (!url) return false;
+  return (
+    url.includes('/accounts/login/') ||
+    url.includes('/accounts/register/') ||
+    url.includes('/accounts/verify-email/') ||
+    url.includes('/accounts/resend-verification-otp/') ||
+    url.includes('/accounts/forgot-password/') ||
+    url.includes('/accounts/verify-otp/') ||
+    url.includes('/accounts/reset-password/')
+  );
+};
+
+// Request interceptor: Attach access token only to protected endpoints
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (!isPublicAuthEndpoint(config.url)) {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },
@@ -43,11 +59,10 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Do not attempt refresh on auth endpoints (login, refresh, register)
+    // Do not attempt refresh on public auth endpoints
     const isAuthEndpoint =
-      originalRequest?.url?.includes('/accounts/login/') ||
-      originalRequest?.url?.includes('/accounts/token/refresh/') ||
-      originalRequest?.url?.includes('/accounts/register/');
+      isPublicAuthEndpoint(originalRequest?.url) ||
+      originalRequest?.url?.includes('/accounts/token/refresh/');
 
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {

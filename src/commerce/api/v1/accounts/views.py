@@ -1,70 +1,88 @@
 import logging
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from accounts.models import PasswordResetOTP, EmailVerificationOTP
-from django.db import transaction
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.views import TokenObtainPairView
+import uuid
 from django.contrib.auth import get_user_model
+from django.core.mail import BadHeaderError
+from django.db import transaction
+from django.db.models import Q
 from drf_spectacular.utils import (
     extend_schema,
     extend_schema_view,
 )
-from rest_framework import permissions
+from rest_framework import generics, permissions, status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
 
-from accounts.throttles import ForgotPasswordThrottle, VerifyOTPThrottle, ResendVerificationThrottle
-from accounts.tokens import generate_reset_token, verify_reset_token
-from .serializers import (
-    RegisterSerializer,
-    VerifyEmailSerializer,
-    ResendVerificationOTPSerializer,
-    ForgotPasswordSerializer,
-    VerifyOTPSerializer,
-    ResetPasswordSerializer,
-    EmailTokenObtainPairSerializer,
-    UserProfileSerializer,
-)
 from accounts.email import send_password_reset_email, send_verification_email
-from django.core.mail import BadHeaderError
-import smtplib
+from accounts.models import EmailVerificationOTP, PasswordResetOTP
+from accounts.throttles import (
+    ForgotPasswordThrottle,
+    ResendVerificationThrottle,
+    VerifyOTPThrottle,
+)
+from accounts.tokens import generate_reset_token, verify_reset_token
+from api.v1.products.permissions import IsOwner
+from .serializers import (
+    EmailTokenObtainPairSerializer,
+    ForgotPasswordSerializer,
+    RegisterSerializer,
+    ResendVerificationOTPSerializer,
+    ResetPasswordSerializer,
+    UserProfileSerializer,
+    VerifyEmailSerializer,
+    VerifyOTPSerializer,
+)
+
+logger = logging.getLogger(__name__)
+
+User = get_user_model()
+
 
 @extend_schema(
     tags=["Authentication"],
     summary="Register User",
-    description="Registers a new customer account and sends an email verification OTP.",
+    description="Registers a new customer account and sends an email verification OTP. The User database record is NOT created until email is verified.",
     request=RegisterSerializer,
     responses={201: RegisterSerializer},
 )
 class SignupView(APIView):
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        user = serializer.save()
+        data = serializer.validated_data
+        email = data["email"]
+        name = data.get("name", "").strip()
+        phone = data.get("phone", "").strip()
+        password = data["password"]
 
-        # Generate email verification challenge and dispatch email
-        otp_record, plain_otp = EmailVerificationOTP.create_otp(user)
+        # If an unverified user exists from the legacy flow, remove it
+        User.objects.filter(email__iexact=email, is_active=False, is_email_verified=False).delete()
+
+        # Generate email verification challenge and store pending registration data
+        otp_record, plain_otp = EmailVerificationOTP.create_otp(
+            email=email,
+            name=name,
+            phone=phone,
+            password=password,
+        )
+
         try:
-            send_verification_email(user=user, otp=plain_otp)
+            send_verification_email(email=email, name=name, otp=plain_otp)
         except Exception as e:
-            logger.error("Failed to send verification email to %s: %s", user.email, e)
+            logger.error("Failed to send verification email to %s: %s", email, e)
 
         return Response(
             {
                 "message": "Registration successful. Please verify your email with the 6-digit code sent to your inbox.",
                 "success": True,
-                "email": user.email,
+                "email": email,
                 "requires_verification": True,
-                "user": {
-                    "id": user.id,
-                    "name": user.first_name,
-                    "email": user.email,
-                    "phone": user.phone,
-                    "user_type": user.user_type,
-                },
             },
             status=status.HTTP_201_CREATED,
         )
@@ -73,11 +91,13 @@ class SignupView(APIView):
 @extend_schema(
     tags=["Authentication"],
     summary="Verify Email Address",
-    description="Validates a 6-digit registration OTP, activates the user, and returns JWT credentials.",
+    description="Validates a 6-digit registration OTP, creates and activates the user account, and returns JWT credentials.",
     request=VerifyEmailSerializer,
     responses={200: "Email verified successfully."},
 )
 class VerifyEmailView(APIView):
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
     throttle_classes = [VerifyOTPThrottle]
 
     def post(self, request):
@@ -87,16 +107,7 @@ class VerifyEmailView(APIView):
         email = serializer.validated_data["email"]
         otp = serializer.validated_data["otp"]
 
-        User = get_user_model()
-        try:
-            user = User.objects.get(email__iexact=email)
-        except User.DoesNotExist:
-            return Response(
-                {"detail": "Invalid email or verification code."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if user.is_active and getattr(user, "is_email_verified", False):
+        if User.objects.filter(email__iexact=email, is_active=True, is_email_verified=True).exists():
             return Response(
                 {"detail": "Email is already verified. Please sign in."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -105,10 +116,21 @@ class VerifyEmailView(APIView):
         with transaction.atomic():
             otp_record = (
                 EmailVerificationOTP.objects.select_for_update()
-                .filter(user=user, is_verified=False)
+                .filter(email__iexact=email, is_verified=False)
                 .order_by("-created_at")
                 .first()
             )
+
+            # Fallback for legacy records attached by user FK
+            if not otp_record:
+                legacy_user = User.objects.filter(email__iexact=email).first()
+                if legacy_user:
+                    otp_record = (
+                        EmailVerificationOTP.objects.select_for_update()
+                        .filter(user=legacy_user, is_verified=False)
+                        .order_by("-created_at")
+                        .first()
+                    )
 
             if not otp_record:
                 return Response(
@@ -140,13 +162,35 @@ class VerifyEmailView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # Mark user account as active and verified
-            user.is_active = True
-            user.is_email_verified = True
-            user.save(update_fields=["is_active", "is_email_verified"])
+            # Create the User account in database now that email is verified
+            user = User.objects.filter(email__iexact=email).first()
+            if not user:
+                generated_username = f"user_{uuid.uuid4().hex[:15]}"
+                user = User(
+                    username=generated_username,
+                    email=otp_record.email,
+                    first_name=otp_record.name,
+                    phone=otp_record.phone,
+                    is_active=True,
+                    is_email_verified=True,
+                )
+                user.password = otp_record.password_hash
+                user.save()
+            else:
+                user.is_active = True
+                user.is_email_verified = True
+                if otp_record.password_hash:
+                    user.password = otp_record.password_hash
+                if otp_record.name:
+                    user.first_name = otp_record.name
+                if otp_record.phone:
+                    user.phone = otp_record.phone
+                user.save()
 
-            # Clean up all verification OTPs for this user
-            EmailVerificationOTP.objects.filter(user=user).delete()
+            # Clean up all verification OTPs for this email / user
+            EmailVerificationOTP.objects.filter(email__iexact=email).delete()
+            if user:
+                EmailVerificationOTP.objects.filter(user=user).delete()
 
         # Issue JWT tokens for seamless onboarding
         refresh = RefreshToken.for_user(user)
@@ -172,41 +216,73 @@ class VerifyEmailView(APIView):
 @extend_schema(
     tags=["Authentication"],
     summary="Resend Verification OTP",
-    description="Dispatches a fresh 6-digit email verification OTP to an unverified account.",
+    description="Dispatches a fresh 6-digit email verification OTP to a pending registration.",
     request=ResendVerificationOTPSerializer,
     responses={200: "A new verification code has been sent."},
 )
 class ResendVerificationOTPView(APIView):
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
     throttle_classes = [ResendVerificationThrottle]
 
     def post(self, request):
         serializer = ResendVerificationOTPSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        email = serializer.validated_data["email"]
-        User = get_user_model()
+        email = serializer.validated_data["email"].lower().strip()
 
-        try:
-            user = User.objects.get(email__iexact=email)
-        except User.DoesNotExist:
+        if User.objects.filter(email__iexact=email, is_active=True, is_email_verified=True).exists():
             return Response(
-                {"message": "If an account is pending verification, a new code has been sent."},
-                status=status.HTTP_200_OK,
-            )
-
-        if user.is_active and getattr(user, "is_email_verified", False):
-            return Response(
-                {"detail": "This email address is already verified. Please sign in."},
+                {"detail": "This email is already verified. Please sign in."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Generate fresh OTP and clear previous unverified challenges
-        otp_record, plain_otp = EmailVerificationOTP.create_otp(user)
+        # Check pending OTP record
+        pending = (
+            EmailVerificationOTP.objects.filter(
+                email__iexact=email,
+                is_verified=False,
+            )
+            .order_by("-created_at")
+            .first()
+        )
+
+        if not pending:
+            legacy_user = User.objects.filter(email__iexact=email, is_active=False).first()
+            if legacy_user:
+                otp_record, plain_otp = EmailVerificationOTP.create_otp(
+                    user=legacy_user,
+                    email=legacy_user.email,
+                    name=legacy_user.first_name,
+                    phone=legacy_user.phone,
+                    password_hash=legacy_user.password,
+                )
+                try:
+                    send_verification_email(email=legacy_user.email, name=legacy_user.first_name, otp=plain_otp)
+                except Exception as e:
+                    logger.error("Failed to resend verification email to %s: %s", legacy_user.email, e)
+
+                return Response(
+                    {"message": "A new verification code has been sent to your email."},
+                    status=status.HTTP_200_OK,
+                )
+
+            return Response(
+                {"detail": "No pending registration found for this email. Please register first."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        otp_record, plain_otp = EmailVerificationOTP.create_otp(
+            email=pending.email,
+            name=pending.name,
+            phone=pending.phone,
+            password_hash=pending.password_hash,
+        )
 
         try:
-            send_verification_email(user=user, otp=plain_otp)
+            send_verification_email(email=pending.email, name=pending.name, otp=plain_otp)
         except Exception as e:
-            logger.error("Failed to resend verification email to %s: %s", user.email, e)
+            logger.error("Failed to resend verification email to %s: %s", pending.email, e)
             return Response(
                 {"detail": "Failed to dispatch verification email. Please try again shortly."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -228,6 +304,7 @@ class ResendVerificationOTPView(APIView):
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = EmailTokenObtainPairSerializer
 
+
 @extend_schema(
     tags=["Authentication"],
     summary="User Profile",
@@ -242,13 +319,7 @@ class UserProfileView(APIView):
         return Response(serializer.data)
 
 
-
-#Forgot Password and Reset Password Views
-
-
-logger = logging.getLogger(__name__)
-
-User = get_user_model()
+# Forgot Password and Reset Password Views
 
 
 @extend_schema(
@@ -289,6 +360,10 @@ class ForgotPasswordView(APIView):
                     "Failed to send password reset email for user id %s: %s",
                     user.id,
                     type(exc).__name__,
+                )
+                return Response(
+                    {"detail": "Unable to dispatch password reset email. Please try again shortly."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
 
         return Response(
@@ -452,10 +527,6 @@ class ResetPasswordView(APIView):
         )
 
 
-from api.v1.products.permissions import IsOwner
-from rest_framework import generics
-from django.db.models import Q
-
 @extend_schema(
     tags=["Authentication"],
     summary="Admin List Customers",
@@ -467,7 +538,7 @@ class AdminCustomerListView(generics.ListAPIView):
     serializer_class = UserProfileSerializer
 
     def get_queryset(self):
-        queryset = User.objects.filter(user_type="customer").order_by("-date_joined")
+        queryset = User.objects.filter(user_type="customer", is_active=True).order_by("-date_joined")
         search_query = self.request.query_params.get("search", None)
         if search_query:
             queryset = queryset.filter(
@@ -476,6 +547,7 @@ class AdminCustomerListView(generics.ListAPIView):
                 Q(phone__icontains=search_query)
             )
         return queryset
+
 
 @extend_schema(
     tags=["Authentication"],

@@ -368,30 +368,17 @@ export const Navbar = () => {
               )}
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Link
-                to="/login"
-                style={{
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  color: '#18181b',
-                  padding: '0.5rem 0.875rem',
-                }}
-              >
-                Log In
-              </Link>
-              <Link
-                to="/register"
-                className="btn btn-primary"
-                style={{
-                  padding: '0.45rem 1rem',
-                  fontSize: '0.8125rem',
-                  borderRadius: '9999px',
-                }}
-              >
-                Sign Up
-              </Link>
-            </div>
+            <Link
+              to="/login"
+              className="btn btn-primary"
+              style={{
+                padding: '0.45rem 1.125rem',
+                fontSize: '0.8125rem',
+                borderRadius: '9999px',
+              }}
+            >
+              Log In
+            </Link>
           )}
 
           {/* Mobile Menu Hamburger */}

@@ -19,9 +19,9 @@ try:
     _commerce_env = BASE_DIR / ".env"
 
     if _root_env.is_file():
-        load_dotenv(_root_env)
+        load_dotenv(_root_env, override=True)
     if _commerce_env.is_file():
-        load_dotenv(_commerce_env, override=False)
+        load_dotenv(_commerce_env, override=True)
 except ImportError:
     pass
 
@@ -49,6 +49,9 @@ elif DEBUG:
     ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]"]
 else:
     raise ImproperlyConfigured("ALLOWED_HOSTS environment variable must be set in production.")
+
+if DEBUG and "testserver" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append("testserver")
 
 INSTALLED_APPS = [
     "drf_spectacular",
@@ -176,7 +179,7 @@ REST_FRAMEWORK = {
         "user": "1000/day",
         "api-login": "10/minute",
         "api-register": "5/minute",
-        "forgot_password": "5/hour",
+        "forgot_password": os.environ.get("FORGOT_PASSWORD_THROTTLE_RATE", "100/hour" if DEBUG else "5/hour"),
         "verify_otp": "20/minute",
         "resend_verification": "5/minute",
     }
@@ -223,7 +226,7 @@ else:
 if EMAIL_USE_TLS and EMAIL_USE_SSL:
     raise ImproperlyConfigured("EMAIL_USE_TLS and EMAIL_USE_SSL are mutually exclusive; set only one to True.")
 
-EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", 10))
+EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", 25))
 
 
 # Payment Gateway Configuration (Environment-driven, dummy fallbacks in dev only)
