@@ -80,3 +80,24 @@ class UpdatePaymentStatusSerializer(serializers.Serializer):
             )
 
         return attrs
+
+
+class CreatePaymentRequestSerializer(serializers.Serializer):
+    payment_method = serializers.ChoiceField(
+        choices=Payment.PAYMENT_METHOD_CHOICES,
+        default="COD",
+    )
+
+
+class RazorpayPaymentVerifySerializer(serializers.Serializer):
+    order_id = serializers.IntegerField(required=True)
+    razorpay_order_id = serializers.CharField(required=True, max_length=255)
+    razorpay_payment_id = serializers.CharField(required=True, max_length=255)
+    razorpay_signature = serializers.CharField(required=True, max_length=512)
+
+
+class PaymentConfigSerializer(serializers.Serializer):
+    razorpay_enabled = serializers.BooleanField()
+    razorpay_key_id = serializers.CharField(allow_blank=True)
+    cod_enabled = serializers.BooleanField()
+    stripe_enabled = serializers.BooleanField()

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ShieldCheck, CheckCircle2, Tag, AlertCircle, ShoppingBag, Lock, CreditCard } from 'lucide-react';
 import { useCart } from '../context/CartContext';
@@ -6,6 +6,38 @@ import { useToast } from '../context/ToastContext';
 import { ordersApi } from '../api/orders';
 import { couponsApi } from '../api/coupons';
 import { paymentsApi } from '../api/payments';
+
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    if (typeof window !== 'undefined' && window.Razorpay) {
+      resolve(true);
+      return;
+    }
+    if (typeof document === 'undefined') {
+      resolve(false);
+      return;
+    }
+    const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+    if (existingScript) {
+      if (window.Razorpay) {
+        resolve(true);
+      } else {
+        existingScript.addEventListener('load', () => resolve(true));
+        existingScript.addEventListener('error', () => resolve(false));
+        setTimeout(() => resolve(Boolean(window.Razorpay)), 1500);
+      }
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+    setTimeout(() => resolve(Boolean(window.Razorpay)), 1500);
+  });
+};
+
 
 export const CheckoutPage = () => {
   const { cartItems, totalPrice, clearCartState } = useCart();
@@ -30,6 +62,32 @@ export const CheckoutPage = () => {
   const [paymentMethod, setPaymentMethod] = useState('COD');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [paymentConfig, setPaymentConfig] = useState({
+    razorpay_enabled: false,
+    razorpay_key_id: '',
+    cod_enabled: true,
+    stripe_enabled: false,
+  });
+
+  useEffect(() => {
+    let mounted = true;
+    if (typeof paymentsApi?.getPaymentConfig === 'function') {
+      Promise.resolve(paymentsApi.getPaymentConfig())
+        .then((cfg) => {
+          if (mounted && cfg) {
+            setPaymentConfig(cfg);
+          }
+        })
+        .catch(() => {
+          // Fallback safely to default COD configuration
+        });
+    }
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+
 
   const handleShippingChange = (e) => {
     setShippingAddress({ ...shippingAddress, [e.target.name]: e.target.value });
@@ -112,27 +170,115 @@ export const CheckoutPage = () => {
   const handleConfirmPayment = async () => {
     if (!createdOrder) return;
 
-    if (paymentMethod !== 'COD') {
-      showToast('Only Cash on Delivery is currently supported in this store.', 'warning');
+    if (paymentMethod === 'COD') {
+      setIsSubmitting(true);
+      try {
+        await paymentsApi.createPayment(createdOrder.id, 'COD');
+        showToast('Order placed successfully via Cash on Delivery!', 'success');
+        navigate(`/orders/${createdOrder.id}`);
+      } catch (err) {
+        const respData = err.response?.data;
+        const msg =
+          respData?.detail ||
+          respData?.error ||
+          (Array.isArray(respData) ? respData[0] : null) ||
+          'Payment initiation failed.';
+        showToast(msg, 'error');
+        setIsSubmitting(false);
+      }
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      await paymentsApi.createPayment(createdOrder.id, 'COD');
-      showToast('Order placed successfully via Cash on Delivery!', 'success');
-      navigate(`/orders/${createdOrder.id}`);
-    } catch (err) {
-      const respData = err.response?.data;
-      const msg =
-        respData?.detail ||
-        respData?.error ||
-        (Array.isArray(respData) ? respData[0] : null) ||
-        'Payment initiation failed.';
-      showToast(msg, 'error');
-      setIsSubmitting(false);
+    if (paymentMethod === 'RAZORPAY') {
+      setIsSubmitting(true);
+
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded || !window.Razorpay) {
+        showToast('Unable to load Razorpay payment SDK. Please check your internet connection.', 'error');
+        setIsSubmitting(false);
+        return;
+      }
+
+      let paymentInitData;
+      try {
+        paymentInitData = await paymentsApi.createPayment(createdOrder.id, 'RAZORPAY');
+      } catch (err) {
+        const respData = err.response?.data;
+        const msg =
+          respData?.detail ||
+          respData?.error ||
+          (Array.isArray(respData) ? respData[0] : null) ||
+          'Failed to initialize Razorpay payment.';
+        showToast(msg, 'error');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const options = {
+        key: paymentInitData.razorpay_key_id,
+        amount: paymentInitData.amount,
+        currency: paymentInitData.currency || 'INR',
+        name: 'DjangoMart',
+        description: `Order #${createdOrder.id}`,
+        order_id: paymentInitData.razorpay_order_id,
+        prefill: {
+          name: paymentInitData.customer_name || shippingAddress.full_name,
+          email: paymentInitData.customer_email || '',
+          contact: paymentInitData.customer_phone || shippingAddress.phone,
+        },
+        theme: {
+          color: '#000000',
+        },
+        modal: {
+          ondismiss: function () {
+            setIsSubmitting(false);
+            showToast('Checkout window was closed. You can retry payment anytime.', 'info');
+          },
+        },
+        handler: async function (response) {
+          try {
+            await paymentsApi.verifyRazorpayPayment({
+              order_id: createdOrder.id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+            showToast('Payment verified successfully! Your order is confirmed.', 'success');
+            navigate(`/orders/${createdOrder.id}`);
+          } catch (verifyErr) {
+            const respData = verifyErr.response?.data;
+            const msg =
+              respData?.detail ||
+              respData?.error ||
+              (Array.isArray(respData) ? respData[0] : null) ||
+              'Payment verification failed. Please contact support if your account was debited.';
+            showToast(msg, 'error');
+            setIsSubmitting(false);
+          }
+        },
+      };
+
+      try {
+        const rzp = new window.Razorpay(options);
+        rzp.on('payment.failed', function (resp) {
+          setIsSubmitting(false);
+          const failureMsg = resp.error?.description || 'Payment was declined or failed. You may retry.';
+          showToast(failureMsg, 'error');
+        });
+        rzp.open();
+      } catch (openErr) {
+        setIsSubmitting(false);
+        showToast('Could not open Razorpay checkout dialog. Please try again.', 'error');
+      }
+
+
+
+      return;
     }
+
+    showToast('Please select a valid payment method.', 'warning');
   };
+
 
   if (!createdOrder && cartItems.length === 0) {
     return (
@@ -392,29 +538,72 @@ export const CheckoutPage = () => {
                       </div>
                     </label>
 
-                    {/* Online Gateway Disabled Notice */}
-                    <div
-                      style={{
-                        padding: '1.25rem',
-                        borderRadius: '8px',
-                        border: '1px solid #e5e7eb',
-                        backgroundColor: '#f4f4f5',
-                        opacity: 0.7,
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, fontSize: '0.875rem', color: '#71717a' }}>
-                          <CreditCard size={18} />
-                          <span>Online Card / UPI Payment</span>
+                    {/* Razorpay Online Payment (Active when configured) */}
+                    {paymentConfig.razorpay_enabled ? (
+                      <label
+                        onClick={() => setPaymentMethod('RAZORPAY')}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '1rem',
+                          padding: '1.25rem',
+                          borderRadius: '8px',
+                          border: paymentMethod === 'RAZORPAY' ? '2px solid #000000' : '1px solid #e5e7eb',
+                          backgroundColor: paymentMethod === 'RAZORPAY' ? '#fafafa' : '#ffffff',
+                          cursor: 'pointer',
+                          transition: 'all 150ms ease',
+                        }}
+                      >
+
+                        <input
+                          type="radio"
+                          name="payment_method"
+                          value="RAZORPAY"
+                          checked={paymentMethod === 'RAZORPAY'}
+                          onChange={() => setPaymentMethod('RAZORPAY')}
+                          className="form-radio"
+                          style={{ marginTop: '0.25rem' }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ fontWeight: 700, color: '#000000', fontSize: '0.9375rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <CreditCard size={18} />
+                              <span>Razorpay (Cards, UPI, NetBanking)</span>
+                            </div>
+                            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#15803d', backgroundColor: '#dcfce7', padding: '0.2rem 0.5rem', borderRadius: '4px', textTransform: 'uppercase' }}>
+                              Test Mode Active
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '0.8125rem', color: '#71717a', marginTop: '0.25rem' }}>
+                            Pay securely with test cards, mock UPI QR, NetBanking, or Wallets without real charges.
+                          </div>
                         </div>
-                        <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#71717a', backgroundColor: '#e4e4e7', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
-                          Available Soon
-                        </span>
+                      </label>
+                    ) : (
+                      /* Online Gateway Disabled Notice */
+                      <div
+                        style={{
+                          padding: '1.25rem',
+                          borderRadius: '8px',
+                          border: '1px solid #e5e7eb',
+                          backgroundColor: '#f4f4f5',
+                          opacity: 0.7,
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, fontSize: '0.875rem', color: '#71717a' }}>
+                            <CreditCard size={18} />
+                            <span>Online Card / UPI Payment</span>
+                          </div>
+                          <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#71717a', backgroundColor: '#e4e4e7', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
+                            Unavailable
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#a1a1aa', marginTop: '0.35rem' }}>
+                          Razorpay gateway credentials are not configured on the server.
+                        </div>
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: '#a1a1aa', marginTop: '0.35rem' }}>
-                        Razorpay and Stripe gateway integrations are currently disabled for safety.
-                      </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* Coupon Code Input Form */}
@@ -526,9 +715,14 @@ export const CheckoutPage = () => {
                   style={{ width: '100%', borderRadius: '8px' }}
                 >
                   {isSubmitting
-                    ? 'Processing Order...'
+                    ? paymentMethod === 'RAZORPAY'
+                      ? 'Opening Razorpay...'
+                      : 'Processing Order...'
+                    : paymentMethod === 'RAZORPAY'
+                    ? `Pay with Razorpay (₹${Number(currentTotal).toFixed(2)})`
                     : `Place Order (₹${Number(currentTotal).toFixed(2)})`}
                 </button>
+
               </div>
             )}
 

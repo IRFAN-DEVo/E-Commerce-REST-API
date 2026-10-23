@@ -170,17 +170,18 @@ class PaymentSecurityTests(TestCase):
         self.assertIn("Invalid payment method.", str(resp.data))
 
     def test_razorpay_payment_method_rejected(self):
-        """Razorpay requests are rejected while gateway integration is inactive."""
-        initial_payment_count = Payment.objects.count()
-        resp = self.client_customer.post(
-            f"/api/v1/payments/orders/{self.order.id}/payments/",
-            {"payment_method": "RAZORPAY"},
-        )
-        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("RAZORPAY payment gateway is currently inactive", str(resp.data))
-        self.assertEqual(Payment.objects.count(), initial_payment_count)
-        self.order.refresh_from_db()
-        self.assertEqual(self.order.status, "PENDING")
+        """Razorpay requests are rejected while gateway credentials are not configured."""
+        with override_settings(RAZORPAY_KEY_ID="", RAZORPAY_KEY_SECRET=""):
+            initial_payment_count = Payment.objects.count()
+            resp = self.client_customer.post(
+                f"/api/v1/payments/orders/{self.order.id}/payments/",
+                {"payment_method": "RAZORPAY"},
+            )
+            self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertIn("Razorpay payment gateway is not configured.", str(resp.data))
+            self.assertEqual(Payment.objects.count(), initial_payment_count)
+            self.order.refresh_from_db()
+            self.assertEqual(self.order.status, "PENDING")
 
     def test_stripe_payment_method_rejected(self):
         """Stripe requests are rejected while gateway integration is inactive."""
@@ -199,16 +200,18 @@ class PaymentSecurityTests(TestCase):
         """Rejected payments do not change catalog stock or order state."""
         self.product.refresh_from_db()
         initial_stock = self.product.stock
-        resp = self.client_customer.post(
-            f"/api/v1/payments/orders/{self.order.id}/payments/",
-            {"payment_method": "RAZORPAY"},
-        )
-        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
-        self.product.refresh_from_db()
-        self.assertEqual(self.product.stock, initial_stock)
-        self.order.refresh_from_db()
-        self.assertEqual(self.order.status, "PENDING")
-        self.assertFalse(Payment.objects.filter(order=self.order).exists())
+        with override_settings(RAZORPAY_KEY_ID="", RAZORPAY_KEY_SECRET=""):
+            resp = self.client_customer.post(
+                f"/api/v1/payments/orders/{self.order.id}/payments/",
+                {"payment_method": "RAZORPAY"},
+            )
+            self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+            self.product.refresh_from_db()
+            self.assertEqual(self.product.stock, initial_stock)
+            self.order.refresh_from_db()
+            self.assertEqual(self.order.status, "PENDING")
+            self.assertFalse(Payment.objects.filter(order=self.order).exists())
+
 
     def test_customer_cannot_forge_paid_status_on_creation(self):
         """Customer cannot pass payment_status=SUCCESS to mark order paid."""

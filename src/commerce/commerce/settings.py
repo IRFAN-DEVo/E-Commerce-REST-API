@@ -253,8 +253,9 @@ STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "dummy_stripe_we
 PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID", "dummy_paypal_client_id" if DEBUG else "")
 PAYPAL_SECRET = os.environ.get("PAYPAL_SECRET", "dummy_paypal_secret" if DEBUG else "")
 
-RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "dummy_razorpay_key_id" if DEBUG else "")
-RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "dummy_razorpay_key_secret" if DEBUG else "")
+RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "").strip()
+RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "").strip()
+RAZORPAY_WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "").strip()
 
 # CORS and CSRF Configuration
 from corsheaders.defaults import default_headers
