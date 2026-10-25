@@ -38,6 +38,48 @@ const loadRazorpayScript = () => {
   });
 };
 
+export const resolveRazorpayAmountPaise = (paymentInitData) => {
+  if (!paymentInitData) return null;
+
+  // 1. Prefer authoritative integer amount_paise when available
+  if (
+    paymentInitData.amount_paise !== undefined &&
+    paymentInitData.amount_paise !== null
+  ) {
+    const paiseVal = Number(paymentInitData.amount_paise);
+    if (Number.isInteger(paiseVal) && paiseVal > 0) {
+      return paiseVal;
+    }
+  }
+
+  // 2. Otherwise calculate paise safely from rupee amount (e.g. "3009.69" -> 300969)
+  const rawAmount = paymentInitData.amount;
+  if (rawAmount !== undefined && rawAmount !== null && rawAmount !== '') {
+    if (typeof rawAmount === 'string') {
+      const trimmed = rawAmount.trim();
+      const parts = trimmed.split('.');
+      if (parts.length === 1 && /^\d+$/.test(parts[0])) {
+        const wholeRupees = parseInt(parts[0], 10);
+        if (wholeRupees > 0) return wholeRupees * 100;
+      } else if (parts.length === 2 && /^\d+$/.test(parts[0]) && /^\d+$/.test(parts[1])) {
+        const wholeRupees = parseInt(parts[0], 10);
+        const fraction = parts[1].slice(0, 2).padEnd(2, '0');
+        const paise = wholeRupees * 100 + parseInt(fraction, 10);
+        if (paise > 0) return paise;
+      }
+    }
+    const num = Number(rawAmount);
+    if (Number.isFinite(num) && num > 0) {
+      const paise = Math.round(num * 100);
+      if (Number.isInteger(paise) && paise > 0) {
+        return paise;
+      }
+    }
+  }
+
+  return null;
+};
+
 
 export const CheckoutPage = () => {
   const { cartItems, totalPrice, clearCartState } = useCart();
@@ -214,17 +256,35 @@ export const CheckoutPage = () => {
         return;
       }
 
+      const resolvedAmountPaise = resolveRazorpayAmountPaise(paymentInitData);
+      if (!resolvedAmountPaise || !Number.isInteger(resolvedAmountPaise) || resolvedAmountPaise <= 0) {
+        showToast('Invalid payment amount received from server.', 'error');
+        setIsSubmitting(false);
+        return;
+      }
+
       const options = {
         key: paymentInitData.razorpay_key_id,
-        amount: paymentInitData.amount,
+        amount: resolvedAmountPaise,
         currency: paymentInitData.currency || 'INR',
         name: 'DjangoMart',
         description: `Order #${createdOrder.id}`,
         order_id: paymentInitData.razorpay_order_id,
         prefill: {
-          name: paymentInitData.customer_name || shippingAddress.full_name,
-          email: paymentInitData.customer_email || '',
-          contact: paymentInitData.customer_phone || shippingAddress.phone,
+          name:
+            paymentInitData.customer?.name ||
+            paymentInitData.customer_name ||
+            shippingAddress.full_name ||
+            '',
+          email:
+            paymentInitData.customer?.email ||
+            paymentInitData.customer_email ||
+            '',
+          contact:
+            paymentInitData.customer?.contact ||
+            paymentInitData.customer_phone ||
+            shippingAddress.phone ||
+            '',
         },
         theme: {
           color: '#000000',

@@ -118,8 +118,12 @@ class RazorpayPaymentIntegrationTests(TestCase):
             self.assertEqual(data["order_id"], self.order.id)
             self.assertEqual(data["razorpay_order_id"], "order_mockrzp123")
             self.assertEqual(data["razorpay_key_id"], self.test_key_id)
-            self.assertEqual(data["amount"], 49900)  # 499.00 * 100 paise
+            self.assertEqual(data["amount"], "499.00")  # Rupees
+            self.assertEqual(data["amount_paise"], 49900)  # Paise
             self.assertEqual(data["currency"], "INR")
+            self.assertEqual(data["customer"]["name"], "Alice Smith")
+            self.assertEqual(data["customer"]["email"], "alice@example.com")
+            self.assertEqual(data["customer"]["contact"], "9876543210")
             self.assertEqual(data["customer_name"], "Alice Smith")
             self.assertEqual(data["customer_email"], "alice@example.com")
             self.assertEqual(data["customer_phone"], "9876543210")

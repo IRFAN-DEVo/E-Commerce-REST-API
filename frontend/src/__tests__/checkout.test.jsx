@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { CheckoutPage } from '../pages/CheckoutPage';
+import { CheckoutPage, resolveRazorpayAmountPaise } from '../pages/CheckoutPage';
 import { ToastProvider } from '../context/ToastContext';
 import { AuthProvider } from '../context/AuthContext';
 import { CartProvider } from '../context/CartContext';
@@ -303,11 +303,14 @@ describe('CheckoutPage component', () => {
       order_id: 99,
       razorpay_order_id: 'order_mock123',
       razorpay_key_id: 'rzp_test_mockkey123',
-      amount: 50000,
+      amount: '500.00',
+      amount_paise: 50000,
       currency: 'INR',
-      customer_name: 'Jane Doe',
-      customer_email: 'jane@example.com',
-      customer_phone: '9876543210',
+      customer: {
+        name: 'Jane Doe',
+        email: 'jane@example.com',
+        contact: '9876543210',
+      },
     });
 
     paymentsApi.verifyRazorpayPayment.mockResolvedValue({
@@ -331,8 +334,6 @@ describe('CheckoutPage component', () => {
       this.open = mockOpen;
       this.on = vi.fn();
     });
-
-
 
     renderCheckoutPage();
 
@@ -360,18 +361,205 @@ describe('CheckoutPage component', () => {
       expect(screen.getByRole('button', { name: /Pay with Razorpay \(₹500.00\)/i })).toBeInTheDocument();
     });
 
-
     fireEvent.click(screen.getByRole('button', { name: /Pay with Razorpay \(₹500.00\)/i }));
 
     await waitFor(() => {
       expect(paymentsApi.createPayment).toHaveBeenCalledWith(99, 'RAZORPAY');
       expect(window.Razorpay).toHaveBeenCalledTimes(1);
+      // Validates integer amount in paise and customer prefill
+      expect(capturedOptions.amount).toBe(50000);
+      expect(Number.isInteger(capturedOptions.amount)).toBe(true);
+      expect(capturedOptions.currency).toBe('INR');
+      expect(capturedOptions.prefill.name).toBe('Jane Doe');
+      expect(capturedOptions.prefill.email).toBe('jane@example.com');
+      expect(capturedOptions.prefill.contact).toBe('9876543210');
       expect(paymentsApi.verifyRazorpayPayment).toHaveBeenCalledWith({
         order_id: 99,
         razorpay_order_id: 'order_mock123',
         razorpay_payment_id: 'pay_mock789',
         razorpay_signature: 'sig_mock_valid',
       });
+    });
+  });
+
+  it('correctly converts rupee amount "3009.69" to 300969 paise when amount_paise is absent', async () => {
+    paymentsApi.getPaymentConfig.mockResolvedValue({
+      razorpay_enabled: true,
+      razorpay_key_id: 'rzp_test_mockkey123',
+      cod_enabled: true,
+    });
+
+    ordersApi.checkout.mockResolvedValue({
+      id: 101,
+      total_price: '3009.69',
+      status: 'PENDING',
+    });
+
+    paymentsApi.createPayment.mockResolvedValue({
+      payment_id: 15,
+      order_id: 101,
+      razorpay_order_id: 'order_mock3009',
+      razorpay_key_id: 'rzp_test_mockkey123',
+      amount: '3009.69', // Rupee string fallback without amount_paise
+      currency: 'INR',
+      customer: {
+        name: 'Bob Ross',
+        email: 'bob@example.com',
+        contact: '9123456789',
+      },
+    });
+
+    let capturedOpts;
+    window.Razorpay = vi.fn().mockImplementation(function (opts) {
+      capturedOpts = opts;
+      this.open = vi.fn();
+      this.on = vi.fn();
+    });
+
+    renderCheckoutPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('1. Delivery Shipping Address')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/Full Name/i), { target: { value: 'Bob Ross' } });
+    fireEvent.change(screen.getByLabelText(/Contact Phone/i), { target: { value: '9123456789' } });
+    fireEvent.change(screen.getByLabelText(/Street Address/i), { target: { value: '456 Studio Way' } });
+    fireEvent.change(screen.getByLabelText(/City/i), { target: { value: 'Delhi' } });
+    fireEvent.change(screen.getByLabelText(/State/i), { target: { value: 'DL' } });
+    fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: '110001' } });
+    fireEvent.click(screen.getByRole('button', { name: /Confirm Shipping & Continue/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Razorpay \(Cards, UPI, NetBanking\)/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText(/Razorpay \(Cards, UPI, NetBanking\)/i));
+    fireEvent.click(screen.getByRole('button', { name: /Pay with Razorpay/i }));
+
+    await waitFor(() => {
+      expect(paymentsApi.createPayment).toHaveBeenCalledWith(101, 'RAZORPAY');
+      expect(window.Razorpay).toHaveBeenCalledTimes(1);
+      expect(capturedOpts.amount).toBe(300969);
+      expect(Number.isInteger(capturedOpts.amount)).toBe(true);
+      expect(capturedOpts.prefill.name).toBe('Bob Ross');
+      expect(capturedOpts.prefill.email).toBe('bob@example.com');
+      expect(capturedOpts.prefill.contact).toBe('9123456789');
+    });
+  });
+
+  it('prevents Razorpay checkout initialization when payment amount is invalid or zero', async () => {
+    paymentsApi.getPaymentConfig.mockResolvedValue({
+      razorpay_enabled: true,
+      razorpay_key_id: 'rzp_test_mockkey123',
+      cod_enabled: true,
+    });
+
+    ordersApi.checkout.mockResolvedValue({
+      id: 102,
+      total_price: '0.00',
+      status: 'PENDING',
+    });
+
+    paymentsApi.createPayment.mockResolvedValue({
+      payment_id: 16,
+      order_id: 102,
+      razorpay_order_id: 'order_mock_zero',
+      razorpay_key_id: 'rzp_test_mockkey123',
+      amount: '0.00',
+      amount_paise: 0,
+      currency: 'INR',
+    });
+
+    window.Razorpay = vi.fn();
+
+    renderCheckoutPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('1. Delivery Shipping Address')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/Full Name/i), { target: { value: 'Jane Doe' } });
+    fireEvent.change(screen.getByLabelText(/Contact Phone/i), { target: { value: '9876543210' } });
+    fireEvent.change(screen.getByLabelText(/Street Address/i), { target: { value: '123 Market St' } });
+    fireEvent.change(screen.getByLabelText(/City/i), { target: { value: 'Mumbai' } });
+    fireEvent.change(screen.getByLabelText(/State/i), { target: { value: 'MH' } });
+    fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: '400001' } });
+    fireEvent.click(screen.getByRole('button', { name: /Confirm Shipping & Continue/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Razorpay \(Cards, UPI, NetBanking\)/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText(/Razorpay \(Cards, UPI, NetBanking\)/i));
+    fireEvent.click(screen.getByRole('button', { name: /Pay with Razorpay/i }));
+
+    await waitFor(() => {
+      expect(paymentsApi.createPayment).toHaveBeenCalledWith(102, 'RAZORPAY');
+      expect(window.Razorpay).not.toHaveBeenCalled();
+      expect(screen.getByText('Invalid payment amount received from server.')).toBeInTheDocument();
+    });
+  });
+
+  it('handles Razorpay modal cancellation without marking order as paid', async () => {
+    paymentsApi.getPaymentConfig.mockResolvedValue({
+      razorpay_enabled: true,
+      razorpay_key_id: 'rzp_test_mockkey123',
+      cod_enabled: true,
+    });
+
+    ordersApi.checkout.mockResolvedValue({
+      id: 103,
+      total_price: '500.00',
+      status: 'PENDING',
+    });
+
+    paymentsApi.createPayment.mockResolvedValue({
+      payment_id: 17,
+      order_id: 103,
+      razorpay_order_id: 'order_mock103',
+      razorpay_key_id: 'rzp_test_mockkey123',
+      amount_paise: 50000,
+      currency: 'INR',
+    });
+
+    let capturedDismissOpts;
+    const mockDismissOpen = vi.fn().mockImplementation(() => {
+      // Simulate user closing the checkout modal
+      capturedDismissOpts.modal.ondismiss();
+    });
+
+    window.Razorpay = vi.fn().mockImplementation(function (opts) {
+      capturedDismissOpts = opts;
+      this.open = mockDismissOpen;
+      this.on = vi.fn();
+    });
+
+    renderCheckoutPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('1. Delivery Shipping Address')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/Full Name/i), { target: { value: 'Jane Doe' } });
+    fireEvent.change(screen.getByLabelText(/Contact Phone/i), { target: { value: '9876543210' } });
+    fireEvent.change(screen.getByLabelText(/Street Address/i), { target: { value: '123 Market St' } });
+    fireEvent.change(screen.getByLabelText(/City/i), { target: { value: 'Mumbai' } });
+    fireEvent.change(screen.getByLabelText(/State/i), { target: { value: 'MH' } });
+    fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: '400001' } });
+    fireEvent.click(screen.getByRole('button', { name: /Confirm Shipping & Continue/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Razorpay \(Cards, UPI, NetBanking\)/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText(/Razorpay \(Cards, UPI, NetBanking\)/i));
+    fireEvent.click(screen.getByRole('button', { name: /Pay with Razorpay \(₹500.00\)/i }));
+
+    await waitFor(() => {
+      expect(window.Razorpay).toHaveBeenCalled();
+      expect(paymentsApi.verifyRazorpayPayment).not.toHaveBeenCalled();
+      expect(screen.getByText('Checkout window was closed. You can retry payment anytime.')).toBeInTheDocument();
     });
   });
 
@@ -393,7 +581,7 @@ describe('CheckoutPage component', () => {
       order_id: 99,
       razorpay_order_id: 'order_mock123',
       razorpay_key_id: 'rzp_test_mockkey123',
-      amount: 50000,
+      amount_paise: 50000,
       currency: 'INR',
     });
 
@@ -419,7 +607,6 @@ describe('CheckoutPage component', () => {
       this.on = vi.fn();
     });
 
-
     renderCheckoutPage();
 
     await waitFor(() => {
@@ -441,11 +628,35 @@ describe('CheckoutPage component', () => {
     fireEvent.click(screen.getByText(/Razorpay \(Cards, UPI, NetBanking\)/i));
     fireEvent.click(screen.getByRole('button', { name: /Pay with Razorpay \(₹500.00\)/i }));
 
-
     await waitFor(() => {
       expect(paymentsApi.verifyRazorpayPayment).toHaveBeenCalled();
       expect(screen.getByText('Invalid payment signature.')).toBeInTheDocument();
     });
   });
 });
+
+describe('resolveRazorpayAmountPaise utility', () => {
+  it('prefers the authoritative amount_paise when available as integer', () => {
+    expect(resolveRazorpayAmountPaise({ amount_paise: 50000, amount: '500.00' })).toBe(50000);
+    expect(resolveRazorpayAmountPaise({ amount_paise: 300969, amount: '3009.69' })).toBe(300969);
+  });
+
+  it('safely converts a formatted rupee string like "3009.69" to 300969 paise if fallback is needed', () => {
+    expect(resolveRazorpayAmountPaise({ amount: '3009.69' })).toBe(300969);
+    expect(resolveRazorpayAmountPaise({ amount: '500.00' })).toBe(50000);
+    expect(resolveRazorpayAmountPaise({ amount: '499.5' })).toBe(49950);
+    expect(resolveRazorpayAmountPaise({ amount: '12' })).toBe(1200);
+  });
+
+  it('returns null for missing, non-positive, or invalid amounts', () => {
+    expect(resolveRazorpayAmountPaise(null)).toBeNull();
+    expect(resolveRazorpayAmountPaise({})).toBeNull();
+    expect(resolveRazorpayAmountPaise({ amount: '0' })).toBeNull();
+    expect(resolveRazorpayAmountPaise({ amount: '-500' })).toBeNull();
+    expect(resolveRazorpayAmountPaise({ amount: 'invalid' })).toBeNull();
+    expect(resolveRazorpayAmountPaise({ amount_paise: 0 })).toBeNull();
+    expect(resolveRazorpayAmountPaise({ amount_paise: -100 })).toBeNull();
+  });
+});
+
 

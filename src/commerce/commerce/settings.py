@@ -257,6 +257,14 @@ RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "").strip()
 RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "").strip()
 RAZORPAY_WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "").strip()
 
+# Safe diagnostic (never prints credential values)
+if DEBUG:
+    print(
+        f"[RAZORPAY DIAGNOSTIC] Key ID configured: {bool(RAZORPAY_KEY_ID)} | "
+        f"Key Secret configured: {bool(RAZORPAY_KEY_SECRET)} | "
+        f"Key ID starts with 'rzp_test_': {RAZORPAY_KEY_ID.startswith('rzp_test_')}"
+    )
+
 # CORS and CSRF Configuration
 from corsheaders.defaults import default_headers
 

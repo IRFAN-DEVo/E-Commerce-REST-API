@@ -110,6 +110,13 @@ class CreatePaymentView(APIView):
         key_id = getattr(settings, "RAZORPAY_KEY_ID", "").strip()
         key_secret = getattr(settings, "RAZORPAY_KEY_SECRET", "").strip()
 
+        # Safe diagnostic (never prints credential values)
+        print(
+            f"[RAZORPAY DIAGNOSTIC] Key ID configured: {bool(key_id)} | "
+            f"Key Secret configured: {bool(key_secret)} | "
+            f"Key ID starts with 'rzp_test_': {key_id.startswith('rzp_test_')}"
+        )
+
         if not key_id or not key_secret:
             raise ValidationError(
                 "Razorpay payment gateway is not configured."
@@ -187,8 +194,14 @@ class CreatePaymentView(APIView):
                 "order_id": order.id,
                 "razorpay_order_id": razorpay_order["id"],
                 "razorpay_key_id": key_id,
-                "amount": amount_in_paise,
+                "amount": str(payment.amount),
+                "amount_paise": amount_in_paise,
                 "currency": "INR",
+                "customer": {
+                    "name": customer_name,
+                    "email": customer_email,
+                    "contact": customer_phone,
+                },
                 "customer_name": customer_name,
                 "customer_email": customer_email,
                 "customer_phone": customer_phone,
