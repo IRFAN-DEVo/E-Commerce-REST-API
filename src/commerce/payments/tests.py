@@ -446,3 +446,105 @@ class RazorpayPaymentIntegrationTests(TestCase):
             self.assertEqual(resp.status_code, status.HTTP_200_OK)
             self.assertTrue(resp.data["razorpay_enabled"])
             self.assertEqual(resp.data["razorpay_key_id"], self.test_key_id)
+
+    # --- 10. UPI Payment Flows ---
+
+    def test_upi_payment_signature_verification_success(self):
+        """Verifies successful UPI payment (e.g. success@razorpay VPA) transitions order to PROCESSING."""
+        payment = Payment.objects.create(
+            order=self.order,
+            payment_method="RAZORPAY",
+            payment_status="PENDING",
+            amount=self.order.total_price,
+        )
+
+        rzp_order_id = "order_upi_rzp_789"
+        upi_payment_id = "pay_upi_success_456"
+        valid_signature = self._generate_signature(
+            rzp_order_id, upi_payment_id, self.test_key_secret
+        )
+
+        with override_settings(
+            RAZORPAY_KEY_ID=self.test_key_id,
+            RAZORPAY_KEY_SECRET=self.test_key_secret,
+        ):
+            resp = self.client_customer.post(
+                "/api/v1/payments/razorpay/verify/",
+                {
+                    "order_id": self.order.id,
+                    "razorpay_order_id": rzp_order_id,
+                    "razorpay_payment_id": upi_payment_id,
+                    "razorpay_signature": valid_signature,
+                },
+            )
+
+            self.assertEqual(resp.status_code, status.HTTP_200_OK)
+            self.assertEqual(resp.data["status"], "SUCCESS")
+            self.assertEqual(resp.data["transaction_id"], upi_payment_id)
+
+            payment.refresh_from_db()
+            self.assertEqual(payment.payment_status, "SUCCESS")
+            self.assertEqual(payment.transaction_id, upi_payment_id)
+
+            self.order.refresh_from_db()
+            self.assertEqual(self.order.status, "PROCESSING")
+
+    def test_upi_payment_tampered_signature_rejected(self):
+        """Verifies tampered signature for UPI payment is rejected and marks payment FAILED."""
+        payment = Payment.objects.create(
+            order=self.order,
+            payment_method="RAZORPAY",
+            payment_status="PENDING",
+            amount=self.order.total_price,
+        )
+
+        with override_settings(
+            RAZORPAY_KEY_ID=self.test_key_id,
+            RAZORPAY_KEY_SECRET=self.test_key_secret,
+        ):
+            resp = self.client_customer.post(
+                "/api/v1/payments/razorpay/verify/",
+                {
+                    "order_id": self.order.id,
+                    "razorpay_order_id": "order_upi_fake",
+                    "razorpay_payment_id": "pay_upi_fake",
+                    "razorpay_signature": "invalid_forged_upi_signature",
+                },
+            )
+
+            self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+            payment.refresh_from_db()
+            self.assertEqual(payment.payment_status, "FAILED")
+            self.order.refresh_from_db()
+            self.assertEqual(self.order.status, "PENDING")
+
+    def test_upi_duplicate_verification_is_idempotent(self):
+        """Verifies duplicate verification of an already-verified UPI payment returns 200 idempotently."""
+        payment = Payment.objects.create(
+            order=self.order,
+            payment_method="RAZORPAY",
+            payment_status="SUCCESS",
+            amount=self.order.total_price,
+            transaction_id="pay_upi_success_already",
+        )
+        self.order.status = "PROCESSING"
+        self.order.save()
+
+        with override_settings(
+            RAZORPAY_KEY_ID=self.test_key_id,
+            RAZORPAY_KEY_SECRET=self.test_key_secret,
+        ):
+            resp = self.client_customer.post(
+                "/api/v1/payments/razorpay/verify/",
+                {
+                    "order_id": self.order.id,
+                    "razorpay_order_id": "order_upi_prev",
+                    "razorpay_payment_id": "pay_upi_success_already",
+                    "razorpay_signature": "any_signature_because_idempotent",
+                },
+            )
+
+            self.assertEqual(resp.status_code, status.HTTP_200_OK)
+            self.assertEqual(resp.data["detail"], "Payment already verified successfully.")
+            self.assertEqual(resp.data["status"], "SUCCESS")
+

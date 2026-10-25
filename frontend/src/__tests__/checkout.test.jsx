@@ -633,6 +633,158 @@ describe('CheckoutPage component', () => {
       expect(screen.getByText('Invalid payment signature.')).toBeInTheDocument();
     });
   });
+
+  it('supports UPI payment flow (success@razorpay) and verifies signature', async () => {
+    paymentsApi.getPaymentConfig.mockResolvedValue({
+      razorpay_enabled: true,
+      razorpay_key_id: 'rzp_test_mockkey123',
+      cod_enabled: true,
+    });
+
+    ordersApi.checkout.mockResolvedValue({
+      id: 104,
+      total_price: '500.00',
+      status: 'PENDING',
+    });
+
+    paymentsApi.createPayment.mockResolvedValue({
+      payment_id: 20,
+      order_id: 104,
+      razorpay_order_id: 'order_upi_104',
+      razorpay_key_id: 'rzp_test_mockkey123',
+      amount_paise: 50000,
+      currency: 'INR',
+      customer: {
+        name: 'Jane Doe',
+        email: 'jane@example.com',
+        contact: '9876543210',
+      },
+    });
+
+    paymentsApi.verifyRazorpayPayment.mockResolvedValue({
+      detail: 'Payment verified successfully.',
+      order_id: 104,
+      status: 'SUCCESS',
+      transaction_id: 'pay_upi_success_test',
+    });
+
+    let upiOptions;
+    const mockUpiOpen = vi.fn().mockImplementation(() => {
+      // Simulate Razorpay handler returning UPI payment ID
+      upiOptions.handler({
+        razorpay_payment_id: 'pay_upi_success_test',
+        razorpay_order_id: 'order_upi_104',
+        razorpay_signature: 'sig_upi_valid_hex',
+      });
+    });
+
+    window.Razorpay = vi.fn().mockImplementation(function (opts) {
+      upiOptions = opts;
+      this.open = mockUpiOpen;
+      this.on = vi.fn();
+    });
+
+    renderCheckoutPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('1. Delivery Shipping Address')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/Full Name/i), { target: { value: 'Jane Doe' } });
+    fireEvent.change(screen.getByLabelText(/Contact Phone/i), { target: { value: '9876543210' } });
+    fireEvent.change(screen.getByLabelText(/Street Address/i), { target: { value: '123 Market St' } });
+    fireEvent.change(screen.getByLabelText(/City/i), { target: { value: 'Mumbai' } });
+    fireEvent.change(screen.getByLabelText(/State/i), { target: { value: 'MH' } });
+    fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: '400001' } });
+    fireEvent.click(screen.getByRole('button', { name: /Confirm Shipping & Continue/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Razorpay \(Cards, UPI, NetBanking\)/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText(/Razorpay \(Cards, UPI, NetBanking\)/i));
+    fireEvent.click(screen.getByRole('button', { name: /Pay with Razorpay \(₹500.00\)/i }));
+
+    await waitFor(() => {
+      expect(paymentsApi.createPayment).toHaveBeenCalledWith(104, 'RAZORPAY');
+      expect(window.Razorpay).toHaveBeenCalledTimes(1);
+      expect(upiOptions.amount).toBe(50000);
+      expect(upiOptions.currency).toBe('INR');
+      expect(paymentsApi.verifyRazorpayPayment).toHaveBeenCalledWith({
+        order_id: 104,
+        razorpay_order_id: 'order_upi_104',
+        razorpay_payment_id: 'pay_upi_success_test',
+        razorpay_signature: 'sig_upi_valid_hex',
+      });
+    });
+  });
+
+  it('handles UPI simulation failure (failure@razorpay) via payment.failed without marking order paid', async () => {
+    paymentsApi.getPaymentConfig.mockResolvedValue({
+      razorpay_enabled: true,
+      razorpay_key_id: 'rzp_test_mockkey123',
+      cod_enabled: true,
+    });
+
+    ordersApi.checkout.mockResolvedValue({
+      id: 105,
+      total_price: '500.00',
+      status: 'PENDING',
+    });
+
+    paymentsApi.createPayment.mockResolvedValue({
+      payment_id: 21,
+      order_id: 105,
+      razorpay_order_id: 'order_upi_105',
+      razorpay_key_id: 'rzp_test_mockkey123',
+      amount_paise: 50000,
+      currency: 'INR',
+    });
+
+    let eventHandlers = {};
+    window.Razorpay = vi.fn().mockImplementation(function (opts) {
+      this.open = vi.fn().mockImplementation(() => {
+        // Trigger payment.failed (simulating failure@razorpay VPA response)
+        if (eventHandlers['payment.failed']) {
+          eventHandlers['payment.failed']({
+            error: {
+              code: 'BAD_REQUEST_ERROR',
+              description: 'Payment failed at UPI gateway',
+            },
+          });
+        }
+      });
+      this.on = vi.fn().mockImplementation((event, handler) => {
+        eventHandlers[event] = handler;
+      });
+    });
+
+    renderCheckoutPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('1. Delivery Shipping Address')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/Full Name/i), { target: { value: 'Jane Doe' } });
+    fireEvent.change(screen.getByLabelText(/Contact Phone/i), { target: { value: '9876543210' } });
+    fireEvent.change(screen.getByLabelText(/Street Address/i), { target: { value: '123 Market St' } });
+    fireEvent.change(screen.getByLabelText(/City/i), { target: { value: 'Mumbai' } });
+    fireEvent.change(screen.getByLabelText(/State/i), { target: { value: 'MH' } });
+    fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: '400001' } });
+    fireEvent.click(screen.getByRole('button', { name: /Confirm Shipping & Continue/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Razorpay \(Cards, UPI, NetBanking\)/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText(/Razorpay \(Cards, UPI, NetBanking\)/i));
+    fireEvent.click(screen.getByRole('button', { name: /Pay with Razorpay \(₹500.00\)/i }));
+
+    await waitFor(() => {
+      expect(paymentsApi.verifyRazorpayPayment).not.toHaveBeenCalled();
+      expect(screen.getByText('Payment failed at UPI gateway')).toBeInTheDocument();
+    });
+  });
 });
 
 describe('resolveRazorpayAmountPaise utility', () => {
