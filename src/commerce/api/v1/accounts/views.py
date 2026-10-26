@@ -1,5 +1,7 @@
 import logging
+import secrets
 import uuid
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import BadHeaderError
 from django.db import transaction
@@ -16,23 +18,31 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from accounts.email import send_password_reset_email, send_verification_email
-from accounts.models import EmailVerificationOTP, PasswordResetOTP
+from accounts.models import EmailVerificationOTP, PasswordResetOTP, PhoneVerificationOTP
+from accounts.services.sms import get_sms_provider
 from accounts.throttles import (
     ForgotPasswordThrottle,
+    RequestPhoneOTPThrottle,
+    ResendPhoneOTPThrottle,
     ResendVerificationThrottle,
     VerifyOTPThrottle,
+    VerifyPhoneOTPThrottle,
 )
 from accounts.tokens import generate_reset_token, verify_reset_token
+from accounts.utils.phone import mask_phone_number
 from api.v1.products.permissions import IsOwner
 from .serializers import (
     EmailTokenObtainPairSerializer,
     ForgotPasswordSerializer,
     RegisterSerializer,
+    RequestPhoneOTPSerializer,
+    ResendPhoneOTPSerializer,
     ResendVerificationOTPSerializer,
     ResetPasswordSerializer,
     UserProfileSerializer,
     VerifyEmailSerializer,
     VerifyOTPSerializer,
+    VerifyPhoneOTPSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -187,6 +197,16 @@ class VerifyEmailView(APIView):
                     user.phone = otp_record.phone
                 user.save()
 
+            # Check if phone number was pre-verified during onboarding
+            if otp_record.phone:
+                has_phone_verified = PhoneVerificationOTP.objects.filter(
+                    phone=otp_record.phone,
+                    is_verified=True,
+                ).exists()
+                if has_phone_verified:
+                    user.is_phone_verified = True
+                    user.save(update_fields=["is_phone_verified"])
+
             # Clean up all verification OTPs for this email / user
             EmailVerificationOTP.objects.filter(email__iexact=email).delete()
             if user:
@@ -206,6 +226,8 @@ class VerifyEmailView(APIView):
                     "name": user.first_name,
                     "email": user.email,
                     "phone": user.phone,
+                    "is_email_verified": user.is_email_verified,
+                    "is_phone_verified": user.is_phone_verified,
                     "user_type": user.user_type,
                 },
             },
@@ -560,3 +582,257 @@ class AdminCustomerDetailView(generics.RetrieveAPIView):
     serializer_class = UserProfileSerializer
     queryset = User.objects.all()
     lookup_field = "pk"
+
+
+# Phone Verification API Endpoints
+
+
+@extend_schema(
+    tags=["Authentication"],
+    summary="Request Phone Verification OTP",
+    description="Dispatches a 6-digit SMS OTP to verify the user's phone number.",
+    request=RequestPhoneOTPSerializer,
+    responses={200: "Verification code sent successfully."},
+)
+class RequestPhoneOTPView(APIView):
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [RequestPhoneOTPThrottle]
+
+    def post(self, request):
+        serializer = RequestPhoneOTPSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+
+        phone = serializer.validated_data["normalized_phone"]
+        user = request.user if (request.user and request.user.is_authenticated) else None
+        session_token = secrets.token_hex(32) if user is None else ""
+
+        with transaction.atomic():
+            challenge, plain_otp = PhoneVerificationOTP.create_challenge(
+                phone=phone,
+                user=user,
+                session_token=session_token,
+            )
+
+            sms_provider = get_sms_provider()
+            sms_text = f"Your DjangoMart verification code is {plain_otp}. Valid for 5 minutes. Do not share this code."
+            result = sms_provider.send_sms(to_phone=phone, message=sms_text)
+
+            if not result.success:
+                challenge.delete()
+                logger.error("SMS dispatch failed for %s: %s", mask_phone_number(phone), result.error_message)
+                return Response(
+                    {
+                        "detail": "Unable to send verification SMS at this time. Please verify your phone number and try again.",
+                        "success": False,
+                    },
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
+
+        return Response(
+            {
+                "success": True,
+                "message": "Verification code sent successfully.",
+                "phone": mask_phone_number(phone),
+                "session_token": session_token,
+                "cooldown_seconds": challenge.cooldown_remaining(),
+                "expires_in": getattr(settings, "OTP_EXPIRY_SECONDS", 300),
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+@extend_schema(
+    tags=["Authentication"],
+    summary="Verify Phone Number OTP",
+    description="Verifies the 6-digit SMS OTP and marks the phone number as verified.",
+    request=VerifyPhoneOTPSerializer,
+    responses={200: "Phone number verified successfully."},
+)
+class VerifyPhoneOTPView(APIView):
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [VerifyPhoneOTPThrottle]
+
+    def post(self, request):
+        serializer = VerifyPhoneOTPSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+
+        otp = serializer.validated_data["otp"]
+        phone = serializer.validated_data.get("normalized_phone")
+        session_token = serializer.validated_data.get("session_token", "").strip()
+        user = request.user if (request.user and request.user.is_authenticated) else None
+
+        with transaction.atomic():
+            query = PhoneVerificationOTP.objects.select_for_update().filter(is_verified=False)
+            if user:
+                query = query.filter(user=user)
+                if phone:
+                    query = query.filter(phone=phone)
+            elif session_token:
+                query = query.filter(session_token=session_token)
+            elif phone:
+                query = query.filter(phone=phone)
+            else:
+                return Response(
+                    {"detail": "Unable to identify verification session."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            challenge = query.order_by("-created_at").first()
+
+            if not challenge:
+                return Response(
+                    {"detail": "No active verification code found. Please request a new code."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if challenge.is_expired():
+                return Response(
+                    {"detail": "Verification code has expired. Please request a new code."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if challenge.attempts >= challenge.max_attempts:
+                return Response(
+                    {"detail": "Maximum verification attempts exceeded. Please request a new code."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if not challenge.verify(otp):
+                remaining = max(0, challenge.max_attempts - challenge.attempts)
+                if remaining == 0:
+                    return Response(
+                        {"detail": "Too many failed attempts. This code is now invalid. Please request a new code."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                return Response(
+                    {"detail": f"Invalid verification code. {remaining} attempt(s) remaining."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Verification succeeded
+            if user:
+                user.phone = challenge.phone
+                user.is_phone_verified = True
+                user.save(update_fields=["phone", "is_phone_verified"])
+
+            return Response(
+                {
+                    "success": True,
+                    "message": "Phone number verified successfully.",
+                    "phone": challenge.phone,
+                    "is_phone_verified": True,
+                    "session_token": challenge.session_token,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+
+@extend_schema(
+    tags=["Authentication"],
+    summary="Resend Phone Verification OTP",
+    description="Resends a 6-digit SMS verification OTP respecting cooldown limits.",
+    request=ResendPhoneOTPSerializer,
+    responses={200: "A new verification code has been sent."},
+)
+class ResendPhoneOTPView(APIView):
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [ResendPhoneOTPThrottle]
+
+    def post(self, request):
+        serializer = ResendPhoneOTPSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+
+        phone = serializer.validated_data.get("normalized_phone")
+        session_token = serializer.validated_data.get("session_token", "").strip()
+        user = request.user if (request.user and request.user.is_authenticated) else None
+
+        query = PhoneVerificationOTP.objects.filter(is_verified=False)
+        if user:
+            query = query.filter(user=user)
+            if phone:
+                query = query.filter(phone=phone)
+        elif session_token:
+            query = query.filter(session_token=session_token)
+        elif phone:
+            query = query.filter(phone=phone)
+        else:
+            return Response(
+                {"detail": "Unable to identify verification session."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        challenge = query.order_by("-created_at").first()
+
+        if challenge and not challenge.can_resend():
+            remaining = challenge.cooldown_remaining()
+            return Response(
+                {
+                    "detail": f"Please wait {remaining} seconds before requesting a new code.",
+                    "cooldown_remaining": remaining,
+                },
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
+        target_phone = challenge.phone if challenge else phone
+        if not target_phone:
+            return Response(
+                {"detail": "No phone number found to resend verification code."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        new_session_token = session_token or (secrets.token_hex(32) if user is None else "")
+
+        with transaction.atomic():
+            new_challenge, plain_otp = PhoneVerificationOTP.create_challenge(
+                phone=target_phone,
+                user=user,
+                session_token=new_session_token,
+            )
+
+            sms_provider = get_sms_provider()
+            sms_text = f"Your DjangoMart verification code is {plain_otp}. Valid for 5 minutes. Do not share this code."
+            result = sms_provider.send_sms(to_phone=target_phone, message=sms_text)
+
+            if not result.success:
+                new_challenge.delete()
+                logger.error("SMS dispatch failed on resend for %s: %s", mask_phone_number(target_phone), result.error_message)
+                return Response(
+                    {
+                        "detail": "Unable to send verification SMS at this time. Please try again later.",
+                        "success": False,
+                    },
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
+
+        return Response(
+            {
+                "success": True,
+                "message": "A new verification code has been sent.",
+                "phone": mask_phone_number(target_phone),
+                "session_token": new_session_token,
+                "cooldown_seconds": new_challenge.cooldown_remaining(),
+                "expires_in": getattr(settings, "OTP_EXPIRY_SECONDS", 300),
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+@extend_schema(
+    tags=["Authentication"],
+    summary="Get Phone Verification Status",
+    description="Returns the phone number and verification status of the authenticated user.",
+    responses={200: "Phone verification status returned."},
+)
+class PhoneVerificationStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(
+            {
+                "phone": request.user.phone,
+                "masked_phone": mask_phone_number(request.user.phone),
+                "is_phone_verified": request.user.is_phone_verified,
+            },
+            status=status.HTTP_200_OK,
+        )
+

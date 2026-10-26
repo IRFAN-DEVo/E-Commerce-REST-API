@@ -22,6 +22,12 @@ urlpatterns = [
     path('logout/', TokenBlacklistView.as_view(), name='token_blacklist'),
     path('profile/', UserProfileView.as_view(), name='user-profile'),
 
+    # Phone Verification APIs
+    path('phone/request-otp/', views.RequestPhoneOTPView.as_view(), name='phone-request-otp'),
+    path('phone/verify-otp/', views.VerifyPhoneOTPView.as_view(), name='phone-verify-otp'),
+    path('phone/resend-otp/', views.ResendPhoneOTPView.as_view(), name='phone-resend-otp'),
+    path('phone/status/', views.PhoneVerificationStatusView.as_view(), name='phone-status'),
+
     # Admin APIs
     path('admin/customers/', AdminCustomerListView.as_view(), name='admin-customer-list'),
     path('admin/customers/<int:pk>/', AdminCustomerDetailView.as_view(), name='admin-customer-detail'),

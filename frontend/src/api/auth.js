@@ -50,4 +50,24 @@ export const authApi = {
     const response = await apiClient.post('/accounts/reset-password/', data);
     return response.data;
   },
+
+  async requestPhoneOtp(data) {
+    const response = await apiClient.post('/accounts/phone/request-otp/', data);
+    return response.data;
+  },
+
+  async verifyPhoneOtp(data) {
+    const response = await apiClient.post('/accounts/phone/verify-otp/', data);
+    return response.data;
+  },
+
+  async resendPhoneOtp(data) {
+    const response = await apiClient.post('/accounts/phone/resend-otp/', data);
+    return response.data;
+  },
+
+  async getPhoneStatus() {
+    const response = await apiClient.get('/accounts/phone/status/');
+    return response.data;
+  },
 };

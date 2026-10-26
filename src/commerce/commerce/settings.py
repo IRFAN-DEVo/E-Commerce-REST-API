@@ -198,6 +198,9 @@ REST_FRAMEWORK = {
         "forgot_password": os.environ.get("FORGOT_PASSWORD_THROTTLE_RATE", "100/hour" if DEBUG else "5/hour"),
         "verify_otp": "20/minute",
         "resend_verification": "5/minute",
+        "request_phone_otp": "5/minute",
+        "verify_phone_otp": "15/minute",
+        "resend_phone_otp": "5/minute",
     }
 }
 
@@ -243,6 +246,22 @@ if EMAIL_USE_TLS and EMAIL_USE_SSL:
     raise ImproperlyConfigured("EMAIL_USE_TLS and EMAIL_USE_SSL are mutually exclusive; set only one to True.")
 
 EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", 25))
+
+
+# SMS & Phone OTP Configuration
+SMS_PROVIDER = os.environ.get("SMS_PROVIDER", "console" if DEBUG else "dummy").strip().lower()
+TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID", "").strip()
+TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN", "").strip()
+TWILIO_PHONE_NUMBER = os.environ.get("TWILIO_PHONE_NUMBER", "").strip()
+TWILIO_MESSAGING_SERVICE_SID = os.environ.get("TWILIO_MESSAGING_SERVICE_SID", "").strip()
+MSG91_AUTH_KEY = os.environ.get("MSG91_AUTH_KEY", "").strip()
+MSG91_SENDER_ID = os.environ.get("MSG91_SENDER_ID", "").strip()
+MSG91_TEMPLATE_ID = os.environ.get("MSG91_TEMPLATE_ID", "").strip()
+
+OTP_HMAC_SECRET = os.environ.get("OTP_HMAC_SECRET", "").strip()
+OTP_EXPIRY_SECONDS = int(os.environ.get("OTP_EXPIRY_SECONDS", 300))
+OTP_RESEND_COOLDOWN_SECONDS = int(os.environ.get("OTP_RESEND_COOLDOWN_SECONDS", 60))
+OTP_MAX_ATTEMPTS = int(os.environ.get("OTP_MAX_ATTEMPTS", 5))
 
 
 # Payment Gateway Configuration (Environment-driven, dummy fallbacks in dev only)

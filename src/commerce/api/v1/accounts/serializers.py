@@ -7,6 +7,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from accounts.models import User, EmailVerificationOTP
+from accounts.utils.phone import normalize_phone_number
 
 
 class RegisterSerializer(serializers.Serializer):
@@ -28,6 +29,11 @@ class RegisterSerializer(serializers.Serializer):
         allow_blank=True,
         max_length=20,
     )
+
+    def validate_phone(self, value):
+        if not value or not str(value).strip():
+            return ""
+        return normalize_phone_number(value)
     password = serializers.CharField(
         write_only=True,
         style={"input_type": "password"},
@@ -227,7 +233,98 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "username",
             "email",
             "phone",
+            "is_email_verified",
+            "is_phone_verified",
             "user_type",
             "date_joined",
         ]
         read_only_fields = fields
+
+
+class RequestPhoneOTPSerializer(serializers.Serializer):
+    phone = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="Phone number to verify (with country code, e.g. +91...)",
+    )
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        phone = attrs.get("phone", "").strip()
+
+        if not phone:
+            if request and request.user and request.user.is_authenticated:
+                phone = getattr(request.user, "phone", "").strip()
+            if not phone:
+                raise serializers.ValidationError({"phone": "Phone number is required."})
+
+        normalized = normalize_phone_number(phone)
+        attrs["normalized_phone"] = normalized
+
+        # Check phone ownership: prevent claiming another user's verified phone
+        user = request.user if (request and request.user and request.user.is_authenticated) else None
+        conflict_query = User.objects.filter(phone=normalized, is_phone_verified=True)
+        if user:
+            conflict_query = conflict_query.exclude(pk=user.pk)
+        if conflict_query.exists():
+            raise serializers.ValidationError(
+                {"phone": "This phone number cannot be verified. It is already associated with an existing verified account."}
+            )
+
+        return attrs
+
+
+class VerifyPhoneOTPSerializer(serializers.Serializer):
+    phone = serializers.CharField(required=False, allow_blank=True)
+    session_token = serializers.CharField(required=False, allow_blank=True)
+    otp = serializers.CharField(required=True, min_length=6, max_length=6)
+
+    def validate_otp(self, value):
+        val = value.strip()
+        if not val.isdigit():
+            raise serializers.ValidationError("OTP must consist of 6 numeric digits.")
+        return val
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        phone = attrs.get("phone", "").strip()
+        session_token = attrs.get("session_token", "").strip()
+
+        if phone:
+            attrs["normalized_phone"] = normalize_phone_number(phone)
+        elif session_token:
+            attrs["normalized_phone"] = None
+        elif request and request.user and request.user.is_authenticated:
+            user_phone = getattr(request.user, "phone", "").strip()
+            if not user_phone:
+                raise serializers.ValidationError("No phone number associated with user. Please provide phone.")
+            attrs["normalized_phone"] = normalize_phone_number(user_phone)
+        else:
+            raise serializers.ValidationError("A phone number or session token is required.")
+
+        return attrs
+
+
+class ResendPhoneOTPSerializer(serializers.Serializer):
+    phone = serializers.CharField(required=False, allow_blank=True)
+    session_token = serializers.CharField(required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        phone = attrs.get("phone", "").strip()
+        session_token = attrs.get("session_token", "").strip()
+
+        if phone:
+            attrs["normalized_phone"] = normalize_phone_number(phone)
+        elif session_token:
+            attrs["normalized_phone"] = None
+        elif request and request.user and request.user.is_authenticated:
+            user_phone = getattr(request.user, "phone", "").strip()
+            if not user_phone:
+                raise serializers.ValidationError("No phone number associated with user. Please provide phone.")
+            attrs["normalized_phone"] = normalize_phone_number(user_phone)
+        else:
+            raise serializers.ValidationError("A phone number or session token is required.")
+
+        return attrs
+

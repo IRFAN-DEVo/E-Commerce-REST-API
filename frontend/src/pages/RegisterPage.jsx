@@ -219,6 +219,9 @@ export const RegisterPage = () => {
                 />
                 <Phone size={16} style={{ position: 'absolute', left: '0.875rem', top: '50%', transform: 'translateY(-50%)', color: '#a1a1aa' }} />
               </div>
+              <p style={{ fontSize: '0.75rem', color: '#71717a', marginTop: '0.25rem' }}>
+                Include country code (e.g. +91 for India).
+              </p>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>

@@ -1397,17 +1397,57 @@ export const ProfilePage = () => {
                             </div>
 
                             <div style={{ gridColumn: 'span 2' }}>
-                              <label
-                                style={{
-                                  display: 'block',
-                                  fontSize: '0.8125rem',
-                                  fontWeight: 600,
-                                  color: '#71717a',
-                                  marginBottom: '0.375rem',
-                                }}
-                              >
-                                Phone Number
-                              </label>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.375rem' }}>
+                                <label
+                                  style={{
+                                    display: 'block',
+                                    fontSize: '0.8125rem',
+                                    fontWeight: 600,
+                                    color: '#71717a',
+                                  }}
+                                >
+                                  Phone Number
+                                </label>
+                                {user?.is_phone_verified ? (
+                                  <span
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '0.25rem',
+                                      fontSize: '0.75rem',
+                                      fontWeight: 600,
+                                      color: '#16a34a',
+                                      backgroundColor: '#f0fdf4',
+                                      padding: '0.2rem 0.5rem',
+                                      borderRadius: '9999px',
+                                      border: '1px solid #bbf7d0',
+                                    }}
+                                  >
+                                    <ShieldCheck size={13} />
+                                    Verified
+                                  </span>
+                                ) : (
+                                  <Link
+                                    to="/verify-phone"
+                                    state={{ phone: user?.phone, returnTo: '/profile?tab=settings' }}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '0.25rem',
+                                      fontSize: '0.75rem',
+                                      fontWeight: 600,
+                                      color: '#000000',
+                                      backgroundColor: '#f4f4f5',
+                                      padding: '0.2rem 0.6rem',
+                                      borderRadius: '4px',
+                                      border: '1px solid #d4d4d8',
+                                      textDecoration: 'none',
+                                    }}
+                                  >
+                                    Verify Phone
+                                  </Link>
+                                )}
+                              </div>
                               <div
                                 style={{
                                   padding: '0.75rem 1rem',
@@ -1416,9 +1456,15 @@ export const ProfilePage = () => {
                                   fontSize: '0.9375rem',
                                   color: '#18181b',
                                   fontWeight: 500,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
                                 }}
                               >
-                                {user?.phone || 'Not provided'}
+                                <span>{user?.phone || 'Not provided'}</span>
+                                {!user?.is_phone_verified && user?.phone && (
+                                  <span style={{ fontSize: '0.75rem', color: '#71717a' }}>Unverified</span>
+                                )}
                               </div>
                             </div>
                           </div>
