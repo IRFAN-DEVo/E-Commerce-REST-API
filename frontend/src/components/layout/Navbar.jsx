@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   ShoppingBag,
@@ -9,8 +9,11 @@ import {
   Search,
   Menu,
   X,
+  Heart,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { CartContext } from '../../context/CartContext';
+import { useWishlist } from '../../context/WishlistContext';
 import { notificationsApi } from '../../api/notifications';
 import { getUserDisplayName, getUserInitial } from '../../utils/user';
 
@@ -18,6 +21,10 @@ export const Navbar = () => {
   const { user, isAuthenticated, isOwner, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const cartContext = useContext(CartContext);
+  const totalCartItems = cartContext?.totalItems || 0;
+  const { wishlistCount } = useWishlist();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [unreadNotifications, setUnreadNotifications] = useState(0);
@@ -213,7 +220,83 @@ export const Navbar = () => {
         </form>
 
         {/* Action Icons (Search/Wishlist/Cart/Account) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+          {/* Wishlist Link */}
+          <Link
+            to="/wishlist"
+            style={{
+              position: 'relative',
+              padding: '0.5rem',
+              color: '#18181b',
+              display: 'flex',
+              alignItems: 'center',
+              borderRadius: '50%',
+            }}
+            aria-label={wishlistCount > 0 ? `Wishlist, ${wishlistCount} items` : 'Wishlist'}
+          >
+            <Heart size={20} strokeWidth={1.8} />
+            {wishlistCount > 0 && (
+              <span
+                style={{
+                  position: 'absolute',
+                  top: '2px',
+                  right: '2px',
+                  minWidth: '16px',
+                  height: '16px',
+                  borderRadius: '9999px',
+                  backgroundColor: '#0a0a0a',
+                  color: '#ffffff',
+                  fontSize: '0.625rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0 3px',
+                }}
+              >
+                {wishlistCount}
+              </span>
+            )}
+          </Link>
+
+          {/* Cart Link with Badge */}
+          <Link
+            to="/cart"
+            style={{
+              position: 'relative',
+              padding: '0.5rem',
+              color: '#18181b',
+              display: 'flex',
+              alignItems: 'center',
+              borderRadius: '50%',
+            }}
+            aria-label={totalCartItems > 0 ? `Cart, ${totalCartItems} items` : 'Cart'}
+          >
+            <ShoppingBag size={20} strokeWidth={1.8} />
+            {totalCartItems > 0 && (
+              <span
+                style={{
+                  position: 'absolute',
+                  top: '2px',
+                  right: '2px',
+                  minWidth: '16px',
+                  height: '16px',
+                  borderRadius: '9999px',
+                  backgroundColor: '#0a0a0a',
+                  color: '#d4ff00',
+                  fontSize: '0.625rem',
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0 3px',
+                }}
+              >
+                {totalCartItems}
+              </span>
+            )}
+          </Link>
+
           {/* Notifications Icon (if logged in) */}
           {isAuthenticated && (
             <Link
@@ -423,7 +506,15 @@ export const Navbar = () => {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <Link to="/" onClick={() => setMobileMenuOpen(false)} style={{ padding: '0.5rem 0', fontWeight: 500 }}>Home</Link>
-            <Link to="/products" onClick={() => setMobileMenuOpen(false)} style={{ padding: '0.5rem 0', fontWeight: 500 }}>Shop</Link>
+            <Link to="/products" onClick={() => setMobileMenuOpen(false)} style={{ padding: '0.5rem 0', fontWeight: 500 }}>Shop Catalog</Link>
+            <Link to="/cart" onClick={() => setMobileMenuOpen(false)} style={{ padding: '0.5rem 0', fontWeight: 500, display: 'flex', justifyContent: 'space-between', color: '#0a0a0a' }}>
+              <span>Cart</span>
+              {totalCartItems > 0 && <span style={{ fontWeight: 700, backgroundColor: '#0a0a0a', color: '#d4ff00', padding: '0.1rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem' }}>{totalCartItems}</span>}
+            </Link>
+            <Link to="/wishlist" onClick={() => setMobileMenuOpen(false)} style={{ padding: '0.5rem 0', fontWeight: 500, display: 'flex', justifyContent: 'space-between', color: '#0a0a0a' }}>
+              <span>Wishlist</span>
+              {wishlistCount > 0 && <span style={{ fontWeight: 700, backgroundColor: '#f4f4f5', padding: '0.1rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem' }}>{wishlistCount}</span>}
+            </Link>
             <Link to="/about" onClick={() => setMobileMenuOpen(false)} style={{ padding: '0.5rem 0', fontWeight: 500 }}>About</Link>
             <Link to="/contact" onClick={() => setMobileMenuOpen(false)} style={{ padding: '0.5rem 0', fontWeight: 500 }}>Contact</Link>
           </div>

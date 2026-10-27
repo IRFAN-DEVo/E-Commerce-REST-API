@@ -288,7 +288,7 @@ export const ProfilePage = () => {
 
                         <button
                           type="button"
-                          onClick={() => handleTabChange('wishlist')}
+                          onClick={() => handleTabChange('orders')}
                           style={{
                             backgroundColor: '#ffffff',
                             border: '1px solid #e5e7eb',
@@ -306,7 +306,7 @@ export const ProfilePage = () => {
                           }}
                         >
                           <div style={{ fontSize: '0.8125rem', color: '#71717a', fontWeight: 500 }}>
-                            Wishlist Items
+                            Active Orders
                           </div>
                           <div
                             style={{
@@ -316,13 +316,19 @@ export const ProfilePage = () => {
                               marginTop: '0.5rem',
                             }}
                           >
-                            {currentWishlist.length}
+                            {
+                              orders.filter((o) =>
+                                ['PROCESSING', 'PENDING', 'SHIPPED'].includes(
+                                  String(o.status || '').toUpperCase()
+                                )
+                              ).length
+                            }
                           </div>
                         </button>
 
                         <button
                           type="button"
-                          onClick={() => handleTabChange('cart')}
+                          onClick={() => handleTabChange('addresses')}
                           style={{
                             backgroundColor: '#ffffff',
                             border: '1px solid #e5e7eb',
@@ -340,7 +346,7 @@ export const ProfilePage = () => {
                           }}
                         >
                           <div style={{ fontSize: '0.8125rem', color: '#71717a', fontWeight: 500 }}>
-                            Cart Items
+                            Saved Addresses
                           </div>
                           <div
                             style={{
@@ -350,7 +356,7 @@ export const ProfilePage = () => {
                               marginTop: '0.5rem',
                             }}
                           >
-                            {totalItems}
+                            {savedAddresses.length}
                           </div>
                         </button>
                       </div>

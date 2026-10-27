@@ -5,6 +5,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { EmptyState } from '../components/common/EmptyState';
+import { AnimatedContent } from '../components/common/AnimatedContent';
 
 export const CartPage = () => {
   const { cartItems, totalItems, totalPrice, isLoading, updateItem, removeItem } = useCart();
@@ -14,30 +15,39 @@ export const CartPage = () => {
   if (!isAuthenticated) {
     return (
       <div className="container" style={{ padding: '5rem 0', maxWidth: '500px', textAlign: 'center' }}>
-        <div
-          style={{
-            width: '64px',
-            height: '64px',
-            borderRadius: '50%',
-            backgroundColor: '#f4f4f5',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 1.5rem',
-            color: '#000000',
-          }}
+        <AnimatedContent
+          distance={30}
+          direction="vertical"
+          duration={0.6}
+          ease="power3.out"
+          initialOpacity={0}
+          animateOpacity
         >
-          <ShoppingBag size={28} />
-        </div>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#000000', marginBottom: '0.5rem' }}>
-          Sign in to view your cart
-        </h2>
-        <p style={{ color: '#71717a', fontSize: '0.9375rem', marginBottom: '2rem' }}>
-          Your cart items are synchronized with your account across all devices.
-        </p>
-        <Link to="/login" className="btn btn-primary" style={{ padding: '0.75rem 2rem' }}>
-          Sign In
-        </Link>
+          <div
+            style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              backgroundColor: '#f4f4f5',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 1.5rem',
+              color: '#000000',
+            }}
+          >
+            <ShoppingBag size={28} />
+          </div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#000000', marginBottom: '0.5rem' }}>
+            Sign in to view your cart
+          </h2>
+          <p style={{ color: '#71717a', fontSize: '0.9375rem', marginBottom: '2rem' }}>
+            Your cart items are synchronized with your account across all devices.
+          </p>
+          <Link to="/login" className="btn btn-primary" style={{ padding: '0.75rem 2rem' }}>
+            Sign In
+          </Link>
+        </AnimatedContent>
       </div>
     );
   }
@@ -53,30 +63,39 @@ export const CartPage = () => {
   if (cartItems.length === 0) {
     return (
       <div className="container" style={{ padding: '5rem 0', maxWidth: '500px', textAlign: 'center' }}>
-        <div
-          style={{
-            width: '64px',
-            height: '64px',
-            borderRadius: '50%',
-            backgroundColor: '#f4f4f5',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 1.5rem',
-            color: '#000000',
-          }}
+        <AnimatedContent
+          distance={30}
+          direction="vertical"
+          duration={0.6}
+          ease="power3.out"
+          initialOpacity={0}
+          animateOpacity
         >
-          <ShoppingBag size={28} />
-        </div>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#000000', marginBottom: '0.5rem' }}>
-          Your shopping cart is empty
-        </h2>
-        <p style={{ color: '#71717a', fontSize: '0.9375rem', marginBottom: '2rem' }}>
-          Looks like you haven't added any items to your bag yet.
-        </p>
-        <Link to="/products" className="btn btn-primary" style={{ padding: '0.75rem 2rem' }}>
-          Start Shopping
-        </Link>
+          <div
+            style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              backgroundColor: '#f4f4f5',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 1.5rem',
+              color: '#000000',
+            }}
+          >
+            <ShoppingBag size={28} />
+          </div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#000000', marginBottom: '0.5rem' }}>
+            Your shopping cart is empty
+          </h2>
+          <p style={{ color: '#71717a', fontSize: '0.9375rem', marginBottom: '2rem' }}>
+            Looks like you haven't added any items to your bag yet.
+          </p>
+          <Link to="/products" className="btn btn-primary" style={{ padding: '0.75rem 2rem' }}>
+            Start Shopping
+          </Link>
+        </AnimatedContent>
       </div>
     );
   }
@@ -84,18 +103,27 @@ export const CartPage = () => {
   return (
     <div style={{ backgroundColor: '#ffffff', padding: '3rem 0 6rem 0' }}>
       <div className="container">
-        {/* Title matching Screenshot #4 */}
-        <h1
-          style={{
-            fontSize: '1.75rem',
-            fontWeight: 700,
-            color: '#000000',
-            letterSpacing: '-0.025em',
-            marginBottom: '2rem',
-          }}
+        {/* Title matching Screenshot #4 with AnimatedContent */}
+        <AnimatedContent
+          distance={20}
+          direction="vertical"
+          duration={0.55}
+          ease="power3.out"
+          initialOpacity={0}
+          animateOpacity
         >
-          Shopping Cart ({totalItems})
-        </h1>
+          <h1
+            style={{
+              fontSize: '1.75rem',
+              fontWeight: 700,
+              color: '#000000',
+              letterSpacing: '-0.025em',
+              marginBottom: '2rem',
+            }}
+          >
+            Shopping Cart ({totalItems})
+          </h1>
+        </AnimatedContent>
 
         <div
           style={{
@@ -107,8 +135,16 @@ export const CartPage = () => {
           className="cart-grid"
         >
           {/* Left Column: Items Table List (Screenshot #4) */}
-          <div>
-            {/* Table Header Row */}
+          <AnimatedContent
+            distance={30}
+            direction="horizontal"
+            duration={0.65}
+            ease="power3.out"
+            initialOpacity={0}
+            animateOpacity
+          >
+            <div>
+              {/* Table Header Row */}
             <div
               style={{
                 display: 'grid',
@@ -331,8 +367,19 @@ export const CartPage = () => {
               </Link>
             </div>
           </div>
+        </AnimatedContent>
 
-          {/* Right Column: Order Summary Card (Screenshot #4) */}
+        {/* Right Column: Order Summary Card (Screenshot #4) */}
+        <AnimatedContent
+          distance={30}
+          direction="horizontal"
+          reverse
+          duration={0.65}
+          ease="power3.out"
+          initialOpacity={0}
+          animateOpacity
+          delay={0.08}
+        >
           <div
             className="card"
             style={{
@@ -420,11 +467,12 @@ export const CartPage = () => {
               <span>Secure Checkout</span>
             </div>
           </div>
-        </div>
+        </AnimatedContent>
       </div>
+    </div>
 
-      <style>{`
-        @media (max-width: 900px) {
+    <style>{`
+      @media (max-width: 900px) {
           .cart-grid {
             grid-template-columns: 1fr !important;
             gap: 2rem !important;

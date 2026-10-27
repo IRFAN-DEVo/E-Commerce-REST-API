@@ -62,6 +62,28 @@ class ProductCRUDAndImportTests(APITestCase):
         results = response.data.get("results", [])
         self.assertGreaterEqual(len(results), 1)
 
+    def test_product_filter_by_category_name(self):
+        url = reverse("product-list")
+        response = self.client.get(
+            url,
+            {"category": "Electronics"},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data.get("results", [])
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["id"], self.product.id)
+
+    def test_product_filter_by_brand_name(self):
+        url = reverse("product-list")
+        response = self.client.get(
+            url,
+            {"brand": "Sony"},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data.get("results", [])
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["id"], self.product.id)
+
     def test_product_creation_with_sku(self):
         url = reverse("product-create")
         data = {

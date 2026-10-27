@@ -177,7 +177,10 @@ export const ProductsPage = () => {
                 </label>
 
                 {categories.map((c) => {
-                  const isChecked = categoryParam === String(c.id) || categoryParam === c.slug;
+                  const isChecked =
+                    categoryParam === String(c.id) ||
+                    (c.name && categoryParam.toLowerCase() === c.name.toLowerCase()) ||
+                    (c.slug && categoryParam.toLowerCase() === c.slug.toLowerCase());
                   return (
                     <label
                       key={c.id}
@@ -194,8 +197,8 @@ export const ProductsPage = () => {
                       <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <input
                           type="checkbox"
-                          checked={isChecked}
-                          onChange={() => updateParam('category', isChecked ? '' : (c.id || c.slug))}
+                          checked={Boolean(isChecked)}
+                          onChange={() => updateParam('category', isChecked ? '' : (c.name || c.id))}
                           className="form-checkbox"
                         />
                         <span>{c.name}</span>
@@ -235,7 +238,10 @@ export const ProductsPage = () => {
                 </label>
 
                 {brands.map((b) => {
-                  const isChecked = brandParam === String(b.id) || brandParam === b.slug;
+                  const isChecked =
+                    brandParam === String(b.id) ||
+                    (b.name && brandParam.toLowerCase() === b.name.toLowerCase()) ||
+                    (b.slug && brandParam.toLowerCase() === b.slug.toLowerCase());
                   return (
                     <label
                       key={b.id}
@@ -252,8 +258,8 @@ export const ProductsPage = () => {
                       <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <input
                           type="checkbox"
-                          checked={isChecked}
-                          onChange={() => updateParam('brand', isChecked ? '' : (b.id || b.slug))}
+                          checked={Boolean(isChecked)}
+                          onChange={() => updateParam('brand', isChecked ? '' : (b.name || b.id))}
                           className="form-checkbox"
                         />
                         <span>{b.name}</span>

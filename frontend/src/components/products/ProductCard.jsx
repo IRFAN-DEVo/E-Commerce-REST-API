@@ -129,12 +129,12 @@ export const ProductCard = memo(({ product, inWishlist = false, onWishlistToggle
             <span
               style={{
                 backgroundColor: '#000000',
-                color: '#ffffff',
+                color: '#d4ff00',
                 fontSize: '0.6875rem',
-                fontWeight: 700,
+                fontWeight: 800,
                 padding: '0.2rem 0.5rem',
                 borderRadius: '4px',
-                letterSpacing: '0.02em',
+                letterSpacing: '0.04em',
               }}
             >
               {discountPercent}% OFF
