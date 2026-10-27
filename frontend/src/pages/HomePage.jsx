@@ -17,6 +17,7 @@ import { ProductCard } from '../components/products/ProductCard';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { AnimatedContent } from '../components/common/AnimatedContent';
 import { FadeContent } from '../components/common/FadeContent';
+import { Antigravity } from '../components/common/Antigravity';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 import {
@@ -149,59 +150,86 @@ export const HomePage = () => {
   };
 
   return (
-    <div style={{ backgroundColor: '#ffffff', minHeight: '100vh', overflowX: 'hidden' }}>
-      {/* 1. TOP EDITORIAL TICKER / RUNNING MARQUEE */}
-      <div className="editorial-ticker-wrap" aria-hidden="true">
-        <div className="editorial-ticker">
-          <span className="ticker-item">
-            <span className="ticker-dot" />
-            Curated Hardware Archive
-          </span>
-          <span className="ticker-item">
-            <span className="ticker-dot" />
-            Zero Compromise Performance
-          </span>
-          <span className="ticker-item">
-            <span className="ticker-dot" />
-            Nationwide Express Delivery
-          </span>
-          <span className="ticker-item">
-            <span className="ticker-dot" />
-            Verified Authenticity
-          </span>
-          <span className="ticker-item">
-            <span className="ticker-dot" />
-            Form Meets Relentless Function
-          </span>
-          <span className="ticker-item">
-            <span className="ticker-dot" />
-            Curated Hardware Archive
-          </span>
-          <span className="ticker-item">
-            <span className="ticker-dot" />
-            Zero Compromise Performance
-          </span>
-          <span className="ticker-item">
-            <span className="ticker-dot" />
-            Nationwide Express Delivery
-          </span>
-          <span className="ticker-item">
-            <span className="ticker-dot" />
-            Verified Authenticity
-          </span>
-        </div>
-      </div>
-
-      {/* 2. HOMEPAGE HERO — EDITORIAL COMPOSITION WITH HAND-DRAWN ANNOTATIONS */}
-      <section
+    <div style={{ backgroundColor: '#ffffff', minHeight: '100vh', overflowX: 'hidden', position: 'relative' }}>
+      {/* Full Page Antigravity Interactive Particles Background behind every text (Home Page Only) */}
+      <div
         style={{
-          position: 'relative',
-          backgroundColor: '#fafafb',
-          borderBottom: '1px solid #e5e7eb',
-          padding: 'clamp(2.5rem, 5vw, 5rem) 0 clamp(3rem, 6vw, 6rem)',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          zIndex: 0,
+          pointerEvents: 'none',
+          opacity: 0.65,
         }}
       >
-        <div className="container" style={{ position: 'relative' }}>
+        <Antigravity
+          colors={['#84cc16', '#000000', '#84cc16']}
+          count={1500}
+          magnetRadius={9}
+          ringRadius={7}
+          particleSize={0.9}
+          autoAnimate={true}
+          interactive={true}
+          lightMode={true}
+        />
+      </div>
+
+      {/* Main Home Page Content Layer */}
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        {/* 1. TOP EDITORIAL TICKER / RUNNING MARQUEE */}
+        <div className="editorial-ticker-wrap" aria-hidden="true" style={{ backgroundColor: '#0a0a0a' }}>
+          <div className="editorial-ticker">
+            <span className="ticker-item">
+              <span className="ticker-dot" />
+              Curated Hardware Archive
+            </span>
+            <span className="ticker-item">
+              <span className="ticker-dot" />
+              Zero Compromise Performance
+            </span>
+            <span className="ticker-item">
+              <span className="ticker-dot" />
+              Nationwide Express Delivery
+            </span>
+            <span className="ticker-item">
+              <span className="ticker-dot" />
+              Verified Authenticity
+            </span>
+            <span className="ticker-item">
+              <span className="ticker-dot" />
+              Form Meets Relentless Function
+            </span>
+            <span className="ticker-item">
+              <span className="ticker-dot" />
+              Curated Hardware Archive
+            </span>
+            <span className="ticker-item">
+              <span className="ticker-dot" />
+              Zero Compromise Performance
+            </span>
+            <span className="ticker-item">
+              <span className="ticker-dot" />
+              Nationwide Express Delivery
+            </span>
+            <span className="ticker-item">
+              <span className="ticker-dot" />
+              Verified Authenticity
+            </span>
+          </div>
+        </div>
+
+        {/* 2. HOMEPAGE HERO — EDITORIAL COMPOSITION WITH HAND-DRAWN ANNOTATIONS */}
+        <section
+          style={{
+            position: 'relative',
+            backgroundColor: 'transparent',
+            borderBottom: '1px solid #e5e7eb',
+            padding: 'clamp(2.5rem, 5vw, 5rem) 0 clamp(3rem, 6vw, 6rem)',
+          }}
+        >
+          <div className="container" style={{ position: 'relative' }}>
           <div
             style={{
               display: 'grid',
@@ -400,7 +428,8 @@ export const HomePage = () => {
                 <div
                   style={{
                     position: 'relative',
-                    backgroundColor: '#ffffff',
+                    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+                    backdropFilter: 'blur(12px)',
                     border: '1px solid #e5e7eb',
                     borderRadius: '16px',
                     padding: '2rem 1.5rem 1.75rem',
@@ -1056,7 +1085,7 @@ export const HomePage = () => {
       {categories.length > 0 && (
         <section
           style={{
-            backgroundColor: '#fafafb',
+            backgroundColor: 'rgba(250, 250, 251, 0.45)',
             borderBottom: '1px solid #e5e7eb',
             padding: 'clamp(3rem, 5vw, 5rem) 0',
           }}
@@ -1391,6 +1420,7 @@ export const HomePage = () => {
           </div>
         </div>
       </section>
+      </div>
 
       {/* Responsive adjustments */}
       <style>{`

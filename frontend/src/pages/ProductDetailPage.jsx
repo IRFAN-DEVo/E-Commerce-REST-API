@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { StarRating } from '../components/common/StarRating';
+import { AnimatedContent } from '../components/common/AnimatedContent';
 
 export const ProductDetailPage = () => {
   const { id } = useParams();
@@ -149,21 +150,32 @@ export const ProductDetailPage = () => {
     <div style={{ backgroundColor: '#ffffff', padding: '2rem 0 5rem 0' }}>
       <div className="container">
         {/* Breadcrumb Navigation (Screenshot #3) */}
-        <nav className="breadcrumb-nav">
-          <Link to="/">Home</Link>
-          <ChevronRight size={14} className="breadcrumb-separator" />
-          <Link to="/products">Shop</Link>
-          {product.category_name && (
-            <>
-              <ChevronRight size={14} className="breadcrumb-separator" />
-              <Link to={`/products?category=${encodeURIComponent(product.category_name)}`}>
-                {product.category_name}
-              </Link>
-            </>
-          )}
-          <ChevronRight size={14} className="breadcrumb-separator" />
-          <span className="breadcrumb-current">{product.name}</span>
-        </nav>
+        <AnimatedContent
+          key={`bc-${product.id}`}
+          distance={15}
+          direction="vertical"
+          reverse={true}
+          duration={0.4}
+          ease="power3.out"
+          initialOpacity={0}
+          animateOpacity
+        >
+          <nav className="breadcrumb-nav">
+            <Link to="/">Home</Link>
+            <ChevronRight size={14} className="breadcrumb-separator" />
+            <Link to="/products">Shop</Link>
+            {product.category_name && (
+              <>
+                <ChevronRight size={14} className="breadcrumb-separator" />
+                <Link to={`/products?category=${encodeURIComponent(product.category_name)}`}>
+                  {product.category_name}
+                </Link>
+              </>
+            )}
+            <ChevronRight size={14} className="breadcrumb-separator" />
+            <span className="breadcrumb-current">{product.name}</span>
+          </nav>
+        </AnimatedContent>
 
         {/* Main Product Presentation (Screenshot #3) */}
         <div
@@ -177,60 +189,85 @@ export const ProductDetailPage = () => {
           className="product-detail-grid"
         >
           {/* Left Column: Image Display */}
-          <div style={{ display: 'flex', gap: '1rem' }} className="gallery-container">
-            {/* Main Featured Image Container */}
-            <div
-              style={{
-                flex: 1,
-                backgroundColor: '#f4f4f5',
-                borderRadius: '12px',
-                border: '1px solid #e5e7eb',
-                aspectRatio: '1/1',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '2.5rem',
-                position: 'relative',
-              }}
-            >
-              {product.image ? (
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  style={{
-                    maxHeight: '100%',
-                    maxWidth: '100%',
-                    objectFit: 'contain',
-                  }}
-                />
-              ) : (
-                <div style={{ color: '#a1a1aa' }}>No Image Available</div>
-              )}
+          <AnimatedContent
+            key={`img-${product.id}`}
+            distance={40}
+            direction="horizontal"
+            reverse={true}
+            duration={0.7}
+            ease="power3.out"
+            initialOpacity={0}
+            animateOpacity
+            scale={0.96}
+            style={{ width: '100%' }}
+          >
+            <div style={{ display: 'flex', gap: '1rem' }} className="gallery-container">
+              {/* Main Featured Image Container */}
+              <div
+                style={{
+                  flex: 1,
+                  backgroundColor: '#f4f4f5',
+                  borderRadius: '12px',
+                  border: '1px solid #e5e7eb',
+                  aspectRatio: '1/1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '2.5rem',
+                  position: 'relative',
+                  overflow: 'hidden',
+                }}
+              >
+                {product.image ? (
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    style={{
+                      maxHeight: '100%',
+                      maxWidth: '100%',
+                      objectFit: 'contain',
+                    }}
+                  />
+                ) : (
+                  <div style={{ color: '#a1a1aa' }}>No Image Available</div>
+                )}
 
-              {/* Discount Badge */}
-              {discountPercent && (
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: '1rem',
-                    left: '1rem',
-                    backgroundColor: '#000000',
-                    color: '#ffffff',
-                    fontWeight: 700,
-                    fontSize: '0.75rem',
-                    padding: '0.25rem 0.625rem',
-                    borderRadius: '4px',
-                    letterSpacing: '0.02em',
-                  }}
-                >
-                  {discountPercent}% OFF
-                </span>
-              )}
+                {/* Discount Badge */}
+                {discountPercent && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: '1rem',
+                      left: '1rem',
+                      backgroundColor: '#000000',
+                      color: '#ffffff',
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                      padding: '0.25rem 0.625rem',
+                      borderRadius: '4px',
+                      letterSpacing: '0.02em',
+                    }}
+                  >
+                    {discountPercent}% OFF
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
+          </AnimatedContent>
 
           {/* Right Column: Information, Options, & Actions (Screenshot #3) */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <AnimatedContent
+            key={`info-${product.id}`}
+            distance={40}
+            direction="horizontal"
+            duration={0.7}
+            delay={0.1}
+            ease="power3.out"
+            initialOpacity={0}
+            animateOpacity
+            style={{ width: '100%' }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {/* Title & Brand */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.375rem' }}>
@@ -491,139 +528,151 @@ export const ProductDetailPage = () => {
                 </div>
               </div>
             </div>
-          </div>
+            </div>
+          </AnimatedContent>
         </div>
 
         {/* Tabbed Info Section: Description / Specifications / Reviews (Screenshot #3) */}
-        <section style={{ borderTop: '1px solid #e5e7eb', paddingTop: '2rem' }}>
-          <div className="tabs-underline" style={{ marginBottom: '2rem' }}>
-            <button
-              onClick={() => setActiveTab('description')}
-              className={`tab-underline-btn ${activeTab === 'description' ? 'active' : ''}`}
-            >
-              Description
-            </button>
-            <button
-              onClick={() => setActiveTab('specs')}
-              className={`tab-underline-btn ${activeTab === 'specs' ? 'active' : ''}`}
-            >
-              Specifications
-            </button>
-            <button
-              onClick={() => setActiveTab('reviews')}
-              className={`tab-underline-btn ${activeTab === 'reviews' ? 'active' : ''}`}
-            >
-              Reviews ({reviews.length})
-            </button>
-          </div>
-
-          {/* Tab 1: Full Description */}
-          {activeTab === 'description' && (
-            <div style={{ maxWidth: '800px', color: '#52525b', lineHeight: '1.8', fontSize: '0.9375rem' }}>
-              <p style={{ whiteSpace: 'pre-line' }}>
-                {product.overview ||
-                  'These running shoes are built with premium materials to give you the best performance and comfort. The breathable mesh upper keeps your feet cool, while the cushioned sole provides excellent support.'}
-              </p>
+        <AnimatedContent
+          key={`tabs-${product.id}`}
+          distance={30}
+          direction="vertical"
+          duration={0.65}
+          delay={0.2}
+          ease="power3.out"
+          initialOpacity={0}
+          animateOpacity
+        >
+          <section style={{ borderTop: '1px solid #e5e7eb', paddingTop: '2rem' }}>
+            <div className="tabs-underline" style={{ marginBottom: '2rem' }}>
+              <button
+                onClick={() => setActiveTab('description')}
+                className={`tab-underline-btn ${activeTab === 'description' ? 'active' : ''}`}
+              >
+                Description
+              </button>
+              <button
+                onClick={() => setActiveTab('specs')}
+                className={`tab-underline-btn ${activeTab === 'specs' ? 'active' : ''}`}
+              >
+                Specifications
+              </button>
+              <button
+                onClick={() => setActiveTab('reviews')}
+                className={`tab-underline-btn ${activeTab === 'reviews' ? 'active' : ''}`}
+              >
+                Reviews ({reviews.length})
+              </button>
             </div>
-          )}
 
-          {/* Tab 2: Specifications */}
-          {activeTab === 'specs' && (
-            <div style={{ maxWidth: '600px' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                <tbody>
-                  <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                    <td style={{ padding: '0.75rem 0', fontWeight: 600, color: '#000000', width: '180px' }}>Brand</td>
-                    <td style={{ padding: '0.75rem 0', color: '#52525b' }}>{product.brand_name || 'DjangoMart Collection'}</td>
-                  </tr>
-                  <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                    <td style={{ padding: '0.75rem 0', fontWeight: 600, color: '#000000' }}>Category</td>
-                    <td style={{ padding: '0.75rem 0', color: '#52525b' }}>{product.category_name || 'Standard'}</td>
-                  </tr>
-                  <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                    <td style={{ padding: '0.75rem 0', fontWeight: 600, color: '#000000' }}>Availability</td>
-                    <td style={{ padding: '0.75rem 0', color: '#52525b' }}>{product.stock > 0 ? `In Stock (${product.stock} units)` : 'Out of Stock'}</td>
-                  </tr>
-                  <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                    <td style={{ padding: '0.75rem 0', fontWeight: 600, color: '#000000' }}>Warranty</td>
-                    <td style={{ padding: '0.75rem 0', color: '#52525b' }}>1 Year Manufacturer Warranty</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Tab 3: Customer Reviews */}
-          {activeTab === 'reviews' && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '3rem' }} className="reviews-grid">
-              {/* Write Review Form */}
-              <div className="card" style={{ padding: '1.75rem', height: 'fit-content' }}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#000000', marginBottom: '1rem' }}>
-                  Write a Review
-                </h3>
-                {isAuthenticated ? (
-                  <form onSubmit={handleSubmitReview}>
-                    <div className="form-group">
-                      <label className="form-label">Rating</label>
-                      <StarRating rating={reviewRating} interactive={true} onRate={setReviewRating} size={22} />
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label">Comment</label>
-                      <textarea
-                        rows={4}
-                        className="form-textarea"
-                        placeholder="Write your honest review..."
-                        value={reviewComment}
-                        onChange={(e) => setReviewComment(e.target.value)}
-                        required
-                      />
-                    </div>
-
-                    <button type="submit" disabled={isSubmittingReview} className="btn btn-primary" style={{ width: '100%' }}>
-                      {isSubmittingReview ? 'Submitting...' : 'Post Review'}
-                    </button>
-                  </form>
-                ) : (
-                  <div style={{ textAlign: 'center', padding: '1rem 0' }}>
-                    <p style={{ fontSize: '0.875rem', color: '#71717a', marginBottom: '1rem' }}>
-                      Sign in to your account to review this product.
-                    </p>
-                    <Link to="/login" className="btn btn-secondary" style={{ width: '100%' }}>
-                      Sign In
-                    </Link>
-                  </div>
-                )}
+            {/* Tab 1: Full Description */}
+            {activeTab === 'description' && (
+              <div style={{ maxWidth: '800px', color: '#52525b', lineHeight: '1.8', fontSize: '0.9375rem' }}>
+                <p style={{ whiteSpace: 'pre-line' }}>
+                  {product.overview ||
+                    'These running shoes are built with premium materials to give you the best performance and comfort. The breathable mesh upper keeps your feet cool, while the cushioned sole provides excellent support.'}
+                </p>
               </div>
+            )}
 
-              {/* Reviews List */}
-              <div>
-                {reviews.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {reviews.map((rev) => (
-                      <div key={rev.id} style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '1.25rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.375rem' }}>
-                          <span style={{ fontWeight: 600, color: '#000000', fontSize: '0.9375rem' }}>{rev.user}</span>
-                          <StarRating rating={rev.rating} size={14} />
-                        </div>
-                        <p style={{ fontSize: '0.875rem', color: '#52525b', lineHeight: '1.6' }}>{rev.comment}</p>
-                        {rev.created_at && (
-                          <span style={{ fontSize: '0.75rem', color: '#a1a1aa' }}>
-                            {new Date(rev.created_at).toLocaleDateString()}
-                          </span>
-                        )}
+            {/* Tab 2: Specifications */}
+            {activeTab === 'specs' && (
+              <div style={{ maxWidth: '600px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                  <tbody>
+                    <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '0.75rem 0', fontWeight: 600, color: '#000000', width: '180px' }}>Brand</td>
+                      <td style={{ padding: '0.75rem 0', color: '#52525b' }}>{product.brand_name || 'DjangoMart Collection'}</td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '0.75rem 0', fontWeight: 600, color: '#000000' }}>Category</td>
+                      <td style={{ padding: '0.75rem 0', color: '#52525b' }}>{product.category_name || 'Standard'}</td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '0.75rem 0', fontWeight: 600, color: '#000000' }}>Availability</td>
+                      <td style={{ padding: '0.75rem 0', color: '#52525b' }}>{product.stock > 0 ? `In Stock (${product.stock} units)` : 'Out of Stock'}</td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '0.75rem 0', fontWeight: 600, color: '#000000' }}>Warranty</td>
+                      <td style={{ padding: '0.75rem 0', color: '#52525b' }}>1 Year Manufacturer Warranty</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Tab 3: Customer Reviews */}
+            {activeTab === 'reviews' && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '3rem' }} className="reviews-grid">
+                {/* Write Review Form */}
+                <div className="card" style={{ padding: '1.75rem', height: 'fit-content' }}>
+                  <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#000000', marginBottom: '1rem' }}>
+                    Write a Review
+                  </h3>
+                  {isAuthenticated ? (
+                    <form onSubmit={handleSubmitReview}>
+                      <div className="form-group">
+                        <label className="form-label">Rating</label>
+                        <StarRating rating={reviewRating} interactive={true} onRate={setReviewRating} size={22} />
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{ color: '#71717a', fontSize: '0.875rem' }}>
-                    No reviews yet. Be the first to review this product!
-                  </div>
-                )}
+
+                      <div className="form-group">
+                        <label className="form-label">Comment</label>
+                        <textarea
+                          rows={4}
+                          className="form-textarea"
+                          placeholder="Write your honest review..."
+                          value={reviewComment}
+                          onChange={(e) => setReviewComment(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <button type="submit" disabled={isSubmittingReview} className="btn btn-primary" style={{ width: '100%' }}>
+                        {isSubmittingReview ? 'Submitting...' : 'Post Review'}
+                      </button>
+                    </form>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+                      <p style={{ fontSize: '0.875rem', color: '#71717a', marginBottom: '1rem' }}>
+                        Sign in to your account to review this product.
+                      </p>
+                      <Link to="/login" className="btn btn-secondary" style={{ width: '100%' }}>
+                        Sign In
+                      </Link>
+                    </div>
+                  )}
+                </div>
+
+                {/* Reviews List */}
+                <div>
+                  {reviews.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      {reviews.map((rev) => (
+                        <div key={rev.id} style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '1.25rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.375rem' }}>
+                            <span style={{ fontWeight: 600, color: '#000000', fontSize: '0.9375rem' }}>{rev.user}</span>
+                            <StarRating rating={rev.rating} size={14} />
+                          </div>
+                          <p style={{ fontSize: '0.875rem', color: '#52525b', lineHeight: '1.6' }}>{rev.comment}</p>
+                          {rev.created_at && (
+                            <span style={{ fontSize: '0.75rem', color: '#a1a1aa' }}>
+                              {new Date(rev.created_at).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ color: '#71717a', fontSize: '0.875rem' }}>
+                      No reviews yet. Be the first to review this product!
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
-        </section>
+            )}
+          </section>
+        </AnimatedContent>
       </div>
 
       <style>{`
