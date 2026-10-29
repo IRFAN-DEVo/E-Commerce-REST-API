@@ -370,7 +370,7 @@ class ForgotPasswordView(APIView):
 
         # Never reveal whether the email exists.
         if user:
-            _, otp = PasswordResetOTP.create_otp(user)
+            otp_obj, otp = PasswordResetOTP.create_otp(user)
 
             try:
                 send_password_reset_email(
@@ -378,6 +378,7 @@ class ForgotPasswordView(APIView):
                     otp=otp,
                 )
             except Exception as exc:
+                otp_obj.delete()
                 logger.error(
                     "Failed to send password reset email for user id %s: %s",
                     user.id,

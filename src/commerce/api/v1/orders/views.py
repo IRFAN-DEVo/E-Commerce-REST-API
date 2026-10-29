@@ -13,6 +13,7 @@ from drf_spectacular.utils import (
 
 from cart.models import Cart, CartItem
 from orders.models import Order, OrderItem, ShippingAddress
+from orders.email import send_order_cancellation_email
 from coupons.models import CouponUsage
 from products.models import Product
 from payments.models import Payment
@@ -266,6 +267,11 @@ class CancelOrderView(APIView):
 
         order.status = "CANCELLED"
         order.save(update_fields=["status"])
+
+        # Send order cancellation email after transaction commit
+        transaction.on_commit(
+            lambda: send_order_cancellation_email(order=order)
+        )
 
         return Response(
             {

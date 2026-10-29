@@ -55,7 +55,7 @@ def send_password_reset_email(*, user, otp: str):
                 <hr style="border: none; border-top: 1px solid #f4f4f5; margin: 28px 0 20px 0;">
 
                 <p style="font-size: 12px; line-height: 1.5; color: #a1a1aa; margin: 0;">
-                    If you did not request this password reset, no action is needed. Your account remains completely secure and your password will not be changed.
+                    If you did not request this password reset, no action is needed. Your account remains completely secure and your password will not be changed. If you have questions, please reach out to our support team at <a href="mailto:support@djangomart.com" style="color: #000000; text-decoration: underline;">support@djangomart.com</a>.
                 </p>
             </td>
         </tr>
@@ -76,7 +76,8 @@ def send_password_reset_email(*, user, otp: str):
         f"Hello {recipient_name},\n\n"
         f"Your password reset verification code is: {otp}\n\n"
         f"This code will expire in 5 minutes.\n"
-        f"If you did not request this, please ignore this email.\n\n"
+        f"If you did not request this, please ignore this email.\n"
+        f"For support, contact: support@djangomart.com\n\n"
         f"- The DjangoMart Team"
     )
 
@@ -150,7 +151,7 @@ def send_verification_email(*, user=None, email: str = None, name: str = "", otp
                 <hr style="border: none; border-top: 1px solid #f4f4f5; margin: 28px 0 20px 0;">
 
                 <p style="font-size: 12px; line-height: 1.5; color: #a1a1aa; margin: 0;">
-                    If you did not create an account on DjangoMart, you can safely ignore this email. No account will be activated without this verification code.
+                    If you did not create an account on DjangoMart, you can safely ignore this email. No account will be activated without this verification code. For help, contact <a href="mailto:support@djangomart.com" style="color: #000000; text-decoration: underline;">support@djangomart.com</a>.
                 </p>
             </td>
         </tr>

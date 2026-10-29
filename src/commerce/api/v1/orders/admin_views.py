@@ -1,3 +1,4 @@
+from orders.email import send_order_cancellation_email
 from django.db import transaction
 
 from rest_framework.views import APIView
@@ -198,6 +199,11 @@ class UpdateOrderStatusView(APIView):
                 payment.save(update_fields=["payment_status", "paid_at"])
 
         serializer.save()
+
+        if new_status == "CANCELLED":
+            transaction.on_commit(
+                lambda: send_order_cancellation_email(order=order, reason="Cancelled by administrator.")
+            )
 
         return Response(
             {

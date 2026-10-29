@@ -18,6 +18,7 @@ from rest_framework.exceptions import ValidationError
 from drf_spectacular.utils import extend_schema
 
 from orders.models import Order
+from orders.email import send_order_confirmation_email
 from cart.models import CartItem
 from payments.models import Payment, StripeWebhookEvent
 from payments.stripe_utils import convert_to_stripe_subunits, get_stripe_currency
@@ -112,6 +113,11 @@ class CreatePaymentView(APIView):
 
             # Clear user cart on confirmed COD order placement
             clear_cart_for_user(order.user)
+
+            # Send order confirmation email after transaction commit
+            transaction.on_commit(
+                lambda: send_order_confirmation_email(order=order, payment=payment)
+            )
 
             serializer = PaymentSerializer(payment)
             return Response(
@@ -464,6 +470,11 @@ class RazorpayVerifyPaymentView(APIView):
         # Clear cart now that payment is verified
         clear_cart_for_user(order.user)
 
+        # Dispatch order confirmation email after commit
+        transaction.on_commit(
+            lambda: send_order_confirmation_email(order=order, payment=payment)
+        )
+
         logger.info(
             "Razorpay payment confirmed successfully for order %s, payment_id %s",
             order.id,
@@ -597,6 +608,10 @@ class RazorpayWebhookView(APIView):
                             order.status = "PROCESSING"
                             order.save(update_fields=["status"])
                         clear_cart_for_user(order.user)
+
+                        transaction.on_commit(
+                            lambda: send_order_confirmation_email(order=order, payment=payment)
+                        )
                 except Exception as exc:
                     logger.error(
                         "Error processing webhook for order %s: %s",
@@ -826,6 +841,10 @@ class StripeWebhookView(APIView):
             order.save(update_fields=["status"])
         clear_cart_for_user(order.user)
 
+        transaction.on_commit(
+            lambda: send_order_confirmation_email(order=order, payment=payment)
+        )
+
         logger.info(
             "Stripe payment confirmed for order %s, transaction %s",
             order.id,
@@ -992,6 +1011,10 @@ class StripeSessionStatusView(APIView):
                     order.status = "PROCESSING"
                     order.save(update_fields=["status"])
                     clear_cart_for_user(order.user)
+
+                    transaction.on_commit(
+                        lambda: send_order_confirmation_email(order=order, payment=payment)
+                    )
 
                     logger.info("Direct Stripe recovery verified payment for order %s", order.id)
 
