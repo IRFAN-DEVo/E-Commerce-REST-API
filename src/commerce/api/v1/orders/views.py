@@ -1,4 +1,6 @@
+import logging
 import stripe
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -19,8 +21,11 @@ from orders.email import send_order_cancellation_email
 from coupons.models import CouponUsage
 from products.models import Product
 from payments.models import Payment
+from payments.refund_service import process_order_refund
 
 from .serializers import (OrderSerializer, CheckoutSerializer, CancelOrderRequestSerializer)
+
+logger = logging.getLogger(__name__)
 
 
 @extend_schema(
@@ -190,7 +195,7 @@ class OrderDetailView(generics.RetrieveAPIView):
 @extend_schema(
     tags=["Orders"],
     summary="Cancel Order",
-    description="Cancels a pending order belonging to the authenticated user.",
+    description="Cancels an eligible customer order within the 24-hour window.",
     parameters=[
         OpenApiParameter(
             name="pk",
@@ -203,9 +208,9 @@ class OrderDetailView(generics.RetrieveAPIView):
 )
 class CancelOrderView(APIView):
     """
-    Securely cancels an eligible customer order.
+    Securely cancels an eligible customer order within the 24-hour placement window.
     Atomically restores inventory holding sorted product row locks, releases applied coupons,
-    invalidates active external payment sessions, and dispatches confirmation notifications.
+    processes verified provider refunds for paid orders, and dispatches confirmation notifications.
     Supports both POST and PATCH methods.
     """
     permission_classes = [IsAuthenticated]
@@ -216,75 +221,122 @@ class CancelOrderView(APIView):
     def patch(self, request, pk):
         return self._cancel_order(request, pk)
 
-    @transaction.atomic
     def _cancel_order(self, request, pk):
-        try:
-            order = (
-                Order.objects
-                .select_for_update()
-                .prefetch_related("items__product")
-                .get(
-                    pk=pk,
-                    user=request.user,
-                )
-            )
-        except Order.DoesNotExist:
-            raise ValidationError("Order not found.")
+        is_paid_order = False
+        payment_to_refund = None
+        reason = "Cancelled by customer."
 
-        # Evaluate cancellation eligibility against authoritative backend rules
-        can_cancel, ineligibility_reason = order.get_cancellation_eligibility()
-        if not can_cancel:
-            raise ValidationError(ineligibility_reason)
-
-        payment = Payment.objects.select_for_update().filter(order=order).first()
-
-        serializer = CancelOrderRequestSerializer(data=request.data or {})
-        serializer.is_valid()
-        reason = serializer.validated_data.get("reason", "").strip() or "Cancelled by customer."
-
-        # Atomically restore stock holding row locks in sorted order
-        order_items = list(order.items.all())
-        product_ids = sorted(list({item.product_id for item in order_items}))
-        locked_products = {
-            p.id: p
-            for p in Product.objects.select_for_update().filter(id__in=product_ids)
-        }
-        for item in order_items:
-            product = locked_products.get(item.product_id)
-            if product:
-                product.stock += item.quantity
-                product.save(update_fields=["stock"])
-
-        # Release coupon usage so customer can reuse the coupon
-        CouponUsage.objects.filter(order=order).delete()
-
-        # Invalidate active unpaid Stripe Checkout Session if present
-        if payment and payment.payment_method == "STRIPE" and payment.payment_status == "PENDING" and payment.stripe_session_id:
+        with transaction.atomic():
             try:
-                secret_key = getattr(settings, "STRIPE_SECRET_KEY", "").strip()
-                if secret_key:
-                    stripe.api_key = secret_key
-                    stripe.checkout.Session.expire(payment.stripe_session_id)
+                order = (
+                    Order.objects
+                    .select_for_update()
+                    .prefetch_related("items__product")
+                    .get(
+                        pk=pk,
+                        user=request.user,
+                    )
+                )
+            except Order.DoesNotExist:
+                raise ValidationError("Order not found.")
+
+            # Evaluate cancellation eligibility against authoritative backend rules
+            can_cancel, ineligibility_reason = order.get_cancellation_eligibility()
+            if not can_cancel:
+                raise ValidationError(ineligibility_reason)
+
+            payment = Payment.objects.select_for_update().filter(order=order).first()
+
+            serializer = CancelOrderRequestSerializer(data=request.data or {})
+            serializer.is_valid()
+            reason = serializer.validated_data.get("reason", "").strip() or "Cancelled by customer."
+
+            # Atomically restore stock holding row locks in sorted order
+            order_items = list(order.items.all())
+            product_ids = sorted(list({item.product_id for item in order_items}))
+            locked_products = {
+                p.id: p
+                for p in Product.objects.select_for_update().filter(id__in=product_ids)
+            }
+            for item in order_items:
+                product = locked_products.get(item.product_id)
+                if product:
+                    product.stock += item.quantity
+                    product.save(update_fields=["stock"])
+
+            # Release coupon usage so customer can reuse the coupon
+            CouponUsage.objects.filter(order=order).delete()
+
+            if payment:
+                if payment.payment_status == "SUCCESS":
+                    is_paid_order = True
+                    payment_to_refund = payment
+                    payment.refund_status = "PENDING"
+                    payment.refund_amount = payment.amount
+                    payment.save(update_fields=["refund_status", "refund_amount", "updated_at"])
+                elif payment.payment_status == "PENDING":
+                    # Invalidate active unpaid Stripe Checkout Session if present
+                    if payment.payment_method == "STRIPE" and payment.stripe_session_id:
+                        try:
+                            secret_key = getattr(settings, "STRIPE_SECRET_KEY", "").strip()
+                            if secret_key:
+                                stripe.api_key = secret_key
+                                stripe.checkout.Session.expire(payment.stripe_session_id)
+                        except Exception:
+                            pass
+
+                    payment.payment_status = "FAILED"
+                    payment.refund_status = "NOT_APPLICABLE"
+                    payment.save(update_fields=["payment_status", "refund_status", "updated_at"])
+
+            # Update order status, timestamp, and cancellation reason
+            order.status = "CANCELLED"
+            order.cancelled_at = timezone.now()
+            order.cancellation_reason = reason
+            order.save(update_fields=["status", "cancelled_at", "cancellation_reason", "updated_at"])
+
+        # Execute provider refund outside the DB row lock to prevent long connection holding
+        if is_paid_order and payment_to_refund:
+            try:
+                refund_status, refund_id, refund_amt = process_order_refund(payment_to_refund)
+                payment_to_refund.refresh_from_db()
+                payment_to_refund.refund_status = refund_status
+                if refund_id:
+                    payment_to_refund.refund_id = refund_id
+                if refund_amt:
+                    payment_to_refund.refund_amount = refund_amt
+
+                if refund_status == "COMPLETED":
+                    payment_to_refund.payment_status = "REFUNDED"
+                    payment_to_refund.refunded_at = timezone.now()
+                    payment_to_refund.save(
+                        update_fields=[
+                            "refund_status",
+                            "refund_id",
+                            "refund_amount",
+                            "payment_status",
+                            "refunded_at",
+                            "updated_at",
+                        ]
+                    )
+                else:
+                    payment_to_refund.save(
+                        update_fields=[
+                            "refund_status",
+                            "refund_id",
+                            "refund_amount",
+                            "updated_at",
+                        ]
+                    )
             except Exception as exc:
-                pass
+                logger.error("Failed executing refund for cancelled order %s: %s", order.id, exc)
 
-        # Update pending payment status
-        if payment and payment.payment_status == "PENDING":
-            payment.payment_status = "FAILED"
-            payment.refund_status = "NOT_APPLICABLE"
-            payment.save(update_fields=["payment_status", "refund_status", "updated_at"])
-
-        # Update order status, timestamp, and cancellation reason
-        order.status = "CANCELLED"
-        order.cancelled_at = timezone.now()
-        order.cancellation_reason = reason
-        order.save(update_fields=["status", "cancelled_at", "cancellation_reason", "updated_at"])
-
-        # Dispatch order cancellation email after transaction commit
+        # Dispatch order cancellation email
         transaction.on_commit(
             lambda: send_order_cancellation_email(order=order, reason=reason)
         )
 
+        order.refresh_from_db()
         return Response(
             {
                 "message": "Order cancelled successfully.",

@@ -128,62 +128,69 @@ def send_order_confirmation_email(*, order, payment=None):
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order Confirmation #{order.id}</title>
+    <title>Order #{order.id} Confirmation</title>
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 40px 20px; color: #18181b;">
-    <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 580px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+    <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
         <!-- Header -->
         <tr>
-            <td style="padding: 24px 32px; background-color: #000000; text-align: center;">
-                <span style="font-size: 20px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">DjangoMart</span>
+            <td style="padding: 28px 36px; background-color: #000000; text-align: center;">
+                <span style="font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">DjangoMart</span>
             </td>
         </tr>
         <!-- Body -->
         <tr>
-            <td style="padding: 32px;">
-                <h2 style="font-size: 20px; font-weight: 700; color: #000000; margin: 0 0 12px 0;">Order Confirmed!</h2>
+            <td style="padding: 36px;">
+                <h2 style="font-size: 20px; font-weight: 700; color: #18181b; margin: 0 0 12px 0;">Order Confirmed!</h2>
                 <p style="font-size: 14px; line-height: 1.6; color: #52525b; margin: 0 0 24px 0;">
                     Hello {customer_name},<br>
-                    Thank you for your order! Your order <strong>#{order.id}</strong> has been received and is being prepared.
+                    Thank you for shopping with us. Your order <strong>#{order.id}</strong> has been successfully placed.
                 </p>
 
-                <!-- Order Details Card -->
-                <div style="background-color: #f4f4f5; border: 1px solid #e4e4e7; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px; font-size: 13px; line-height: 1.7; color: #27272a;">
-                    <div><strong>Order ID:</strong> #{order.id}</div>
-                    <div><strong>Payment Method:</strong> {payment_method_display}</div>
-                    <div><strong>Payment Status:</strong> {payment_status_display}</div>
+                <!-- Status Summary Box -->
+                <div style="background-color: #f8fafc; border: 1px solid #e4e4e7; border-radius: 8px; padding: 18px 20px; margin-bottom: 28px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; color: #52525b;">
+                        <span>Payment Method:</span>
+                        <strong style="color: #18181b;">{payment_method_display}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; color: #52525b;">
+                        <span>Payment Status:</span>
+                        <strong style="color: {'#16a34a' if is_paid else '#d97706'};">{payment_status_display}</strong>
+                    </div>
                     {tx_html}
                 </div>
 
                 <!-- Items Table -->
-                <h3 style="font-size: 15px; font-weight: 700; color: #000000; margin: 0 0 12px 0; border-bottom: 2px solid #000000; padding-bottom: 6px;">Order Summary</h3>
-                <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 16px;">
+                <h3 style="font-size: 15px; font-weight: 700; color: #18181b; margin: 0 0 12px 0; border-bottom: 1px solid #e4e4e7; padding-bottom: 8px;">Order Summary</h3>
+                <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
                     {items_html}
                     <tr>
-                        <td style="padding: 16px 0; font-size: 16px; font-weight: 700; color: #000000;">Total</td>
-                        <td style="padding: 16px 0; font-size: 16px; font-weight: 800; text-align: right; color: #000000;">&#8377;{order.total_price:,.2f}</td>
+                        <td style="padding: 16px 0; font-size: 15px; font-weight: 700; color: #18181b;">Total Amount</td>
+                        <td style="padding: 16px 0; font-size: 15px; font-weight: 700; text-align: right; color: #18181b;">&#8377;{order.total_price:,.2f}</td>
                     </tr>
                 </table>
 
-                <!-- Shipping Address -->
-                <h3 style="font-size: 15px; font-weight: 700; color: #000000; margin: 24px 0 8px 0; border-bottom: 2px solid #000000; padding-bottom: 6px;">Shipping Address</h3>
-                {shipping_html}
-
-                <!-- Action Button -->
-                <div style="text-align: center; margin: 32px 0 16px 0;">
-                    <a href="{view_order_url}" style="display: inline-block; background-color: #000000; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; padding: 12px 28px; border-radius: 6px;">View Order Details</a>
+                <!-- Shipping Details -->
+                <h3 style="font-size: 15px; font-weight: 700; color: #18181b; margin: 0 0 12px 0; border-bottom: 1px solid #e4e4e7; padding-bottom: 8px;">Shipping Address</h3>
+                <div style="margin-bottom: 32px;">
+                    {shipping_html}
                 </div>
 
-                <hr style="border: none; border-top: 1px solid #f4f4f5; margin: 28px 0 16px 0;">
+                <!-- CTA Button -->
+                <div style="text-align: center; margin: 32px 0 16px 0;">
+                    <a href="{view_order_url}" style="display: inline-block; background-color: #000000; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; padding: 12px 28px; border-radius: 6px;">View Order Status</a>
+                </div>
+
+                <hr style="border: none; border-top: 1px solid #f4f4f5; margin: 32px 0 20px 0;">
 
                 <p style="font-size: 12px; line-height: 1.5; color: #a1a1aa; margin: 0;">
-                    Have questions about your order? Reach our support team at <a href="mailto:support@djangomart.com" style="color: #000000; text-decoration: underline;">support@djangomart.com</a>.
+                    Need help with your order? Reach out anytime at <a href="mailto:support@djangomart.com" style="color: #000000; text-decoration: underline;">support@djangomart.com</a>.
                 </p>
             </td>
         </tr>
         <!-- Footer -->
         <tr>
-            <td style="padding: 16px 32px; background-color: #fafafa; border-top: 1px solid #f4f4f5; text-align: center;">
+            <td style="padding: 20px 36px; background-color: #fafafa; border-top: 1px solid #f4f4f5; text-align: center;">
                 <p style="font-size: 12px; color: #a1a1aa; margin: 0;">&copy; DjangoMart E-Commerce Platform. All rights reserved.</p>
             </td>
         </tr>
@@ -192,10 +199,9 @@ def send_order_confirmation_email(*, order, payment=None):
 </html>"""
 
     text_message = (
-        f"DjangoMart - Order #{order.id} Confirmed\n\n"
+        f"DjangoMart - Order #{order.id} Confirmation [{subject_status}]\n\n"
         f"Hello {customer_name},\n\n"
-        f"Thank you for shopping with us! Your order #{order.id} has been received.\n\n"
-        f"Order ID: #{order.id}\n"
+        f"Thank you for your order! Your order #{order.id} has been placed successfully.\n\n"
         f"Payment Method: {payment_method_display}\n"
         f"Payment Status: {payment_status_display}\n"
         f"{tx_text}\n"
@@ -234,7 +240,7 @@ def send_order_cancellation_email(*, order, reason=""):
     """
     Sends an order cancellation notification email to the customer.
     Informs customer that order #{order.id} has been cancelled, reserved inventory has
-    been restored, and any coupon has been released.
+    been restored, and communicates the authoritative refund state.
     """
     user = getattr(order, "user", None)
     if not user or not user.email:
@@ -255,6 +261,26 @@ def send_order_cancellation_email(*, order, reason=""):
     )
 
     subject = f"DjangoMart - Order #{order.id} Has Been Cancelled"
+
+    payment = getattr(order, "payment", None)
+    refund_status = getattr(payment, "refund_status", "NOT_APPLICABLE") if payment else "NOT_APPLICABLE"
+    refund_amount = getattr(payment, "refund_amount", None) or getattr(order, "total_price", 0)
+
+    if refund_status == "COMPLETED":
+        refund_line_html = f"<strong>Refund Confirmed:</strong> A full refund of &#8377;{refund_amount:,.2f} has been completed to your original payment method."
+        refund_line_text = f"Refund Confirmed: A full refund of Rs.{refund_amount:,.2f} has been completed to your original payment method."
+    elif refund_status in ("PROCESSING", "PENDING"):
+        refund_line_html = f"<strong>Refund Initiated:</strong> A refund of &#8377;{refund_amount:,.2f} has been initiated and is currently processing with your payment provider."
+        refund_line_text = f"Refund Initiated: A refund of Rs.{refund_amount:,.2f} has been initiated and is currently processing with your payment provider."
+    elif refund_status == "MANUAL_PROCESSING_REQUIRED":
+        refund_line_html = f"<strong>Refund Queued:</strong> Your refund request of &#8377;{refund_amount:,.2f} has been logged and is currently being processed by our billing team."
+        refund_line_text = f"Refund Queued: Your refund request of Rs.{refund_amount:,.2f} has been logged and is currently being processed by our billing team."
+    elif refund_status == "FAILED":
+        refund_line_html = "<strong>Refund Notice:</strong> Automated refund initiation encountered a delay; our billing team is reviewing it."
+        refund_line_text = "Refund Notice: Automated refund initiation encountered a delay; our billing team is reviewing it."
+    else:
+        refund_line_html = "No payment charge was captured for this order."
+        refund_line_text = "No payment charge was captured for this order."
 
     items = list(order.items.select_related("product").all())
     items_html_rows = []
@@ -311,7 +337,8 @@ def send_order_cancellation_email(*, order, reason=""):
 
                 <!-- Notice Card -->
                 <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 14px 18px; margin: 18px 0; font-size: 13px; line-height: 1.6; color: #991b1b;">
-                    Any reserved inventory has been returned to stock, and any applied promo coupons have been released back to your account.
+                    <div>All reserved inventory has been returned to stock, and any applied promo coupons have been released back to your account.</div>
+                    <div style="margin-top: 8px; font-weight: 500;">{refund_line_html}</div>
                 </div>
 
                 <!-- Cancelled Items Summary -->
@@ -350,7 +377,8 @@ def send_order_cancellation_email(*, order, reason=""):
         f"Hello {customer_name},\n\n"
         f"Your order #{order.id} has been cancelled.\n\n"
         f"{reason_text}"
-        f"Any reserved stock has been returned and applied coupons have been restored.\n\n"
+        f"Any reserved stock has been returned and applied coupons have been restored.\n"
+        f"{refund_line_text}\n\n"
         f"Cancelled Items:\n"
         f"{items_text}\n\n"
         f"Total: Rs.{order.total_price:,.2f}\n\n"

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Ban, MapPin, CreditCard, Package, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Ban, MapPin, CreditCard, Package, CheckCircle2, Clock } from 'lucide-react';
 import { ordersApi } from '../api/orders';
 import { paymentsApi } from '../api/payments';
 import { useToast } from '../context/ToastContext';
@@ -8,6 +8,7 @@ import { CartContext } from '../context/CartContext';
 import { OrderStatusBadge } from '../components/common/Badge';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { CancelOrderModal } from '../components/orders/CancelOrderModal';
+import { getCancellationDeadlineInfo } from '../utils/orderCancellation';
 
 export const OrderDetailPage = () => {
   const { id } = useParams();
@@ -102,8 +103,9 @@ export const OrderDetailPage = () => {
 
   const shipping = order.shipping_address || {};
   const isCancellable = order.is_cancellable !== undefined
-    ? order.is_cancellable
-    : (order.status === 'PENDING' && (order.payment?.payment_status !== 'SUCCESS' && order.payment_status !== 'SUCCESS'));
+    ? Boolean(order.is_cancellable)
+    : (order.status === 'PENDING' || order.status === 'PROCESSING');
+  const deadlineInfo = getCancellationDeadlineInfo(order);
 
   return (
     <div className="container" style={{ padding: '2.5rem 1.5rem' }}>
@@ -178,18 +180,59 @@ export const OrderDetailPage = () => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
           <OrderStatusBadge status={order.status} />
           {isCancellable ? (
-            <button
-              type="button"
-              onClick={() => setIsCancelModalOpen(true)}
-              className="btn btn-outline-danger btn-sm"
-              style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexWrap: 'wrap' }}>
+              {deadlineInfo && !deadlineInfo.isExpired && (
+                <span
+                  title={deadlineInfo.detail}
+                  style={{
+                    fontSize: '0.8125rem',
+                    color: '#15803d',
+                    backgroundColor: '#f0fdf4',
+                    border: '1px solid #bbf7d0',
+                    borderRadius: '9999px',
+                    padding: '0.25rem 0.75rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.375rem',
+                    fontWeight: 500,
+                  }}
+                >
+                  <Clock size={14} />
+                  <span>{deadlineInfo.detail}</span>
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsCancelModalOpen(true)}
+                className="btn btn-outline-danger btn-sm"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}
+              >
+                <Ban size={16} />
+                <span>Cancel Order</span>
+              </button>
+            </div>
+          ) : deadlineInfo && deadlineInfo.isExpired && (order.status === 'PENDING' || order.status === 'PROCESSING') ? (
+            <span
+              title={order.cancellation_ineligibility_reason || deadlineInfo.detail}
+              style={{
+                fontSize: '0.8125rem',
+                color: '#b91c1c',
+                backgroundColor: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: '9999px',
+                padding: '0.25rem 0.75rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.375rem',
+                fontWeight: 500,
+              }}
             >
-              <Ban size={16} />
-              <span>Cancel Order</span>
-            </button>
+              <Clock size={14} />
+              <span>Cancellation window expired (24h limit)</span>
+            </span>
           ) : order.cancellation_ineligibility_reason && order.status !== 'CANCELLED' && order.status !== 'DELIVERED' ? (
             <span
               title={order.cancellation_ineligibility_reason}
@@ -323,3 +366,5 @@ export const OrderDetailPage = () => {
     </div>
   );
 };
+
+export default OrderDetailPage;

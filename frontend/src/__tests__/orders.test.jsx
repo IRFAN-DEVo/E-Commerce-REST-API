@@ -27,7 +27,8 @@ const mockOrder = {
   id: 101,
   status: 'PENDING',
   total_price: '1500.00',
-  created_at: '2026-10-10T10:00:00Z',
+  created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+  cancellation_deadline: new Date(Date.now() + 22 * 60 * 60 * 1000).toISOString(), // 22 hours left
   customer_name: 'John Customer',
   customer_email: 'john@example.com',
   payment_method: 'COD',
@@ -63,7 +64,7 @@ describe('OrdersPage component', () => {
     authApi.getProfile.mockResolvedValue({ id: 1, email: 'john@example.com' });
   });
 
-  it('renders order history list with order details and status', async () => {
+  it('renders order history list with order details, 24h countdown, and status', async () => {
     ordersApi.getOrders.mockResolvedValue([mockOrder]);
 
     render(
@@ -82,6 +83,35 @@ describe('OrdersPage component', () => {
       expect(screen.getByText('₹1500.00')).toBeInTheDocument();
       expect(screen.getByText(/Payment:/i)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Cancel Order/i })).toBeInTheDocument();
+      expect(screen.getByText(/Cancel available for/i)).toBeInTheDocument();
+    });
+  });
+
+  it('displays cancellation window expired indicator when 24 hours have elapsed', async () => {
+    const expiredOrder = {
+      ...mockOrder,
+      id: 103,
+      created_at: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+      cancellation_deadline: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+      is_cancellable: false,
+      cancellation_ineligibility_reason: 'Orders can only be cancelled within 24 hours of placement. The cancellation window has expired.',
+    };
+    ordersApi.getOrders.mockResolvedValue([expiredOrder]);
+
+    render(
+      <BrowserRouter>
+        <ToastProvider>
+          <AuthProvider>
+            <OrdersPage />
+          </AuthProvider>
+        </ToastProvider>
+      </BrowserRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Order #103')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Cancel Order/i })).not.toBeInTheDocument();
+      expect(screen.getByText(/Cancellation window expired/i)).toBeInTheDocument();
     });
   });
 
@@ -112,7 +142,7 @@ describe('OrdersPage component', () => {
     });
   });
 
-  it('opens confirmation dialog on clicking Cancel Order and dismisses on Keep Order', async () => {
+  it('opens confirmation dialog on clicking Cancel Order with 24-hour notice and dismisses on Keep Order', async () => {
     ordersApi.getOrders.mockResolvedValue([mockOrder]);
 
     render(
@@ -135,6 +165,7 @@ describe('OrdersPage component', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByText('Cancel Order #101')).toBeInTheDocument();
     expect(screen.getByText(/Are you sure you want to cancel this order\? This action cannot be reversed\./i)).toBeInTheDocument();
+    expect(screen.getByText(/24-Hour Policy:/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Keep Order/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Confirm Cancellation/i })).toBeInTheDocument();
 
@@ -200,7 +231,7 @@ describe('OrderDetailPage component', () => {
     authApi.getProfile.mockResolvedValue({ id: 1, email: 'john@example.com' });
   });
 
-  it('renders detailed order summary, shipping address, and payment status', async () => {
+  it('renders detailed order summary, shipping address, 24h deadline, and payment status', async () => {
     ordersApi.getOrder.mockResolvedValue(mockOrder);
 
     render(
@@ -222,6 +253,7 @@ describe('OrderDetailPage component', () => {
       expect(screen.getByText(/123 Test Road/i)).toBeInTheDocument();
       expect(screen.getByText('COD')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Cancel Order/i })).toBeInTheDocument();
+      expect(screen.getByText(/Cancellation available until/i)).toBeInTheDocument();
     });
   });
 
@@ -282,6 +314,37 @@ describe('OrderDetailPage component', () => {
       expect(screen.getByText('Order Cancelled')).toBeInTheDocument();
       expect(screen.getByText(/Customer changed mind/i)).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /Cancel Order/i })).not.toBeInTheDocument();
+    });
+  });
+
+  it('renders Cancel Order button for eligible paid orders (PROCESSING + SUCCESS) within 24 hours', async () => {
+    const paidProcessingOrder = {
+      ...mockOrder,
+      id: 104,
+      status: 'PROCESSING',
+      payment_method: 'STRIPE',
+      payment_status: 'SUCCESS',
+      is_cancellable: true,
+      cancellation_ineligibility_reason: '',
+    };
+    ordersApi.getOrder.mockResolvedValue(paidProcessingOrder);
+
+    render(
+      <MemoryRouter initialEntries={['/orders/104']}>
+        <ToastProvider>
+          <AuthProvider>
+            <Routes>
+              <Route path="/orders/:id" element={<OrderDetailPage />} />
+            </Routes>
+          </AuthProvider>
+        </ToastProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Order #104')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Cancel Order/i })).toBeInTheDocument();
+      expect(screen.queryByText(/Paid orders cannot be cancelled directly/i)).not.toBeInTheDocument();
     });
   });
 });

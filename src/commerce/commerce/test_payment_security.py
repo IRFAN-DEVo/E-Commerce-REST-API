@@ -357,8 +357,10 @@ class PaymentSecurityTests(TestCase):
 
     # ---- Cancel order protections ----
 
-    def test_cancel_paid_order_rejected(self):
-        """Cannot cancel an order whose payment has succeeded."""
+    def test_cancel_paid_order_older_than_24_hours_rejected(self):
+        """Cannot cancel a paid order whose 24-hour window has expired."""
+        Order.objects.filter(id=self.order.id).update(created_at=timezone.now() - timedelta(hours=25))
+        self.order.refresh_from_db()
         Payment.objects.create(
             order=self.order,
             payment_method="COD",
@@ -370,8 +372,27 @@ class PaymentSecurityTests(TestCase):
             f"/api/v1/orders/orders/{self.order.id}/cancel/",
         )
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("cancellation window has expired", str(resp.data))
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, "PENDING")
+
+    def test_cancel_eligible_paid_order_succeeds_and_initiates_refund(self):
+        """Eligible paid order within 24 hours can be cancelled and enters refund workflow."""
+        payment = Payment.objects.create(
+            order=self.order,
+            payment_method="COD",
+            payment_status="SUCCESS",
+            amount=Decimal("100.00"),
+            paid_at=timezone.now(),
+        )
+        resp = self.client_customer.patch(
+            f"/api/v1/orders/orders/{self.order.id}/cancel/",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, "CANCELLED")
+        payment.refresh_from_db()
+        self.assertEqual(payment.refund_status, "MANUAL_PROCESSING_REQUIRED")
 
     def test_cancel_unpaid_order_restores_stock(self):
         """Cancelling an unpaid pending order restores product stock."""

@@ -87,6 +87,7 @@ class OrderSerializer(serializers.ModelSerializer):
     payment_method = serializers.SerializerMethodField()
     is_cancellable = serializers.SerializerMethodField()
     cancellation_ineligibility_reason = serializers.SerializerMethodField()
+    cancellation_deadline = serializers.SerializerMethodField()
     refund_status = serializers.SerializerMethodField()
     refund_amount = serializers.SerializerMethodField()
 
@@ -104,6 +105,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "cancellation_reason",
             "is_cancellable",
             "cancellation_ineligibility_reason",
+            "cancellation_deadline",
             "refund_status",
             "refund_amount",
             "customer_name",
@@ -155,6 +157,10 @@ class OrderSerializer(serializers.ModelSerializer):
             can_cancel, reason = obj.get_cancellation_eligibility()
             return "" if can_cancel else reason
         return ""
+
+    def get_cancellation_deadline(self, obj):
+        deadline = getattr(obj, "cancellation_deadline", None)
+        return deadline.isoformat() if deadline else None
 
     def get_refund_status(self, obj):
         if hasattr(obj, "payment") and obj.payment:

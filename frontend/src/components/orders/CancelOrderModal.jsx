@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, X, Loader2 } from 'lucide-react';
+import { AlertTriangle, X, Loader2, Clock } from 'lucide-react';
+import { getCancellationDeadlineInfo } from '../../utils/orderCancellation';
 
 const COMMON_REASONS = [
   'Changed my mind',
@@ -56,6 +57,8 @@ export const CancelOrderModal = ({
   const paymentDisplay = order.payment_method
     || (order.payment && order.payment.payment_method)
     || 'Cash on Delivery';
+
+  const deadlineInfo = getCancellationDeadlineInfo(order);
 
   return (
     <div
@@ -151,6 +154,29 @@ export const CancelOrderModal = ({
           </div>
         </div>
 
+        {/* 24-Hour Policy Window Notice */}
+        {deadlineInfo && !deadlineInfo.isExpired && (
+          <div
+            style={{
+              backgroundColor: '#f0fdf4',
+              border: '1px solid #bbf7d0',
+              borderRadius: '6px',
+              padding: '0.625rem 0.875rem',
+              fontSize: '0.8125rem',
+              color: '#166534',
+              marginBottom: '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+            }}
+          >
+            <Clock size={15} color="#16a34a" />
+            <span>
+              <strong>24-Hour Policy:</strong> {deadlineInfo.detail} ({deadlineInfo.remainingText} remaining)
+            </span>
+          </div>
+        )}
+
         {/* Order Details Summary Box */}
         <div
           style={{
@@ -179,7 +205,7 @@ export const CancelOrderModal = ({
           </div>
         </div>
 
-        {/* Restocked Stock Note */}
+        {/* Restocked Stock Note & Refund Notice */}
         <div
           style={{
             backgroundColor: '#eff6ff',
@@ -192,7 +218,14 @@ export const CancelOrderModal = ({
             lineHeight: 1.5,
           }}
         >
-          Product inventory will be restored immediately, and any applied promo coupons will be released back to your account.
+          <div>Product inventory will be restored immediately, and any applied promo coupons will be released back to your account.</div>
+          {(order.payment_status === 'SUCCESS' || order.payment?.payment_status === 'SUCCESS') && (
+            <div style={{ marginTop: '0.375rem', fontWeight: 600, color: '#1d4ed8' }}>
+              {paymentDisplay.includes('Cash on Delivery')
+                ? 'A refund request will be logged for manual settlement.'
+                : `A full refund of ₹${Number(order.total_price || 0).toFixed(2)} will be initiated to your original payment method.`}
+            </div>
+          )}
         </div>
 
         {/* Reason Selector */}
@@ -300,4 +333,3 @@ export const CancelOrderModal = ({
     </div>
   );
 };
-

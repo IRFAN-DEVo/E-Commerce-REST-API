@@ -1,4 +1,6 @@
+from datetime import timedelta
 from django.db import models
+from django.utils import timezone
 from accounts.models import User
 from products.models import Product
 
@@ -52,10 +54,28 @@ class Order(models.Model):
     def __str__(self):
         return f"Order #{self.id}"
 
+    @property
+    def cancellation_deadline(self):
+        """
+        Calculates the inclusive 24-hour cancellation deadline based on
+        the order's original placement timestamp (created_at).
+        """
+        if self.created_at:
+            return self.created_at + timedelta(hours=24)
+        return None
+
     def get_cancellation_eligibility(self) -> tuple[bool, str]:
         """
         Evaluates server-side business rules to determine if the order is eligible
         for self-service customer cancellation. Returns (is_cancellable, reason_if_not).
+        Enforces:
+        1. Order is not already cancelled, delivered, or shipped.
+        2. Order placement was within the 24-hour window (order.created_at + 24 hours).
+        3. Payment status permits self-service cancellation:
+           - Unpaid and COD orders can be cancelled directly.
+           - Paid orders (Stripe, Razorpay, or COD) within 24 hours before shipment can be cancelled,
+             entering the refund processing workflow.
+           - Orders with completed or currently in-flight refunds cannot be cancelled again.
         """
         if self.status == "CANCELLED":
             return False, "This order is already cancelled."
@@ -64,12 +84,18 @@ class Order(models.Model):
         if self.status == "SHIPPED":
             return False, "Shipped orders cannot be cancelled online. Please contact customer support for return options."
 
+        # Check 24-hour cancellation window from order placement (created_at)
+        if self.created_at:
+            deadline = self.created_at + timedelta(hours=24)
+            if timezone.now() > deadline:
+                return False, "Orders can only be cancelled within 24 hours of placement. The cancellation window has expired."
+
         payment = getattr(self, "payment", None)
         if payment:
-            if payment.payment_status == "REFUNDED":
+            if payment.payment_status == "REFUNDED" or getattr(payment, "refund_status", "") == "COMPLETED":
                 return False, "This order has already been refunded."
-            if payment.payment_status == "SUCCESS":
-                return False, "Paid orders cannot be cancelled directly. Please contact support for refund and return assistance."
+            if getattr(payment, "refund_status", "") in ("PROCESSING", "PENDING"):
+                return False, "A refund is already being processed for this order."
 
         if self.status in ("PENDING", "PROCESSING"):
             return True, ""

@@ -591,6 +591,9 @@ class RazorpayWebhookView(APIView):
             if order_id:
                 try:
                     order = Order.objects.select_for_update().get(id=int(order_id))
+                    if order.status == "CANCELLED":
+                        logger.warning("Razorpay webhook received for cancelled order %s.", order.id)
+                        return Response({"detail": "Order is cancelled."}, status=status.HTTP_200_OK)
                     payment = Payment.objects.select_for_update().get(order=order)
                     if payment.payment_status != "SUCCESS":
                         payment.payment_status = "SUCCESS"
@@ -922,6 +925,17 @@ class StripeSessionStatusView(APIView):
             raise ValidationError("Order not found.")
 
         payment = Payment.objects.filter(order=order).first()
+
+        if order.status == "CANCELLED":
+            return Response(
+                {
+                    "status": "CANCELLED",
+                    "order_status": order.status,
+                    "order_id": order.id,
+                    "detail": "Order is cancelled.",
+                },
+                status=status.HTTP_200_OK,
+            )
 
         # If already verified as SUCCESS, return immediately
         if payment and payment.payment_status == "SUCCESS":
