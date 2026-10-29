@@ -1,24 +1,55 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Ban, MapPin, CreditCard, Package } from 'lucide-react';
+import React, { useState, useEffect, useContext } from 'react';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Ban, MapPin, CreditCard, Package, CheckCircle2 } from 'lucide-react';
 import { ordersApi } from '../api/orders';
+import { paymentsApi } from '../api/payments';
 import { useToast } from '../context/ToastContext';
+import { CartContext } from '../context/CartContext';
 import { OrderStatusBadge } from '../components/common/Badge';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 
 export const OrderDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { showToast } = useToast();
+  const cartContext = useContext(CartContext);
+  const fetchCart = cartContext?.fetchCart;
+  const clearCartState = cartContext?.clearCartState;
 
   const [order, setOrder] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isStripeVerified, setIsStripeVerified] = useState(false);
 
   const fetchOrderDetail = async () => {
     setIsLoading(true);
     try {
       const data = await ordersApi.getOrder(id);
       setOrder(data);
+
+      // Safe recovery verification if customer returned from Stripe Checkout
+      const isStripeRedirect = searchParams.get('payment_status') === 'success' || searchParams.get('session_id');
+      if (isStripeRedirect && data.status === 'PENDING') {
+        const sessionId = searchParams.get('session_id');
+        try {
+          const statusRes = await paymentsApi.getStripeSessionStatus(id, sessionId);
+          if (statusRes.status === 'SUCCESS') {
+            setIsStripeVerified(true);
+            clearCartState?.();
+            fetchCart?.();
+            showToast('Stripe payment verified successfully! Your order is confirmed.', 'success');
+            // Re-fetch updated order state
+            const updated = await ordersApi.getOrder(id);
+            setOrder(updated);
+          }
+        } catch (statusErr) {
+          // Webhook will handle asynchronously if direct recovery was not needed
+        }
+      } else if (isStripeRedirect && data.status === 'PROCESSING') {
+        setIsStripeVerified(true);
+        clearCartState?.();
+        fetchCart?.();
+      }
     } catch (err) {
       showToast('Order not found.', 'error');
     } finally {
@@ -28,7 +59,7 @@ export const OrderDetailPage = () => {
 
   useEffect(() => {
     fetchOrderDetail();
-  }, [id]);
+  }, [id, searchParams]);
 
   const handleCancelOrder = async () => {
     if (!window.confirm('Are you sure you want to cancel this order?')) return;
@@ -67,6 +98,28 @@ export const OrderDetailPage = () => {
 
   return (
     <div className="container" style={{ padding: '2.5rem 1.5rem' }}>
+      {/* Stripe Payment Confirmation Banner */}
+      {isStripeVerified && (
+        <div
+          style={{
+            backgroundColor: '#ecfdf5',
+            border: '1px solid #a7f3d0',
+            color: '#065f46',
+            padding: '1rem 1.25rem',
+            borderRadius: '8px',
+            marginBottom: '1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+          }}
+        >
+          <CheckCircle2 size={20} color="#059669" />
+          <div>
+            <strong>Payment Confirmed!</strong> Your Stripe transaction has been securely verified. We are preparing your order.
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -179,6 +232,12 @@ export const OrderDetailPage = () => {
                 <span>Payment Status</span>
                 <strong style={{ color: 'var(--text-primary)' }}>{order.payment_status || order.payment?.payment_status || 'PENDING'}</strong>
               </div>
+              {order.payment?.transaction_id && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Transaction ID</span>
+                  <span style={{ fontFamily: 'monospace', fontSize: '0.8125rem' }}>{order.payment.transaction_id}</span>
+                </div>
+              )}
               {order.payment?.amount && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span>Recorded Amount</span>

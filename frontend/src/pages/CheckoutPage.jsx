@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { ShieldCheck, CheckCircle2, Tag, AlertCircle, ShoppingBag, Lock, CreditCard } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
@@ -85,6 +85,14 @@ export const CheckoutPage = () => {
   const { cartItems, totalPrice, clearCartState } = useCart();
   const { showToast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Handle Stripe cancellation redirect
+  useEffect(() => {
+    if (searchParams.get('cancelled') === 'true') {
+      showToast('Payment was cancelled at Stripe. You can try again or choose another method.', 'info');
+    }
+  }, [searchParams]);
 
   // Shipping Form State
   const [shippingAddress, setShippingAddress] = useState({
@@ -147,7 +155,7 @@ export const CheckoutPage = () => {
     try {
       const order = await ordersApi.checkout(shippingAddress);
       setCreatedOrder(order);
-      clearCartState();
+      // Retain cart items in context and state until payment is placed or verified
       showToast('Order created! Please review details and select payment.', 'success');
     } catch (err) {
       const respData = err.response?.data;
@@ -216,6 +224,7 @@ export const CheckoutPage = () => {
       setIsSubmitting(true);
       try {
         await paymentsApi.createPayment(createdOrder.id, 'COD');
+        clearCartState();
         showToast('Order placed successfully via Cash on Delivery!', 'success');
         navigate(`/orders/${createdOrder.id}`);
       } catch (err) {
@@ -303,6 +312,7 @@ export const CheckoutPage = () => {
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
             });
+            clearCartState();
             showToast('Payment verified successfully! Your order is confirmed.', 'success');
             navigate(`/orders/${createdOrder.id}`);
           } catch (verifyErr) {
@@ -333,6 +343,29 @@ export const CheckoutPage = () => {
 
 
 
+      return;
+    }
+
+    if (paymentMethod === 'STRIPE') {
+      setIsSubmitting(true);
+      try {
+        const res = await paymentsApi.createPayment(createdOrder.id, 'STRIPE');
+        if (res && res.session_url) {
+          window.location.href = res.session_url;
+        } else {
+          showToast('Failed to retrieve Stripe checkout URL. Please try again.', 'error');
+          setIsSubmitting(false);
+        }
+      } catch (err) {
+        const respData = err.response?.data;
+        const msg =
+          respData?.detail ||
+          respData?.error ||
+          (Array.isArray(respData) ? respData[0] : null) ||
+          'Failed to initialize Stripe checkout.';
+        showToast(msg, 'error');
+        setIsSubmitting(false);
+      }
       return;
     }
 
@@ -664,6 +697,48 @@ export const CheckoutPage = () => {
                         </div>
                       </div>
                     )}
+
+                    {/* Stripe Hosted Checkout (Active when configured) */}
+                    {paymentConfig.stripe_enabled && (
+                      <label
+                        onClick={() => setPaymentMethod('STRIPE')}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '1rem',
+                          padding: '1.25rem',
+                          borderRadius: '8px',
+                          border: paymentMethod === 'STRIPE' ? '2px solid #000000' : '1px solid #e5e7eb',
+                          backgroundColor: paymentMethod === 'STRIPE' ? '#fafafa' : '#ffffff',
+                          cursor: 'pointer',
+                          transition: 'all 150ms ease',
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="payment_method"
+                          value="STRIPE"
+                          checked={paymentMethod === 'STRIPE'}
+                          onChange={() => setPaymentMethod('STRIPE')}
+                          className="form-radio"
+                          style={{ marginTop: '0.25rem' }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ fontWeight: 700, color: '#000000', fontSize: '0.9375rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <CreditCard size={18} />
+                              <span>Stripe (Credit / Debit Card)</span>
+                            </div>
+                            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#15803d', backgroundColor: '#dcfce7', padding: '0.2rem 0.5rem', borderRadius: '4px', textTransform: 'uppercase' }}>
+                              Test Mode Active
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '0.8125rem', color: '#71717a', marginTop: '0.25rem' }}>
+                            Pay securely with test credit cards via Stripe-hosted checkout.
+                          </div>
+                        </div>
+                      </label>
+                    )}
                   </div>
 
                   {/* Coupon Code Input Form */}
@@ -777,9 +852,13 @@ export const CheckoutPage = () => {
                   {isSubmitting
                     ? paymentMethod === 'RAZORPAY'
                       ? 'Opening Razorpay...'
+                      : paymentMethod === 'STRIPE'
+                      ? 'Redirecting to Stripe...'
                       : 'Processing Order...'
                     : paymentMethod === 'RAZORPAY'
                     ? `Pay with Razorpay (₹${Number(currentTotal).toFixed(2)})`
+                    : paymentMethod === 'STRIPE'
+                    ? `Pay with Stripe (₹${Number(currentTotal).toFixed(2)})`
                     : `Place Order (₹${Number(currentTotal).toFixed(2)})`}
                 </button>
 

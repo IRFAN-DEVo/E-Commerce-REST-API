@@ -52,6 +52,18 @@ class CheckoutView(APIView):
         if not cart_items:
             raise ValidationError("Your cart is empty.")
 
+        # Cancel and restore stock for any prior unpaid PENDING orders from this user
+        existing_pending_orders = Order.objects.filter(user=request.user, status="PENDING")
+        for old_order in existing_pending_orders:
+            old_payment = Payment.objects.filter(order=old_order).first()
+            if not old_payment or old_payment.payment_status != "SUCCESS":
+                for old_item in old_order.items.select_related("product"):
+                    old_item.product.stock += old_item.quantity
+                    old_item.product.save(update_fields=["stock"])
+                CouponUsage.objects.filter(order=old_order).delete()
+                old_order.status = "CANCELLED"
+                old_order.save(update_fields=["status"])
+
         # Lock products in deterministic ID order to avoid database deadlocks and overselling
         product_ids = sorted(list({item.product_id for item in cart_items}))
         locked_products = {
@@ -112,8 +124,8 @@ class CheckoutView(APIView):
         order.total_price = total
         order.save(update_fields=["total_price"])
 
-        # Clear Cart
-        cart.cart_items.all().delete()
+        # Retain cart items until payment is confirmed (COD placed or online payment verified)
+        # Cart items are cleared upon payment creation or verification in the payments app
 
         serializer = OrderSerializer(order)
 

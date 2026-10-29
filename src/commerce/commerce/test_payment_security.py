@@ -183,15 +183,16 @@ class PaymentSecurityTests(TestCase):
             self.order.refresh_from_db()
             self.assertEqual(self.order.status, "PENDING")
 
-    def test_stripe_payment_method_rejected(self):
-        """Stripe requests are rejected while gateway integration is inactive."""
+    def test_stripe_payment_method_rejected_when_not_configured(self):
+        """Stripe requests are rejected when gateway configuration is missing."""
         initial_payment_count = Payment.objects.count()
-        resp = self.client_customer.post(
-            f"/api/v1/payments/orders/{self.order.id}/payments/",
-            {"payment_method": "STRIPE"},
-        )
+        with override_settings(STRIPE_SECRET_KEY=""):
+            resp = self.client_customer.post(
+                f"/api/v1/payments/orders/{self.order.id}/payments/",
+                {"payment_method": "STRIPE"},
+            )
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("STRIPE payment gateway is currently inactive", str(resp.data))
+        self.assertIn("Stripe payment gateway is not configured", str(resp.data))
         self.assertEqual(Payment.objects.count(), initial_payment_count)
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, "PENDING")
@@ -708,11 +709,11 @@ class CouponAndCheckoutIntegrityTests(TestCase):
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_checkout_clears_cart(self):
-        """Cart items are cleared after successful checkout."""
+        """Cart items are retained upon confirming shipping and cleared only after payment."""
         cart = Cart.objects.create(user=self.customer_b)
         CartItem.objects.create(cart=cart, product=self.product, quantity=1)
 
-        self.client_customer_b.post(
+        resp = self.client_customer_b.post(
             "/api/v1/orders/checkout/",
             {
                 "shipping_address": {
@@ -727,6 +728,21 @@ class CouponAndCheckoutIntegrityTests(TestCase):
             },
             format="json",
         )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        order_id = resp.data["id"]
+
+        # Cart items must still be present before payment
+        self.assertEqual(CartItem.objects.filter(cart=cart).count(), 1)
+
+        # Place payment (COD)
+        pay_resp = self.client_customer_b.post(
+            f"/api/v1/payments/orders/{order_id}/payments/",
+            {"payment_method": "COD"},
+            format="json",
+        )
+        self.assertEqual(pay_resp.status_code, status.HTTP_201_CREATED)
+
+        # Cart items must now be cleared after payment
         self.assertEqual(CartItem.objects.filter(cart=cart).count(), 0)
 
     def test_checkout_order_total_is_server_computed(self):

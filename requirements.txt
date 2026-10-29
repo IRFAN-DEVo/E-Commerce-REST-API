@@ -1,0 +1,3 @@
+# Root requirements manifest referencing backend dependencies
+-r src/commerce/requirements.txt
+

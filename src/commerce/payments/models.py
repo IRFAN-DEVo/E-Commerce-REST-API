@@ -47,6 +47,13 @@ class Payment(models.Model):
         unique=True
     )
 
+    stripe_session_id = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        db_index=True
+    )
+
     amount = models.DecimalField(
         max_digits=10,
         decimal_places=2
@@ -71,3 +78,20 @@ class Payment(models.Model):
 
     def __str__(self):
         return f"Payment #{self.pk} - {self.order.id}"
+
+
+class StripeWebhookEvent(models.Model):
+    """
+    Stores processed Stripe webhook event IDs to guarantee idempotent deduplication
+    and prevent replay or duplicate execution attacks.
+    """
+    event_id = models.CharField(max_length=255, unique=True, db_index=True)
+    event_type = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "stripe_webhook_events"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.event_type} - {self.event_id}"

@@ -13,6 +13,15 @@ export const paymentsApi = {
     return response.data;
   },
 
+  async getStripeSessionStatus(orderId, sessionId) {
+    const params = {};
+    if (sessionId) params.session_id = sessionId;
+    const response = await apiClient.get(`/payments/orders/${orderId}/stripe/status/`, {
+      params,
+    });
+    return response.data;
+  },
+
   async getPaymentConfig() {
     const response = await apiClient.get('/payments/config/');
     return response.data;
@@ -23,4 +32,3 @@ export const paymentsApi = {
     return response.data;
   },
 };
-

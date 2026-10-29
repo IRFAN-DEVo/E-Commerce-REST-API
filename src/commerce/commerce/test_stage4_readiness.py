@@ -104,6 +104,16 @@ class Stage4ReadinessTests(TestCase):
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
         self.product.refresh_from_db()
         self.assertEqual(self.product.stock, 7)
+        # Cart items remain until payment is initiated/confirmed
+        self.assertEqual(cart.cart_items.count(), 1)
+        # Completing payment clears the cart
+        order_id = resp.data["id"]
+        pay_resp = self.client_a.post(
+            f"/api/v1/payments/orders/{order_id}/payments/",
+            {"payment_method": "COD"},
+            format="json",
+        )
+        self.assertEqual(pay_resp.status_code, status.HTTP_201_CREATED)
         self.assertEqual(cart.cart_items.count(), 0)
 
     def test_checkout_fails_if_stock_insufficient(self):

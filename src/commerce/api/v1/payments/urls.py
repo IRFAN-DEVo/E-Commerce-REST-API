@@ -9,6 +9,8 @@ from .views import (
     RazorpayVerifyPaymentView,
     PaymentConfigView,
     RazorpayWebhookView,
+    StripeWebhookView,
+    StripeSessionStatusView,
 )
 
 urlpatterns = [
@@ -16,6 +18,9 @@ urlpatterns = [
     path("orders/<int:order_id>/payments/", CreatePaymentView.as_view(), name="create-payment"),
     path("razorpay/verify/", RazorpayVerifyPaymentView.as_view(), name="razorpay-verify"),
     path("orders/<int:order_id>/razorpay/verify/", RazorpayVerifyPaymentView.as_view(), name="order-razorpay-verify"),
+    path("stripe/webhook/", StripeWebhookView.as_view(), name="stripe-webhook"),
+    path("stripe/status/", StripeSessionStatusView.as_view(), name="stripe-status"),
+    path("orders/<int:order_id>/stripe/status/", StripeSessionStatusView.as_view(), name="order-stripe-status"),
     path("config/", PaymentConfigView.as_view(), name="payment-config"),
     path("razorpay/webhook/", RazorpayWebhookView.as_view(), name="razorpay-webhook"),
     path("payments/", PaymentListView.as_view(), name="payment-list"),

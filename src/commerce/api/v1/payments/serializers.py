@@ -7,6 +7,7 @@ class PaymentSerializer(serializers.ModelSerializer):
     order = serializers.PrimaryKeyRelatedField(read_only=True)
     payment_status = serializers.CharField(read_only=True)
     transaction_id = serializers.CharField(read_only=True)
+    stripe_session_id = serializers.CharField(read_only=True)
     paid_at = serializers.DateTimeField(read_only=True)
     created_at = serializers.DateTimeField(read_only=True)
     updated_at = serializers.DateTimeField(read_only=True)
@@ -19,6 +20,7 @@ class PaymentSerializer(serializers.ModelSerializer):
             "payment_method",
             "payment_status",
             "transaction_id",
+            "stripe_session_id",
             "amount",
             "paid_at",
             "created_at",
@@ -29,6 +31,7 @@ class PaymentSerializer(serializers.ModelSerializer):
             "order",
             "payment_status",
             "transaction_id",
+            "stripe_session_id",
             "amount",
             "paid_at",
             "created_at",
@@ -100,4 +103,6 @@ class PaymentConfigSerializer(serializers.Serializer):
     razorpay_enabled = serializers.BooleanField()
     razorpay_key_id = serializers.CharField(allow_blank=True)
     cod_enabled = serializers.BooleanField()
-    stripe_enabled = serializers.BooleanField()
+    stripe_enabled = serializers.BooleanField()
+    stripe_publishable_key = serializers.CharField(allow_blank=True, required=False)
+    stripe_currency = serializers.CharField(allow_blank=True, required=False)

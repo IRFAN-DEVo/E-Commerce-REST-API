@@ -264,10 +264,15 @@ OTP_RESEND_COOLDOWN_SECONDS = int(os.environ.get("OTP_RESEND_COOLDOWN_SECONDS", 
 OTP_MAX_ATTEMPTS = int(os.environ.get("OTP_MAX_ATTEMPTS", 5))
 
 
-# Payment Gateway Configuration (Environment-driven, dummy fallbacks in dev only)
-STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "dummy_stripe_secret_key" if DEBUG else "")
-STRIPE_PUBLIC_KEY = os.environ.get("STRIPE_PUBLIC_KEY", "dummy_stripe_public_key" if DEBUG else "")
-STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "dummy_stripe_webhook_secret" if DEBUG else "")
+# Payment Gateway Configuration (Environment-driven, secure defaults)
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "").strip()
+STRIPE_PUBLISHABLE_KEY = os.environ.get(
+    "STRIPE_PUBLISHABLE_KEY",
+    os.environ.get("STRIPE_PUBLIC_KEY", "")
+).strip()
+STRIPE_PUBLIC_KEY = STRIPE_PUBLISHABLE_KEY  # Backward compatibility alias
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "").strip()
+STRIPE_CURRENCY = os.environ.get("STRIPE_CURRENCY", "inr").strip().lower()
 
 PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID", "dummy_paypal_client_id" if DEBUG else "")
 PAYPAL_SECRET = os.environ.get("PAYPAL_SECRET", "dummy_paypal_secret" if DEBUG else "")
@@ -276,12 +281,20 @@ RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "").strip()
 RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "").strip()
 RAZORPAY_WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "").strip()
 
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000").strip()
+
 # Safe diagnostic (never prints credential values)
 if DEBUG:
     print(
         f"[RAZORPAY DIAGNOSTIC] Key ID configured: {bool(RAZORPAY_KEY_ID)} | "
         f"Key Secret configured: {bool(RAZORPAY_KEY_SECRET)} | "
         f"Key ID starts with 'rzp_test_': {RAZORPAY_KEY_ID.startswith('rzp_test_')}"
+    )
+    print(
+        f"[STRIPE DIAGNOSTIC] Secret Key configured: {bool(STRIPE_SECRET_KEY)} | "
+        f"Publishable Key configured: {bool(STRIPE_PUBLISHABLE_KEY)} | "
+        f"Webhook Secret configured: {bool(STRIPE_WEBHOOK_SECRET)} | "
+        f"Currency: {STRIPE_CURRENCY}"
     )
 
 # CORS and CSRF Configuration

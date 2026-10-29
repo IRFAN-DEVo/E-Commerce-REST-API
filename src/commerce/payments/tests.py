@@ -417,20 +417,25 @@ class RazorpayPaymentIntegrationTests(TestCase):
         self.assertEqual(payment.payment_method, "COD")
         self.assertEqual(payment.payment_status, "PENDING")
 
-    def test_stripe_remains_disabled(self):
-        """Stripe remains disabled and is rejected with 400."""
-        resp = self.client_customer.post(
-            f"/api/v1/payments/orders/{self.order.id}/payments/",
-            {"payment_method": "STRIPE"},
-        )
-        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("STRIPE payment gateway is currently inactive", str(resp.data))
+    def test_stripe_disabled_when_not_configured(self):
+        """Stripe is disabled and rejected with 400 when not configured."""
+        with override_settings(STRIPE_SECRET_KEY=""):
+            resp = self.client_customer.post(
+                f"/api/v1/payments/orders/{self.order.id}/payments/",
+                {"payment_method": "STRIPE"},
+            )
+            self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertIn("Stripe payment gateway is not configured", str(resp.data))
 
     # --- 9. Payment Config Endpoint ---
 
     def test_payment_config_endpoint_reports_status(self):
-        """Payment config endpoint accurately reports whether Razorpay is configured."""
-        with override_settings(RAZORPAY_KEY_ID="", RAZORPAY_KEY_SECRET=""):
+        """Payment config endpoint accurately reports gateway configurations."""
+        with override_settings(
+            RAZORPAY_KEY_ID="",
+            RAZORPAY_KEY_SECRET="",
+            STRIPE_SECRET_KEY="",
+        ):
             resp = self.client_customer.get("/api/v1/payments/config/")
             self.assertEqual(resp.status_code, status.HTTP_200_OK)
             self.assertFalse(resp.data["razorpay_enabled"])
@@ -441,11 +446,13 @@ class RazorpayPaymentIntegrationTests(TestCase):
         with override_settings(
             RAZORPAY_KEY_ID=self.test_key_id,
             RAZORPAY_KEY_SECRET=self.test_key_secret,
+            STRIPE_SECRET_KEY="sk_test_mock_123",
         ):
             resp = self.client_customer.get("/api/v1/payments/config/")
             self.assertEqual(resp.status_code, status.HTTP_200_OK)
             self.assertTrue(resp.data["razorpay_enabled"])
             self.assertEqual(resp.data["razorpay_key_id"], self.test_key_id)
+            self.assertTrue(resp.data["stripe_enabled"])
 
     # --- 10. UPI Payment Flows ---
 

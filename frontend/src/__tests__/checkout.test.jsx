@@ -785,6 +785,136 @@ describe('CheckoutPage component', () => {
       expect(screen.getByText('Payment failed at UPI gateway')).toBeInTheDocument();
     });
   });
+
+  it('renders Stripe option when stripe_enabled is true in config', async () => {
+    paymentsApi.getPaymentConfig.mockResolvedValue({
+      razorpay_enabled: false,
+      razorpay_key_id: '',
+      cod_enabled: true,
+      stripe_enabled: true,
+      stripe_publishable_key: 'pk_test_123',
+    });
+
+    ordersApi.checkout.mockResolvedValue({
+      id: 201,
+      total_price: '500.00',
+      status: 'PENDING',
+    });
+
+    renderCheckoutPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('1. Delivery Shipping Address')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/Full Name/i), { target: { value: 'Alice Smith' } });
+    fireEvent.change(screen.getByLabelText(/Contact Phone/i), { target: { value: '9876543210' } });
+    fireEvent.change(screen.getByLabelText(/Street Address/i), { target: { value: '123 Stripe Way' } });
+    fireEvent.change(screen.getByLabelText(/City/i), { target: { value: 'Bengaluru' } });
+    fireEvent.change(screen.getByLabelText(/State/i), { target: { value: 'KA' } });
+    fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: '560001' } });
+    fireEvent.click(screen.getByRole('button', { name: /Confirm Shipping & Continue/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Stripe \(Credit \/ Debit Card\)/i)).toBeInTheDocument();
+    });
+  });
+
+  it('initiates Stripe session and redirects customer to session_url', async () => {
+    paymentsApi.getPaymentConfig.mockResolvedValue({
+      razorpay_enabled: false,
+      razorpay_key_id: '',
+      cod_enabled: true,
+      stripe_enabled: true,
+    });
+
+    ordersApi.checkout.mockResolvedValue({
+      id: 202,
+      total_price: '500.00',
+      status: 'PENDING',
+    });
+
+    paymentsApi.createPayment.mockResolvedValue({
+      payment_id: 88,
+      order_id: 202,
+      stripe_session_id: 'cs_test_mock_session_999',
+      session_url: 'https://checkout.stripe.com/pay/cs_test_mock_session_999',
+    });
+
+    // Mock window.location.href
+    delete window.location;
+    window.location = { href: '' };
+
+    renderCheckoutPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('1. Delivery Shipping Address')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/Full Name/i), { target: { value: 'Alice Smith' } });
+    fireEvent.change(screen.getByLabelText(/Contact Phone/i), { target: { value: '9876543210' } });
+    fireEvent.change(screen.getByLabelText(/Street Address/i), { target: { value: '123 Stripe Way' } });
+    fireEvent.change(screen.getByLabelText(/City/i), { target: { value: 'Bengaluru' } });
+    fireEvent.change(screen.getByLabelText(/State/i), { target: { value: 'KA' } });
+    fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: '560001' } });
+    fireEvent.click(screen.getByRole('button', { name: /Confirm Shipping & Continue/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Stripe \(Credit \/ Debit Card\)/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText(/Stripe \(Credit \/ Debit Card\)/i));
+    fireEvent.click(screen.getByRole('button', { name: /Pay with Stripe/i }));
+
+    await waitFor(() => {
+      expect(paymentsApi.createPayment).toHaveBeenCalledWith(202, 'STRIPE');
+      expect(window.location.href).toBe('https://checkout.stripe.com/pay/cs_test_mock_session_999');
+    });
+  });
+
+  it('handles Stripe payment initiation failure gracefully', async () => {
+    paymentsApi.getPaymentConfig.mockResolvedValue({
+      razorpay_enabled: false,
+      razorpay_key_id: '',
+      cod_enabled: true,
+      stripe_enabled: true,
+    });
+
+    ordersApi.checkout.mockResolvedValue({
+      id: 203,
+      total_price: '500.00',
+      status: 'PENDING',
+    });
+
+    paymentsApi.createPayment.mockRejectedValue({
+      response: { data: { detail: 'Stripe gateway currently unavailable' } },
+    });
+
+    renderCheckoutPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('1. Delivery Shipping Address')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/Full Name/i), { target: { value: 'Alice Smith' } });
+    fireEvent.change(screen.getByLabelText(/Contact Phone/i), { target: { value: '9876543210' } });
+    fireEvent.change(screen.getByLabelText(/Street Address/i), { target: { value: '123 Stripe Way' } });
+    fireEvent.change(screen.getByLabelText(/City/i), { target: { value: 'Bengaluru' } });
+    fireEvent.change(screen.getByLabelText(/State/i), { target: { value: 'KA' } });
+    fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: '560001' } });
+    fireEvent.click(screen.getByRole('button', { name: /Confirm Shipping & Continue/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Stripe \(Credit \/ Debit Card\)/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText(/Stripe \(Credit \/ Debit Card\)/i));
+    fireEvent.click(screen.getByRole('button', { name: /Pay with Stripe/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Stripe gateway currently unavailable')).toBeInTheDocument();
+    });
+  });
 });
 
 describe('resolveRazorpayAmountPaise utility', () => {
