@@ -10,8 +10,8 @@ from django.core.exceptions import ImproperlyConfigured
 BASE_DIR = Path(__file__).resolve().parent.parent
 ROOT_DIR = BASE_DIR.parent.parent
 
+# Load environment exclusively from project root (.env in ROOT_DIR)
 _root_env = ROOT_DIR / ".env"
-_commerce_env = BASE_DIR / ".env"
 
 def _fallback_load_env(filepath):
     try:
@@ -33,13 +33,9 @@ try:
 
     if _root_env.is_file():
         load_dotenv(_root_env, override=True)
-    if _commerce_env.is_file():
-        load_dotenv(_commerce_env, override=True)
 except ImportError:
     if _root_env.is_file():
         _fallback_load_env(_root_env)
-    if _commerce_env.is_file():
-        _fallback_load_env(_commerce_env)
 
 
 # Quick-start development settings - unsuitable for production
@@ -124,26 +120,53 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'commerce.wsgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
+# Database Configuration
+# -----------------------------------------------------------------------------
+# Supports PostgreSQL via DATABASE_URL from project-root .env.
+# Preserves explicit SQLite development/test fallback when DATABASE_URL is not set and DEBUG=True.
 
 _database_url = os.environ.get("DATABASE_URL", "").strip()
+
+# PostgreSQL is required in non-DEBUG environments or when explicitly requested
+_require_postgres = (
+    not DEBUG
+    or os.environ.get("REQUIRE_POSTGRESQL", "").lower() in ("true", "1", "yes")
+    or os.environ.get("DJANGO_ENV", "").lower() in ("staging", "production")
+)
+
 if _database_url:
     try:
         import dj_database_url
-        DATABASES['default'] = dj_database_url.parse(_database_url, conn_max_age=600)
-    except ImportError:
-        if not DEBUG:
-            raise ImproperlyConfigured("dj-database-url is required to parse DATABASE_URL in production.")
-elif not DEBUG and not os.environ.get("ALLOW_SQLITE_IN_PRODUCTION", "").lower() in ("true", "1", "yes"):
+    except ImportError as err:
+        raise ImproperlyConfigured(
+            "dj-database-url is required to parse DATABASE_URL."
+        ) from err
+
+    DATABASES = {
+        'default': dj_database_url.parse(
+            _database_url,
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }
+
+    # Verify and ensure engine is PostgreSQL when URL specifies postgres/postgresql
+    if _database_url.lower().startswith(("postgres://", "postgresql://")):
+        if DATABASES['default'].get('ENGINE') != 'django.db.backends.postgresql':
+            DATABASES['default']['ENGINE'] = 'django.db.backends.postgresql'
+elif _require_postgres and not os.environ.get("ALLOW_SQLITE_IN_PRODUCTION", "").lower() in ("true", "1", "yes"):
     raise ImproperlyConfigured(
-        "DATABASE_URL environment variable must be set in production. "
-        "Production cannot silently fall back to SQLite."
+        "DATABASE_URL environment variable must be configured with a PostgreSQL connection URL in staging/production. "
+        "Silent fallback to SQLite is disallowed."
     )
+else:
+    # Explicit local development / test configuration when DATABASE_URL is not provided
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',},
