@@ -201,8 +201,11 @@ class UpdateOrderStatusView(APIView):
         serializer.save()
 
         if new_status == "CANCELLED":
+            order.cancelled_at = timezone.now()
+            order.cancellation_reason = "Cancelled by store administrator."
+            order.save(update_fields=["cancelled_at", "cancellation_reason"])
             transaction.on_commit(
-                lambda: send_order_cancellation_email(order=order, reason="Cancelled by administrator.")
+                lambda: send_order_cancellation_email(order=order, reason="Cancelled by store administrator.")
             )
 
         return Response(

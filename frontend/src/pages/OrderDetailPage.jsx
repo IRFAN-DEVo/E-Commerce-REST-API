@@ -7,6 +7,7 @@ import { useToast } from '../context/ToastContext';
 import { CartContext } from '../context/CartContext';
 import { OrderStatusBadge } from '../components/common/Badge';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { CancelOrderModal } from '../components/orders/CancelOrderModal';
 
 export const OrderDetailPage = () => {
   const { id } = useParams();
@@ -20,6 +21,8 @@ export const OrderDetailPage = () => {
   const [order, setOrder] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isStripeVerified, setIsStripeVerified] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const fetchOrderDetail = async () => {
     setIsLoading(true);
@@ -61,16 +64,20 @@ export const OrderDetailPage = () => {
     fetchOrderDetail();
   }, [id, searchParams]);
 
-  const handleCancelOrder = async () => {
-    if (!window.confirm('Are you sure you want to cancel this order?')) return;
-
+  const handleConfirmCancel = async (orderId, reason) => {
+    setIsCancelling(true);
     try {
-      await ordersApi.cancelOrder(id);
+      await ordersApi.cancelOrder(orderId, reason);
       showToast('Order cancelled successfully.', 'success');
-      fetchOrderDetail();
+      setIsCancelModalOpen(false);
+      await fetchOrderDetail();
     } catch (err) {
-      const msg = err.response?.data?.detail || 'Unable to cancel order.';
+      const msg = err.response?.data?.detail
+        || err.response?.data?.message
+        || 'Unable to cancel order.';
       showToast(msg, 'error');
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -94,7 +101,9 @@ export const OrderDetailPage = () => {
   }
 
   const shipping = order.shipping_address || {};
-  const isCancellable = order.status === 'PENDING' && (order.payment?.payment_status !== 'SUCCESS' && order.payment_status !== 'SUCCESS');
+  const isCancellable = order.is_cancellable !== undefined
+    ? order.is_cancellable
+    : (order.status === 'PENDING' && (order.payment?.payment_status !== 'SUCCESS' && order.payment_status !== 'SUCCESS'));
 
   return (
     <div className="container" style={{ padding: '2.5rem 1.5rem' }}>
@@ -120,6 +129,41 @@ export const OrderDetailPage = () => {
         </div>
       )}
 
+      {/* Cancellation Notice Banner */}
+      {order.status === 'CANCELLED' && (
+        <div
+          style={{
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            color: '#991b1b',
+            padding: '1.25rem 1.5rem',
+            borderRadius: '8px',
+            marginBottom: '1.5rem',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, fontSize: '1rem', marginBottom: '0.375rem' }}>
+            <Ban size={18} color="#dc2626" />
+            <span>Order Cancelled</span>
+          </div>
+          <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: '#7f1d1d' }}>
+            This order was cancelled {order.cancelled_at ? `on ${new Date(order.cancelled_at).toLocaleString()}` : ''}.
+            {order.cancellation_reason && (
+              <span style={{ display: 'block', marginTop: '0.25rem', fontStyle: 'italic' }}>
+                Reason: &ldquo;{order.cancellation_reason}&rdquo;
+              </span>
+            )}
+          </p>
+          <p style={{ margin: 0, fontSize: '0.8125rem', color: '#991b1b' }}>
+            All reserved items have been restored to available stock.
+            {order.refund_status === 'COMPLETED'
+              ? ' A refund has been issued to your original payment method.'
+              : order.refund_status === 'MANUAL_PROCESSING_REQUIRED'
+              ? ' Your refund request is logged and currently being processed by our billing team.'
+              : ' No payment charge was captured for this order.'}
+          </p>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -136,12 +180,24 @@ export const OrderDetailPage = () => {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <OrderStatusBadge status={order.status} />
-          {isCancellable && (
-            <button onClick={handleCancelOrder} className="btn btn-outline-danger btn-sm">
+          {isCancellable ? (
+            <button
+              type="button"
+              onClick={() => setIsCancelModalOpen(true)}
+              className="btn btn-outline-danger btn-sm"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}
+            >
               <Ban size={16} />
               <span>Cancel Order</span>
             </button>
-          )}
+          ) : order.cancellation_ineligibility_reason && order.status !== 'CANCELLED' && order.status !== 'DELIVERED' ? (
+            <span
+              title={order.cancellation_ineligibility_reason}
+              style={{ fontSize: '0.8125rem', color: '#71717a', fontStyle: 'italic' }}
+            >
+              {order.cancellation_ineligibility_reason}
+            </span>
+          ) : null}
         </div>
       </div>
 
@@ -248,6 +304,14 @@ export const OrderDetailPage = () => {
           </div>
         </div>
       </div>
+
+      <CancelOrderModal
+        isOpen={isCancelModalOpen}
+        order={order}
+        onClose={() => !isCancelling && setIsCancelModalOpen(false)}
+        onConfirm={handleConfirmCancel}
+        isSubmitting={isCancelling}
+      />
 
       <style>{`
         @media (max-width: 768px) {

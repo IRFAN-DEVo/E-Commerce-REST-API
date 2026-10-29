@@ -64,6 +64,39 @@ class Payment(models.Model):
         null=True
     )
 
+    REFUND_STATUS_CHOICES = (
+        ("NOT_APPLICABLE", "Not Applicable"),
+        ("PENDING", "Pending"),
+        ("PROCESSING", "Processing"),
+        ("COMPLETED", "Completed"),
+        ("FAILED", "Failed"),
+        ("MANUAL_PROCESSING_REQUIRED", "Manual Processing Required"),
+    )
+
+    refund_status = models.CharField(
+        max_length=30,
+        choices=REFUND_STATUS_CHOICES,
+        default="NOT_APPLICABLE",
+    )
+
+    refund_id = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+    )
+
+    refund_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        blank=True,
+        null=True,
+    )
+
+    refunded_at = models.DateTimeField(
+        blank=True,
+        null=True,
+    )
+
     created_at = models.DateTimeField(
         auto_now_add=True
     )

@@ -22,8 +22,10 @@ export const ordersApi = {
     return response.data;
   },
 
-  async cancelOrder(id) {
-    const response = await apiClient.patch(`/orders/orders/${id}/cancel/`);
+  async cancelOrder(id, reason = '') {
+    const response = await apiClient.post(`/orders/orders/${id}/cancel/`, {
+      reason,
+    });
     return response.data;
   },
 };

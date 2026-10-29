@@ -1,4 +1,6 @@
+import stripe
 from django.db import transaction
+from django.utils import timezone
 
 from rest_framework import generics, status
 from rest_framework.views import APIView
@@ -18,7 +20,7 @@ from coupons.models import CouponUsage
 from products.models import Product
 from payments.models import Payment
 
-from .serializers import (OrderSerializer,CheckoutSerializer)
+from .serializers import (OrderSerializer, CheckoutSerializer, CancelOrderRequestSerializer)
 
 
 @extend_schema(
@@ -52,18 +54,6 @@ class CheckoutView(APIView):
 
         if not cart_items:
             raise ValidationError("Your cart is empty.")
-
-        # Cancel and restore stock for any prior unpaid PENDING orders from this user
-        existing_pending_orders = Order.objects.filter(user=request.user, status="PENDING")
-        for old_order in existing_pending_orders:
-            old_payment = Payment.objects.filter(order=old_order).first()
-            if not old_payment or old_payment.payment_status != "SUCCESS":
-                for old_item in old_order.items.select_related("product"):
-                    old_item.product.stock += old_item.quantity
-                    old_item.product.save(update_fields=["stock"])
-                CouponUsage.objects.filter(order=old_order).delete()
-                old_order.status = "CANCELLED"
-                old_order.save(update_fields=["status"])
 
         # Lock products in deterministic ID order to avoid database deadlocks and overselling
         product_ids = sorted(list({item.product_id for item in cart_items}))
@@ -212,11 +202,22 @@ class OrderDetailView(generics.RetrieveAPIView):
     responses={200: None},
 )
 class CancelOrderView(APIView):
+    """
+    Securely cancels an eligible customer order.
+    Atomically restores inventory holding sorted product row locks, releases applied coupons,
+    invalidates active external payment sessions, and dispatches confirmation notifications.
+    Supports both POST and PATCH methods.
+    """
     permission_classes = [IsAuthenticated]
 
-    @transaction.atomic
-    def patch(self, request, pk):
+    def post(self, request, pk):
+        return self._cancel_order(request, pk)
 
+    def patch(self, request, pk):
+        return self._cancel_order(request, pk)
+
+    @transaction.atomic
+    def _cancel_order(self, request, pk):
         try:
             order = (
                 Order.objects
@@ -227,22 +228,19 @@ class CancelOrderView(APIView):
                     user=request.user,
                 )
             )
-
         except Order.DoesNotExist:
             raise ValidationError("Order not found.")
 
-        payment = Payment.objects.filter(order=order).first()
+        # Evaluate cancellation eligibility against authoritative backend rules
+        can_cancel, ineligibility_reason = order.get_cancellation_eligibility()
+        if not can_cancel:
+            raise ValidationError(ineligibility_reason)
 
-        if order.status != "PENDING":
-            raise ValidationError(
-                "Only pending orders can be cancelled."
-            )
+        payment = Payment.objects.select_for_update().filter(order=order).first()
 
-        # Prevent cancelling a successfully paid order
-        if payment and payment.payment_status == "SUCCESS":
-            raise ValidationError(
-                "Paid orders cannot be cancelled."
-            )
+        serializer = CancelOrderRequestSerializer(data=request.data or {})
+        serializer.is_valid()
+        reason = serializer.validated_data.get("reason", "").strip() or "Cancelled by customer."
 
         # Atomically restore stock holding row locks in sorted order
         order_items = list(order.items.all())
@@ -257,25 +255,45 @@ class CancelOrderView(APIView):
                 product.stock += item.quantity
                 product.save(update_fields=["stock"])
 
-        # Release coupon usage so the customer can reuse the coupon
+        # Release coupon usage so customer can reuse the coupon
         CouponUsage.objects.filter(order=order).delete()
 
-        # Update pending payment status if present
+        # Invalidate active unpaid Stripe Checkout Session if present
+        if payment and payment.payment_method == "STRIPE" and payment.payment_status == "PENDING" and payment.stripe_session_id:
+            try:
+                secret_key = getattr(settings, "STRIPE_SECRET_KEY", "").strip()
+                if secret_key:
+                    stripe.api_key = secret_key
+                    stripe.checkout.Session.expire(payment.stripe_session_id)
+            except Exception as exc:
+                pass
+
+        # Update pending payment status
         if payment and payment.payment_status == "PENDING":
             payment.payment_status = "FAILED"
-            payment.save(update_fields=["payment_status"])
+            payment.refund_status = "NOT_APPLICABLE"
+            payment.save(update_fields=["payment_status", "refund_status", "updated_at"])
 
+        # Update order status, timestamp, and cancellation reason
         order.status = "CANCELLED"
-        order.save(update_fields=["status"])
+        order.cancelled_at = timezone.now()
+        order.cancellation_reason = reason
+        order.save(update_fields=["status", "cancelled_at", "cancellation_reason", "updated_at"])
 
-        # Send order cancellation email after transaction commit
+        # Dispatch order cancellation email after transaction commit
         transaction.on_commit(
-            lambda: send_order_cancellation_email(order=order)
+            lambda: send_order_cancellation_email(order=order, reason=reason)
         )
 
         return Response(
             {
-                "message": "Order cancelled successfully."
+                "message": "Order cancelled successfully.",
+                "detail": "Order cancelled successfully.",
+                "order_id": order.id,
+                "status": order.status,
+                "cancelled_at": order.cancelled_at,
+                "cancellation_reason": order.cancellation_reason,
+                "order": OrderSerializer(order, context={"request": request}).data,
             },
             status=status.HTTP_200_OK,
         )

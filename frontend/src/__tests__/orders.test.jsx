@@ -32,6 +32,7 @@ const mockOrder = {
   customer_email: 'john@example.com',
   payment_method: 'COD',
   payment_status: 'PENDING',
+  is_cancellable: true,
   items: [
     {
       id: 1,
@@ -84,10 +85,68 @@ describe('OrdersPage component', () => {
     });
   });
 
-  it('handles order cancellation on user confirmation', async () => {
+  it('hides Cancel Order button for ineligible orders (e.g. SHIPPED or CANCELLED)', async () => {
+    const shippedOrder = {
+      ...mockOrder,
+      id: 102,
+      status: 'SHIPPED',
+      is_cancellable: false,
+      cancellation_ineligibility_reason: 'Shipped orders cannot be cancelled online.',
+    };
+    ordersApi.getOrders.mockResolvedValue([shippedOrder]);
+
+    render(
+      <BrowserRouter>
+        <ToastProvider>
+          <AuthProvider>
+            <OrdersPage />
+          </AuthProvider>
+        </ToastProvider>
+      </BrowserRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Order #102')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Cancel Order/i })).not.toBeInTheDocument();
+      expect(screen.getByText(/Cancellation unavailable/i)).toBeInTheDocument();
+    });
+  });
+
+  it('opens confirmation dialog on clicking Cancel Order and dismisses on Keep Order', async () => {
+    ordersApi.getOrders.mockResolvedValue([mockOrder]);
+
+    render(
+      <BrowserRouter>
+        <ToastProvider>
+          <AuthProvider>
+            <OrdersPage />
+          </AuthProvider>
+        </ToastProvider>
+      </BrowserRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Cancel Order/i })).toBeInTheDocument();
+    });
+
+    // Open confirmation dialog
+    fireEvent.click(screen.getByRole('button', { name: /Cancel Order/i }));
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByText('Cancel Order #101')).toBeInTheDocument();
+    expect(screen.getByText(/Are you sure you want to cancel this order\? This action cannot be reversed\./i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Keep Order/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Confirm Cancellation/i })).toBeInTheDocument();
+
+    // Dismiss dialog
+    fireEvent.click(screen.getByRole('button', { name: /Keep Order/i }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(ordersApi.cancelOrder).not.toHaveBeenCalled();
+  });
+
+  it('calls cancelOrder on confirmation, refreshes orders, and handles errors', async () => {
     ordersApi.getOrders.mockResolvedValue([mockOrder]);
     ordersApi.cancelOrder.mockResolvedValue({ message: 'Order cancelled successfully.' });
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
 
     render(
       <BrowserRouter>
@@ -104,9 +163,11 @@ describe('OrdersPage component', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: /Cancel Order/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Confirm Cancellation/i }));
 
     await waitFor(() => {
-      expect(ordersApi.cancelOrder).toHaveBeenCalledWith(101);
+      expect(ordersApi.cancelOrder).toHaveBeenCalledWith(101, expect.any(String));
+      expect(ordersApi.getOrders).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -160,6 +221,67 @@ describe('OrderDetailPage component', () => {
       expect(screen.getByText('John Customer')).toBeInTheDocument();
       expect(screen.getByText(/123 Test Road/i)).toBeInTheDocument();
       expect(screen.getByText('COD')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Cancel Order/i })).toBeInTheDocument();
+    });
+  });
+
+  it('renders cancellation modal on OrderDetailPage and executes cancellation', async () => {
+    ordersApi.getOrder.mockResolvedValue(mockOrder);
+    ordersApi.cancelOrder.mockResolvedValue({ message: 'Order cancelled successfully.' });
+
+    render(
+      <MemoryRouter initialEntries={['/orders/101']}>
+        <ToastProvider>
+          <AuthProvider>
+            <Routes>
+              <Route path="/orders/:id" element={<OrderDetailPage />} />
+            </Routes>
+          </AuthProvider>
+        </ToastProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Cancel Order/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Cancel Order/i }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Confirm Cancellation/i }));
+
+    await waitFor(() => {
+      expect(ordersApi.cancelOrder).toHaveBeenCalledWith(101, expect.any(String));
+      expect(ordersApi.getOrder).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('displays cancellation details banner when order status is CANCELLED', async () => {
+    const cancelledOrder = {
+      ...mockOrder,
+      status: 'CANCELLED',
+      is_cancellable: false,
+      cancelled_at: '2026-10-11T12:00:00Z',
+      cancellation_reason: 'Customer changed mind',
+    };
+    ordersApi.getOrder.mockResolvedValue(cancelledOrder);
+
+    render(
+      <MemoryRouter initialEntries={['/orders/101']}>
+        <ToastProvider>
+          <AuthProvider>
+            <Routes>
+              <Route path="/orders/:id" element={<OrderDetailPage />} />
+            </Routes>
+          </AuthProvider>
+        </ToastProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Order Cancelled')).toBeInTheDocument();
+      expect(screen.getByText(/Customer changed mind/i)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Cancel Order/i })).not.toBeInTheDocument();
     });
   });
 });

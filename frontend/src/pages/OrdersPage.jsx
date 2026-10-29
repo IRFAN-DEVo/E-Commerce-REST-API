@@ -8,10 +8,13 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { EmptyState } from '../components/common/EmptyState';
 import { AccountSidebar } from '../components/layout/AccountSidebar';
 import { AnimatedContent } from '../components/common/AnimatedContent';
+import { CancelOrderModal } from '../components/orders/CancelOrderModal';
 
 export const OrdersPage = () => {
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [cancelModalOrder, setCancelModalOrder] = useState(null);
+  const [isCancelling, setIsCancelling] = useState(false);
   const { showToast } = useToast();
 
   const loadOrders = async () => {
@@ -30,18 +33,30 @@ export const OrdersPage = () => {
     loadOrders();
   }, []);
 
-  const handleCancelOrder = async (orderId) => {
-    if (!window.confirm(`Are you sure you want to cancel Order #${orderId}? Product inventory will be restored.`)) {
-      return;
-    }
+  const handleOpenCancelModal = (order) => {
+    setCancelModalOrder(order);
+  };
 
+  const handleCloseCancelModal = () => {
+    if (!isCancelling) {
+      setCancelModalOrder(null);
+    }
+  };
+
+  const handleConfirmCancel = async (orderId, reason) => {
+    setIsCancelling(true);
     try {
-      await ordersApi.cancelOrder(orderId);
-      showToast(`Order #${orderId} has been cancelled.`, 'success');
-      loadOrders();
+      await ordersApi.cancelOrder(orderId, reason);
+      showToast(`Order #${orderId} has been cancelled successfully.`, 'success');
+      setCancelModalOrder(null);
+      await loadOrders();
     } catch (err) {
-      const msg = err.response?.data?.detail || 'Unable to cancel order.';
+      const msg = err.response?.data?.detail
+        || err.response?.data?.message
+        || 'Unable to cancel order.';
       showToast(msg, 'error');
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -112,7 +127,9 @@ export const OrdersPage = () => {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     {orders.map((order) => {
                       const itemCount = order.items?.reduce((sum, item) => sum + item.quantity, 0) || order.items?.length || 0;
-                      const isCancellable = order.status === 'PENDING' && (order.payment?.payment_status !== 'SUCCESS' && order.payment_status !== 'SUCCESS');
+                      const isCancellable = order.is_cancellable !== undefined
+                        ? order.is_cancellable
+                        : (order.status === 'PENDING' && (order.payment?.payment_status !== 'SUCCESS' && order.payment_status !== 'SUCCESS'));
 
                       return (
                         <div
@@ -145,6 +162,11 @@ export const OrdersPage = () => {
                               </div>
                               <div style={{ fontSize: '0.8125rem', color: '#71717a' }}>
                                 Placed on {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'Recent'}
+                                {order.status === 'CANCELLED' && order.cancelled_at && (
+                                  <span style={{ color: '#dc2626', marginLeft: '0.5rem' }}>
+                                    &bull; Cancelled on {new Date(order.cancelled_at).toLocaleDateString()}
+                                  </span>
+                                )}
                               </div>
                             </div>
 
@@ -163,16 +185,24 @@ export const OrdersPage = () => {
                             </div>
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              {isCancellable && (
+                              {isCancellable ? (
                                 <button
-                                  onClick={() => handleCancelOrder(order.id)}
+                                  type="button"
+                                  onClick={() => handleOpenCancelModal(order)}
                                   className="btn btn-outline-danger btn-sm"
                                   style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}
                                 >
                                   <Ban size={14} />
                                   <span>Cancel Order</span>
                                 </button>
-                              )}
+                              ) : order.cancellation_ineligibility_reason && order.status !== 'CANCELLED' && order.status !== 'DELIVERED' ? (
+                                <span
+                                  title={order.cancellation_ineligibility_reason}
+                                  style={{ fontSize: '0.75rem', color: '#a1a1aa', fontStyle: 'italic' }}
+                                >
+                                  Cancellation unavailable
+                                </span>
+                              ) : null}
 
                               <Link to={`/orders/${order.id}`} className="btn btn-secondary btn-sm">
                                 <span>View Details</span>
@@ -190,6 +220,14 @@ export const OrdersPage = () => {
           </main>
         </div>
       </div>
+
+      <CancelOrderModal
+        isOpen={!!cancelModalOrder}
+        order={cancelModalOrder}
+        onClose={handleCloseCancelModal}
+        onConfirm={handleConfirmCancel}
+        isSubmitting={isCancelling}
+      />
 
       <style>{`
         @media (max-width: 900px) {

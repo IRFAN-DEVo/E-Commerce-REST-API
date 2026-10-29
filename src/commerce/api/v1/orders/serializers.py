@@ -85,6 +85,10 @@ class OrderSerializer(serializers.ModelSerializer):
     customer_phone = serializers.SerializerMethodField()
     payment_status = serializers.SerializerMethodField()
     payment_method = serializers.SerializerMethodField()
+    is_cancellable = serializers.SerializerMethodField()
+    cancellation_ineligibility_reason = serializers.SerializerMethodField()
+    refund_status = serializers.SerializerMethodField()
+    refund_amount = serializers.SerializerMethodField()
 
 
     class Meta:
@@ -96,6 +100,12 @@ class OrderSerializer(serializers.ModelSerializer):
             "total_price",
             "created_at",
             "updated_at",
+            "cancelled_at",
+            "cancellation_reason",
+            "is_cancellable",
+            "cancellation_ineligibility_reason",
+            "refund_status",
+            "refund_amount",
             "customer_name",
             "customer_email",
             "customer_phone",
@@ -136,6 +146,25 @@ class OrderSerializer(serializers.ModelSerializer):
         if hasattr(obj, "payment") and obj.payment:
             return obj.payment.payment_method
         return "—"
+
+    def get_is_cancellable(self, obj):
+        return getattr(obj, "is_cancellable", False)
+
+    def get_cancellation_ineligibility_reason(self, obj):
+        if hasattr(obj, "get_cancellation_eligibility"):
+            can_cancel, reason = obj.get_cancellation_eligibility()
+            return "" if can_cancel else reason
+        return ""
+
+    def get_refund_status(self, obj):
+        if hasattr(obj, "payment") and obj.payment:
+            return getattr(obj.payment, "refund_status", "NOT_APPLICABLE")
+        return "NOT_APPLICABLE"
+
+    def get_refund_amount(self, obj):
+        if hasattr(obj, "payment") and obj.payment:
+            return obj.payment.refund_amount
+        return None
 
 
 
@@ -194,3 +223,12 @@ class UpdateOrderStatusSerializer(serializers.ModelSerializer):
 
 class CheckoutSerializer(serializers.Serializer):
     shipping_address = ShippingAddressSerializer()
+
+class CancelOrderRequestSerializer(serializers.Serializer):
+    reason = serializers.CharField(
+        max_length=500,
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Optional cancellation reason provided by the customer."
+    )
