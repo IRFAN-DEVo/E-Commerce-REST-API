@@ -235,6 +235,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "phone",
             "is_email_verified",
             "is_phone_verified",
+            "is_profile_complete",
             "user_type",
             "date_joined",
         ]

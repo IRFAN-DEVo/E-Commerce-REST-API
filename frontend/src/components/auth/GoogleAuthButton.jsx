@@ -27,6 +27,13 @@ const GoogleAuthButtonInner = ({ text = 'continue_with' }) => {
 
       if (data.is_new_user || data.needs_name) {
         // Direct new user to manual name-entry screen
+        // Store in sessionStorage for refresh safety
+        if (data.onboarding_token) {
+          sessionStorage.setItem('google_onboarding_token', data.onboarding_token);
+        }
+        if (data.email) {
+          sessionStorage.setItem('google_onboarding_email', data.email);
+        }
         showToast('Google account verified! Please enter your name to complete your profile.', 'info');
         navigate('/complete-profile', {
           state: {

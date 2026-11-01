@@ -893,8 +893,8 @@ class GoogleAuthView(APIView):
                 user.is_email_verified = True
                 user.save(update_fields=["is_email_verified"])
 
-            # If user has no name set, prompt for name completion
-            if not user.first_name:
+            # Check if profile is complete
+            if not getattr(user, "is_profile_complete", True) or not (user.first_name and user.first_name.strip()):
                 signer = signing.TimestampSigner(salt="google-oauth-onboarding")
                 onboarding_token = signer.sign_object({"email": email, "sub": sub, "user_id": user.id})
                 return Response(
@@ -903,11 +903,12 @@ class GoogleAuthView(APIView):
                         "needs_name": True,
                         "onboarding_token": onboarding_token,
                         "email": user.email,
-                        "message": "Please enter your name to complete your profile.",
+                        "message": "We just need your name to set up your account.",
                     },
                     status=status.HTTP_200_OK,
                 )
 
+            # Complete existing profile: Direct login
             refresh = RefreshToken.for_user(user)
             return Response(
                 {
@@ -922,24 +923,39 @@ class GoogleAuthView(APIView):
                         "phone": user.phone,
                         "is_email_verified": user.is_email_verified,
                         "is_phone_verified": user.is_phone_verified,
+                        "is_profile_complete": user.is_profile_complete,
                         "user_type": user.user_type,
                     },
                 },
                 status=status.HTTP_200_OK,
             )
 
-        # New user flow: Do NOT issue unrestricted JWT access before profile completion!
-        # Issue a restricted, time-limited onboarding token (valid for 15 minutes)
-        signer = signing.TimestampSigner(salt="google-oauth-onboarding")
-        onboarding_token = signer.sign_object({"email": email, "sub": sub})
+        # Step 5: New Google user flow — create an incomplete account
+        with transaction.atomic():
+            generated_username = f"user_{uuid.uuid4().hex[:15]}"
+            user = User(
+                username=generated_username,
+                email=email,
+                first_name="",  # Mandatory: Do NOT use Google profile name!
+                is_active=True,
+                is_email_verified=True,
+                is_profile_complete=False,
+                user_type="customer",
+            )
+            user.set_unusable_password()
+            user.save()
 
+            signer = signing.TimestampSigner(salt="google-oauth-onboarding")
+            onboarding_token = signer.sign_object({"email": email, "sub": sub, "user_id": user.id})
+
+        # Step 6: Do NOT immediately issue normal access and refresh JWT tokens
         return Response(
             {
                 "is_new_user": True,
                 "needs_name": True,
                 "onboarding_token": onboarding_token,
-                "email": email,
-                "message": "Google verification successful. Please enter your full name to complete your profile.",
+                "email": user.email,
+                "message": "We just need your name to set up your account.",
             },
             status=status.HTTP_200_OK,
         )
@@ -951,7 +967,7 @@ class GoogleAuthView(APIView):
     description="Completes registration for a new Google user by validating manual name entry with a restricted onboarding token and issuing full SimpleJWT tokens.",
     request=GoogleCompleteProfileSerializer,
     responses={
-        201: "Account created and JWT issued.",
+        200: "Account created and JWT issued.",
         400: "Invalid or expired onboarding session.",
     },
 )
@@ -982,16 +998,21 @@ class GoogleCompleteProfileView(APIView):
             )
 
         email = token_data.get("email")
-        if not email:
+        user_id = token_data.get("user_id")
+        if not email and not user_id:
             return Response(
                 {"detail": "Invalid onboarding data."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         with transaction.atomic():
-            user = User.objects.select_for_update().filter(email__iexact=email).first()
+            query = User.objects.select_for_update()
+            if user_id:
+                user = query.filter(id=user_id).first()
+            else:
+                user = query.filter(email__iexact=email).first()
+
             if not user:
-                # Generate unique username
                 generated_username = f"user_{uuid.uuid4().hex[:15]}"
                 user = User(
                     username=generated_username,
@@ -999,16 +1020,16 @@ class GoogleCompleteProfileView(APIView):
                     first_name=name,
                     is_active=True,
                     is_email_verified=True,
+                    is_profile_complete=True,
                     user_type="customer",
                 )
-                user.set_unusable_password()  # Safe: no weak or default password assigned
+                user.set_unusable_password()
                 user.save()
             else:
-                # If user already existed but had missing name
-                if not user.first_name:
-                    user.first_name = name
-                    user.is_email_verified = True
-                    user.save(update_fields=["first_name", "is_email_verified"])
+                user.first_name = name
+                user.is_email_verified = True
+                user.is_profile_complete = True
+                user.save(update_fields=["first_name", "is_email_verified", "is_profile_complete"])
 
             refresh = RefreshToken.for_user(user)
 
@@ -1025,8 +1046,9 @@ class GoogleCompleteProfileView(APIView):
                     "phone": user.phone,
                     "is_email_verified": user.is_email_verified,
                     "is_phone_verified": user.is_phone_verified,
+                    "is_profile_complete": user.is_profile_complete,
                     "user_type": user.user_type,
                 },
             },
-            status=status.HTTP_201_CREATED,
+            status=status.HTTP_200_OK,
         )

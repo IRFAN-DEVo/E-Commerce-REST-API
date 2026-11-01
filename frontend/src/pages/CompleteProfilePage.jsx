@@ -16,8 +16,25 @@ export const CompleteProfilePage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const onboardingToken = location.state?.onboarding_token;
-  const verifiedEmail = location.state?.email || '';
+  // Refresh-safe token and email recovery: checks navigation state, then falls back to sessionStorage
+  const [onboardingToken] = useState(() => {
+    const fromState = location.state?.onboarding_token;
+    if (fromState) {
+      sessionStorage.setItem('google_onboarding_token', fromState);
+      return fromState;
+    }
+    return sessionStorage.getItem('google_onboarding_token') || '';
+  });
+
+  const [verifiedEmail] = useState(() => {
+    const fromState = location.state?.email;
+    if (fromState) {
+      sessionStorage.setItem('google_onboarding_email', fromState);
+      return fromState;
+    }
+    return sessionStorage.getItem('google_onboarding_email') || '';
+  });
+
   const from = location.state?.from?.pathname || location.state?.from || '/';
 
   // Protect against direct navigation without a valid onboarding session
@@ -45,6 +62,10 @@ export const CompleteProfilePage = () => {
         name: cleanedName,
       });
 
+      // Cleanup onboarding session on successful account finalization
+      sessionStorage.removeItem('google_onboarding_token');
+      sessionStorage.removeItem('google_onboarding_email');
+
       await setAuthSession(data);
       showToast(`Welcome to DjangoMart, ${cleanedName}!`, 'success');
       navigate(from, { replace: true });
@@ -53,9 +74,17 @@ export const CompleteProfilePage = () => {
         err.response?.data?.detail ||
         err.response?.data?.name?.[0] ||
         err.response?.data?.error ||
-        'Failed to complete profile. Please try again or sign in again.';
+        'Failed to complete profile. Please try again.';
+
       setErrorMessage(msg);
       showToast(msg, 'error');
+
+      // If token expired, clear cached session and guide user back to Google Sign-In
+      if (err.response?.status === 400 && msg.toLowerCase().includes('expired')) {
+        sessionStorage.removeItem('google_onboarding_token');
+        sessionStorage.removeItem('google_onboarding_email');
+        navigate('/login', { replace: true });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -105,10 +134,10 @@ export const CompleteProfilePage = () => {
               letterSpacing: '-0.025em',
             }}
           >
-            Complete your DjangoMart profile.
+            Almost There!
           </h2>
           <p style={{ color: '#d4d4d8', fontSize: '1rem', maxWidth: '420px', lineHeight: 1.6 }}>
-            Your email is verified through Google. Please tell us how you'd like to be addressed to finalize your account.
+            We just need your name to set up your account.
           </p>
         </div>
       </div>
@@ -149,10 +178,10 @@ export const CompleteProfilePage = () => {
             </Link>
 
             <h1 style={{ fontSize: '1.625rem', fontWeight: 700, color: '#000000', letterSpacing: '-0.02em' }}>
-              What's your name?
+              Almost There!
             </h1>
             <p style={{ fontSize: '0.875rem', color: '#71717a', marginTop: '0.25rem' }}>
-              Please enter your full name to complete registration.
+              We just need your name to set up your account.
             </p>
           </div>
 
@@ -212,7 +241,7 @@ export const CompleteProfilePage = () => {
                   required
                   autoFocus
                   className="form-input"
-                  placeholder="e.g. Alex Morgan"
+                  placeholder="Enter your full name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   style={{ paddingLeft: '2.5rem' }}
@@ -245,7 +274,7 @@ export const CompleteProfilePage = () => {
                 gap: '0.5rem',
               }}
             >
-              <span>{isSubmitting ? 'Finalizing Account...' : 'Complete & Continue'}</span>
+              <span>{isSubmitting ? 'Saving...' : 'Continue'}</span>
               <ArrowRight size={16} />
             </button>
           </form>
@@ -263,4 +292,3 @@ export const CompleteProfilePage = () => {
 };
 
 export default CompleteProfilePage;
-

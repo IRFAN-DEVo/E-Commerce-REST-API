@@ -5,7 +5,7 @@ from django.urls import reverse
 from google.auth import exceptions as google_exceptions
 from rest_framework import status
 from rest_framework.test import APITestCase
-from rest_framework_simplejwt.tokens import AccessToken
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from accounts.services.google_auth import GoogleAuthError
 
@@ -27,15 +27,15 @@ class GoogleAuthTests(APITestCase):
         cache.clear()
 
     @patch("accounts.services.google_auth.id_token.verify_oauth2_token")
-    def test_new_google_user_initiates_onboarding(self, mock_verify):
-        """New Google user receives restricted onboarding token and no JWT before profile completion."""
+    def test_new_google_user_creates_incomplete_account_and_requires_name(self, mock_verify):
+        """New Google user creates incomplete account (is_profile_complete=False) and receives restricted onboarding token without JWT."""
         mock_verify.return_value = {
             "iss": "https://accounts.google.com",
             "aud": MOCK_VALID_CLIENT_ID,
             "sub": "google-sub-12345",
             "email": "newbuyer@gmail.com",
             "email_verified": True,
-            "name": "Google Provided Name",
+            "name": "Google Suggested Name That Must Be Ignored",
         }
 
         response = self.client.post(self.google_auth_url, {"id_token": MOCK_JWT_STRUCTURE})
@@ -45,19 +45,26 @@ class GoogleAuthTests(APITestCase):
         self.assertTrue(response.data["needs_name"])
         self.assertIn("onboarding_token", response.data)
         self.assertEqual(response.data["email"], "newbuyer@gmail.com")
-        # Ensure unrestricted JWT access is NOT issued before profile completion
+
+        # Crucial security assertion: No unrestricted JWT access issued
         self.assertNotIn("access", response.data)
         self.assertNotIn("refresh", response.data)
-        self.assertFalse(User.objects.filter(email="newbuyer@gmail.com").exists())
+
+        # Incomplete account is created in database with empty first_name and is_profile_complete=False
+        user = User.objects.get(email="newbuyer@gmail.com")
+        self.assertEqual(user.first_name, "")
+        self.assertFalse(user.is_profile_complete)
+        self.assertTrue(user.is_email_verified)
+        self.assertFalse(user.has_usable_password())
 
     @patch("accounts.services.google_auth.id_token.verify_oauth2_token")
-    def test_name_completion_creates_user_and_issues_jwt(self, mock_verify):
-        """Name completion validates user's manual name entry, creates account, and issues SimpleJWT tokens."""
+    def test_name_completion_saves_name_marks_complete_and_issues_jwt(self, mock_verify):
+        """Name completion validates user's manual name entry, marks profile complete, and issues SimpleJWT tokens."""
         mock_verify.return_value = {
             "iss": "https://accounts.google.com",
             "aud": MOCK_VALID_CLIENT_ID,
             "sub": "google-sub-12345",
-            "email": "newbuyer@gmail.com",
+            "email": "newbuyer2@gmail.com",
             "email_verified": True,
         }
 
@@ -74,28 +81,46 @@ class GoogleAuthTests(APITestCase):
             },
         )
 
-        self.assertEqual(complete_resp.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(complete_resp.status_code, status.HTTP_200_OK)
         self.assertIn("access", complete_resp.data)
         self.assertIn("refresh", complete_resp.data)
         self.assertEqual(complete_resp.data["user"]["name"], "Irfan M")
-        self.assertEqual(complete_resp.data["user"]["email"], "newbuyer@gmail.com")
+        self.assertEqual(complete_resp.data["user"]["email"], "newbuyer2@gmail.com")
+        self.assertTrue(complete_resp.data["user"]["is_profile_complete"])
 
-        # Verify database record
-        user = User.objects.get(email="newbuyer@gmail.com")
+        # Verify database record updated
+        user = User.objects.get(email="newbuyer2@gmail.com")
         self.assertEqual(user.first_name, "Irfan M")
+        self.assertTrue(user.is_profile_complete)
         self.assertTrue(user.is_email_verified)
         self.assertTrue(user.is_active)
-        self.assertFalse(user.has_usable_password())
 
         # Step 3: Test JWT access token against protected endpoint
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {complete_resp.data['access']}")
         profile_resp = self.client.get(self.profile_url)
         self.assertEqual(profile_resp.status_code, status.HTTP_200_OK)
-        self.assertEqual(profile_resp.data["email"], "newbuyer@gmail.com")
+        self.assertEqual(profile_resp.data["email"], "newbuyer2@gmail.com")
+
+    def test_incomplete_user_cannot_access_protected_apis(self):
+        """Incomplete users are rejected by SafeJWTAuthentication when accessing protected APIs."""
+        incomplete_user = User.objects.create_user(
+            username="incomplete_shopper",
+            email="incomplete_shopper@gmail.com",
+            first_name="",
+            is_active=True,
+            is_email_verified=True,
+            is_profile_complete=False,
+        )
+        token = RefreshToken.for_user(incomplete_user).access_token
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {str(token)}")
+
+        resp = self.client.get(self.profile_url)
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertIn("incomplete", resp.data["detail"].lower())
 
     @patch("accounts.services.google_auth.id_token.verify_oauth2_token")
-    def test_existing_google_user_logs_in_immediately_without_overwriting(self, mock_verify):
-        """Existing user signs in immediately with JWT without altering existing profile info."""
+    def test_existing_google_user_with_complete_profile_logs_in_directly(self, mock_verify):
+        """Existing user with complete profile logs in directly without prompting for name."""
         existing_user = User.objects.create_user(
             username="existing_customer",
             email="existing@gmail.com",
@@ -103,6 +128,7 @@ class GoogleAuthTests(APITestCase):
             phone="9876543210",
             is_active=True,
             is_email_verified=True,
+            is_profile_complete=True,
         )
 
         mock_verify.return_value = {
@@ -122,11 +148,38 @@ class GoogleAuthTests(APITestCase):
         self.assertIn("access", response.data)
         self.assertIn("refresh", response.data)
         self.assertEqual(response.data["user"]["name"], "Original Name")
+        self.assertTrue(response.data["user"]["is_profile_complete"])
 
         # Verify existing record was not overwritten
         existing_user.refresh_from_db()
         self.assertEqual(existing_user.first_name, "Original Name")
-        self.assertEqual(existing_user.phone, "9876543210")
+
+    @patch("accounts.services.google_auth.id_token.verify_oauth2_token")
+    def test_existing_user_with_incomplete_profile_requires_name_completion(self, mock_verify):
+        """Existing user whose profile is not complete is redirected to name completion."""
+        User.objects.create_user(
+            username="existing_incomplete",
+            email="incomplete_existing@gmail.com",
+            first_name="",
+            is_active=True,
+            is_email_verified=True,
+            is_profile_complete=False,
+        )
+
+        mock_verify.return_value = {
+            "iss": "https://accounts.google.com",
+            "aud": MOCK_VALID_CLIENT_ID,
+            "sub": "google-sub-incomplete",
+            "email": "incomplete_existing@gmail.com",
+            "email_verified": True,
+        }
+
+        response = self.client.post(self.google_auth_url, {"id_token": MOCK_JWT_STRUCTURE})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["needs_name"])
+        self.assertNotIn("access", response.data)
+        self.assertIn("onboarding_token", response.data)
 
     @patch("accounts.services.google_auth.id_token.verify_oauth2_token")
     def test_existing_email_password_user_logs_in_via_google_safely(self, mock_verify):
@@ -138,6 +191,7 @@ class GoogleAuthTests(APITestCase):
             password="StrongPassword123!",
             is_active=True,
             is_email_verified=False,
+            is_profile_complete=True,
         )
 
         mock_verify.return_value = {
@@ -252,6 +306,7 @@ class GoogleAuthTests(APITestCase):
             email="inactive@gmail.com",
             is_active=False,
             is_email_verified=True,
+            is_profile_complete=True,
         )
 
         mock_verify.return_value = {

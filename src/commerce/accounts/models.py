@@ -41,6 +41,11 @@ class User(AbstractUser):
         help_text="Designates whether the user has verified their phone number.",
     )
 
+    is_profile_complete = models.BooleanField(
+        default=True,
+        help_text="Designates whether the user has completed mandatory profile onboarding.",
+    )
+
     class Meta:
         db_table = "users"
         ordering = ["username"]
