@@ -15,4 +15,9 @@ export const wishlistApi = {
     const response = await apiClient.delete(`/wishlist/remove/${id}/`);
     return response.data;
   },
+
+  async checkWishlist(productId) {
+    const response = await apiClient.get(`/wishlist/check/${productId}/`);
+    return response.data;
+  },
 };

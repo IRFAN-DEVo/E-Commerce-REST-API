@@ -12,9 +12,10 @@ export const ProductCard = memo(({ product, inWishlist = false, onWishlistToggle
   const { addItem } = useCart();
   const { isAuthenticated } = useAuth();
   const { showToast } = useToast();
-  const { addToWishlist, removeFromWishlist, isInWishlist, toggleWishlist } = useWishlist();
+  const { addToWishlist, removeFromWishlist, isInWishlist, toggleWishlist, isItemLoading } = useWishlist();
 
   const isFavorited = inWishlist || (product?.id != null && isInWishlist(product.id));
+  const isLoading = product?.id != null && isItemLoading ? isItemLoading(product.id) : false;
 
   const handleAddToCart = async (e) => {
     e.preventDefault();
@@ -29,6 +30,7 @@ export const ProductCard = memo(({ product, inWishlist = false, onWishlistToggle
   const handleWishlistClick = async (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (isLoading) return;
     if (onWishlistToggle) {
       onWishlistToggle(product.id);
       return;
@@ -146,6 +148,7 @@ export const ProductCard = memo(({ product, inWishlist = false, onWishlistToggle
         {/* Wishlist Button Overlay */}
         <button
           onClick={handleWishlistClick}
+          disabled={isLoading}
           style={{
             position: 'absolute',
             top: '0.75rem',
@@ -160,19 +163,33 @@ export const ProductCard = memo(({ product, inWishlist = false, onWishlistToggle
             boxShadow: isFavorited ? '0 2px 8px rgba(225, 29, 72, 0.2)' : '0 2px 6px rgba(0,0,0,0.08)',
             border: isFavorited ? '1px solid #fecdd3' : '1px solid #e5e7eb',
             color: isFavorited ? '#e11d48' : '#18181b',
-            cursor: 'pointer',
+            cursor: isLoading ? 'not-allowed' : 'pointer',
             transition: 'all 200ms ease',
+            opacity: isLoading ? 0.7 : 1,
             zIndex: 3,
           }}
           aria-label={isFavorited ? 'Remove from wishlist' : 'Add to wishlist'}
           title={isFavorited ? 'Remove from wishlist' : 'Add to wishlist'}
         >
-          <Heart
-            size={16}
-            fill={isFavorited ? '#e11d48' : 'none'}
-            stroke={isFavorited ? '#e11d48' : '#18181b'}
-            strokeWidth={2}
-          />
+          {isLoading ? (
+            <div
+              style={{
+                width: '13px',
+                height: '13px',
+                border: '2px solid #e11d48',
+                borderTopColor: 'transparent',
+                borderRadius: '50%',
+                animation: 'spin 0.6s linear infinite',
+              }}
+            />
+          ) : (
+            <Heart
+              size={16}
+              fill={isFavorited ? '#e11d48' : 'none'}
+              stroke={isFavorited ? '#e11d48' : '#18181b'}
+              strokeWidth={2}
+            />
+          )}
         </button>
       </Link>
 

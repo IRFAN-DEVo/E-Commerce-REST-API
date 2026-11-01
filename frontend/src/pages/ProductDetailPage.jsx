@@ -14,7 +14,7 @@ import { AnimatedContent } from '../components/common/AnimatedContent';
 export const ProductDetailPage = () => {
   const { id } = useParams();
   const { addItem } = useCart();
-  const { addToWishlist, removeFromWishlist, isInWishlist, toggleWishlist } = useWishlist();
+  const { addToWishlist, removeFromWishlist, isInWishlist, toggleWishlist, isItemLoading } = useWishlist();
   const { isAuthenticated } = useAuth();
   const { showToast } = useToast();
 
@@ -65,9 +65,10 @@ export const ProductDetailPage = () => {
   };
 
   const isFavorited = product?.id != null && isInWishlist(product.id);
+  const isWishlistLoading = product?.id != null && isItemLoading ? isItemLoading(product.id) : false;
 
   const handleToggleWishlist = async () => {
-    if (!product) return;
+    if (!product || isWishlistLoading) return;
     if (toggleWishlist) {
       await toggleWishlist(product);
     } else if (isFavorited) {
@@ -472,6 +473,7 @@ export const ProductDetailPage = () => {
               {/* Wishlist Button */}
               <button
                 onClick={handleToggleWishlist}
+                disabled={isWishlistLoading}
                 className="btn btn-secondary"
                 style={{
                   padding: '0.75rem',
@@ -479,17 +481,36 @@ export const ProductDetailPage = () => {
                   backgroundColor: isFavorited ? '#fff1f2' : undefined,
                   borderColor: isFavorited ? '#fecdd3' : undefined,
                   color: isFavorited ? '#e11d48' : undefined,
+                  cursor: isWishlistLoading ? 'not-allowed' : 'pointer',
+                  opacity: isWishlistLoading ? 0.7 : 1,
                   transition: 'all 200ms ease',
+                  minWidth: '46px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
                 title={isFavorited ? 'Remove from Wishlist' : 'Add to Wishlist'}
                 aria-label={isFavorited ? 'Remove from Wishlist' : 'Save to Wishlist'}
               >
-                <Heart
-                  size={20}
-                  fill={isFavorited ? '#e11d48' : 'none'}
-                  stroke={isFavorited ? '#e11d48' : 'currentColor'}
-                  strokeWidth={2}
-                />
+                {isWishlistLoading ? (
+                  <div
+                    style={{
+                      width: '16px',
+                      height: '16px',
+                      border: '2px solid #e11d48',
+                      borderTopColor: 'transparent',
+                      borderRadius: '50%',
+                      animation: 'spin 0.6s linear infinite',
+                    }}
+                  />
+                ) : (
+                  <Heart
+                    size={20}
+                    fill={isFavorited ? '#e11d48' : 'none'}
+                    stroke={isFavorited ? '#e11d48' : 'currentColor'}
+                    strokeWidth={2}
+                  />
+                )}
               </button>
             </div>
 

@@ -18,10 +18,13 @@ class WishlistSerializer(serializers.ModelSerializer):
             "user",
             "created_at",
         ]
-        
+
     def to_representation(self, instance):
-        repr = super().to_representation(instance)
-        # Expand the product field on read operations
-        from api.v1.products.serializers import ProductSerializer
-        repr["product"] = ProductSerializer(instance.product, context=self.context).data
-        return repr
+        repr_data = super().to_representation(instance)
+        # Expand the product field on read operations if product exists
+        if instance.product:
+            from api.v1.products.serializers import ProductSerializer
+            repr_data["product"] = ProductSerializer(instance.product, context=self.context).data
+        else:
+            repr_data["product"] = None
+        return repr_data

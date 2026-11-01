@@ -32,7 +32,7 @@ export const WishlistPage = () => {
     loadWishlist();
   }, []);
 
-  const items = backendItems && backendItems.length > 0 ? backendItems : wishlistItems;
+  const items = backendItems !== null ? backendItems : wishlistItems;
 
   const handleRemove = async (id, productId) => {
     try {
