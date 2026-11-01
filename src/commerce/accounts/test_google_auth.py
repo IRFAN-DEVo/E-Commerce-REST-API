@@ -2,6 +2,7 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.urls import reverse
+from google.auth import exceptions as google_exceptions
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import AccessToken
@@ -9,6 +10,9 @@ from rest_framework_simplejwt.tokens import AccessToken
 from accounts.services.google_auth import GoogleAuthError
 
 User = get_user_model()
+
+MOCK_VALID_CLIENT_ID = "240785442763-ogmqjuh55hdl6km5irh83gom90s670lu.apps.googleusercontent.com"
+MOCK_JWT_STRUCTURE = "eyJhbGciOiJSUzI1NiIsImtpZCI6IjEyMyJ9.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhdWQiOiIyNDA3ODU0NDI3NjMtb2dtcWp1aDU1aGRsNmttNWlyaDgzZ29tOTBzNjcwbHUuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMjM0NSIsImVtYWlsIjoidGVzdEBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZX0.mocksignaturebytes"
 
 
 class GoogleAuthTests(APITestCase):
@@ -27,14 +31,14 @@ class GoogleAuthTests(APITestCase):
         """New Google user receives restricted onboarding token and no JWT before profile completion."""
         mock_verify.return_value = {
             "iss": "https://accounts.google.com",
-            "aud": "240785442763-ogmqjuh55hdl6km5irh83gom90s670lu.apps.googleusercontent.com",
+            "aud": MOCK_VALID_CLIENT_ID,
             "sub": "google-sub-12345",
             "email": "newbuyer@gmail.com",
             "email_verified": True,
             "name": "Google Provided Name",
         }
 
-        response = self.client.post(self.google_auth_url, {"id_token": "valid_mock_token"})
+        response = self.client.post(self.google_auth_url, {"id_token": MOCK_JWT_STRUCTURE})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(response.data["is_new_user"])
@@ -51,14 +55,14 @@ class GoogleAuthTests(APITestCase):
         """Name completion validates user's manual name entry, creates account, and issues SimpleJWT tokens."""
         mock_verify.return_value = {
             "iss": "https://accounts.google.com",
-            "aud": "240785442763-ogmqjuh55hdl6km5irh83gom90s670lu.apps.googleusercontent.com",
+            "aud": MOCK_VALID_CLIENT_ID,
             "sub": "google-sub-12345",
             "email": "newbuyer@gmail.com",
             "email_verified": True,
         }
 
         # Step 1: Google Auth
-        auth_resp = self.client.post(self.google_auth_url, {"id_token": "valid_mock_token"})
+        auth_resp = self.client.post(self.google_auth_url, {"id_token": MOCK_JWT_STRUCTURE})
         onboarding_token = auth_resp.data["onboarding_token"]
 
         # Step 2: Name Entry Screen
@@ -103,14 +107,14 @@ class GoogleAuthTests(APITestCase):
 
         mock_verify.return_value = {
             "iss": "https://accounts.google.com",
-            "aud": "240785442763-ogmqjuh55hdl6km5irh83gom90s670lu.apps.googleusercontent.com",
+            "aud": MOCK_VALID_CLIENT_ID,
             "sub": "google-sub-99999",
             "email": "existing@gmail.com",
             "email_verified": True,
             "name": "Google Name That Should Be Ignored",
         }
 
-        response = self.client.post(self.google_auth_url, {"id_token": "valid_token"})
+        response = self.client.post(self.google_auth_url, {"id_token": MOCK_JWT_STRUCTURE})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(response.data["is_new_user"])
@@ -138,13 +142,13 @@ class GoogleAuthTests(APITestCase):
 
         mock_verify.return_value = {
             "iss": "https://accounts.google.com",
-            "aud": "240785442763-ogmqjuh55hdl6km5irh83gom90s670lu.apps.googleusercontent.com",
+            "aud": MOCK_VALID_CLIENT_ID,
             "sub": "google-sub-777",
             "email": "hybrid@gmail.com",
             "email_verified": True,
         }
 
-        response = self.client.post(self.google_auth_url, {"id_token": "valid_token"})
+        response = self.client.post(self.google_auth_url, {"id_token": MOCK_JWT_STRUCTURE})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("access", response.data)
@@ -165,28 +169,77 @@ class GoogleAuthTests(APITestCase):
         self.assertEqual(login_resp.status_code, status.HTTP_200_OK)
         self.assertIn("access", login_resp.data)
 
-    @patch("accounts.services.google_auth.id_token.verify_oauth2_token")
-    def test_invalid_google_token_rejected(self, mock_verify):
-        """Invalid Google token raises 400 Bad Request."""
-        mock_verify.side_effect = ValueError("Token signature is invalid.")
+    def test_missing_google_token_rejected(self):
+        """Missing or empty Google token is rejected."""
+        response = self.client.post(self.google_auth_url, {"id_token": ""})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-        response = self.client.post(self.google_auth_url, {"id_token": "invalid_token"})
+    def test_malformed_google_token_rejected(self):
+        """Malformed token lacking 3 segments is rejected."""
+        response = self.client.post(self.google_auth_url, {"id_token": "not-a-valid-jwt"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("malformed", response.data["detail"].lower())
+
+    @patch("accounts.services.google_auth.id_token.verify_oauth2_token")
+    def test_invalid_signature_rejected(self, mock_verify):
+        """Invalid Google signature raises 400 Bad Request with signature error detail."""
+        mock_verify.side_effect = google_exceptions.MalformedError("Could not verify token signature.")
+
+        response = self.client.post(self.google_auth_url, {"id_token": MOCK_JWT_STRUCTURE})
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("detail", response.data)
+        self.assertIn("signature", response.data["detail"].lower())
+
+    @patch("accounts.services.google_auth.id_token.verify_oauth2_token")
+    def test_expired_google_token_rejected(self, mock_verify):
+        """Expired Google ID token raises 400 Bad Request with expired error detail."""
+        mock_verify.side_effect = google_exceptions.InvalidValue("Token expired, 1700000000 < 1700000010")
+
+        response = self.client.post(self.google_auth_url, {"id_token": MOCK_JWT_STRUCTURE})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("expired", response.data["detail"].lower())
+
+    @patch("accounts.services.google_auth.id_token.verify_oauth2_token")
+    def test_audience_mismatch_rejected(self, mock_verify):
+        """Token with audience mismatch raises 400 Bad Request with audience error detail."""
+        mock_verify.side_effect = google_exceptions.InvalidValue(
+            "Token has wrong audience wrong-aud.apps.googleusercontent.com, expected one of ..."
+        )
+
+        response = self.client.post(self.google_auth_url, {"id_token": MOCK_JWT_STRUCTURE})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("audience", response.data["detail"].lower())
+
+    @patch("accounts.services.google_auth.id_token.verify_oauth2_token")
+    def test_issuer_mismatch_rejected(self, mock_verify):
+        """Token with invalid issuer raises 400 Bad Request with issuer error detail."""
+        mock_verify.return_value = {
+            "iss": "https://malicious-issuer.com",
+            "aud": MOCK_VALID_CLIENT_ID,
+            "sub": "google-sub-12345",
+            "email": "issuer_test@gmail.com",
+            "email_verified": True,
+        }
+
+        response = self.client.post(self.google_auth_url, {"id_token": MOCK_JWT_STRUCTURE})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("issuer", response.data["detail"].lower())
 
     @patch("accounts.services.google_auth.id_token.verify_oauth2_token")
     def test_unverified_google_email_rejected(self, mock_verify):
         """Google token with unverified email is rejected."""
         mock_verify.return_value = {
             "iss": "https://accounts.google.com",
-            "aud": "240785442763-ogmqjuh55hdl6km5irh83gom90s670lu.apps.googleusercontent.com",
+            "aud": MOCK_VALID_CLIENT_ID,
             "sub": "google-sub-unverified",
             "email": "unverified@gmail.com",
             "email_verified": False,
         }
 
-        response = self.client.post(self.google_auth_url, {"id_token": "token_unverified"})
+        response = self.client.post(self.google_auth_url, {"id_token": MOCK_JWT_STRUCTURE})
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("not verified", response.data["detail"].lower())
@@ -203,13 +256,13 @@ class GoogleAuthTests(APITestCase):
 
         mock_verify.return_value = {
             "iss": "https://accounts.google.com",
-            "aud": "240785442763-ogmqjuh55hdl6km5irh83gom90s670lu.apps.googleusercontent.com",
+            "aud": MOCK_VALID_CLIENT_ID,
             "sub": "google-sub-inactive",
             "email": "inactive@gmail.com",
             "email_verified": True,
         }
 
-        response = self.client.post(self.google_auth_url, {"id_token": "token"})
+        response = self.client.post(self.google_auth_url, {"id_token": MOCK_JWT_STRUCTURE})
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("disabled", response.data["detail"].lower())
@@ -227,13 +280,13 @@ class GoogleAuthTests(APITestCase):
         """Blank or whitespace-only name is rejected during profile completion."""
         mock_verify.return_value = {
             "iss": "https://accounts.google.com",
-            "aud": "240785442763-ogmqjuh55hdl6km5irh83gom90s670lu.apps.googleusercontent.com",
+            "aud": MOCK_VALID_CLIENT_ID,
             "sub": "google-sub-12345",
             "email": "blankname@gmail.com",
             "email_verified": True,
         }
 
-        auth_resp = self.client.post(self.google_auth_url, {"id_token": "token"})
+        auth_resp = self.client.post(self.google_auth_url, {"id_token": MOCK_JWT_STRUCTURE})
         onboarding_token = auth_resp.data["onboarding_token"]
 
         response = self.client.post(
