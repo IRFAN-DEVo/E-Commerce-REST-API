@@ -108,3 +108,17 @@ class ResendPhoneOTPThrottle(SimpleRateThrottle):
             "scope": self.scope,
             "ident": ident,
         }
+
+
+class GoogleAuthThrottle(SimpleRateThrottle):
+    """
+    Limits requests to Google OAuth endpoints to prevent brute-force attacks and abuse.
+    """
+    scope = "google_auth"
+
+    def get_cache_key(self, request, view):
+        ident = self.get_ident(request)
+        return self.cache_format % {
+            "scope": self.scope,
+            "ident": ident,
+        }

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { User, Mail, Phone, Lock, ShoppingBag } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { GoogleAuthButton } from '../components/auth/GoogleAuthButton';
 import authHeroImg from '../assets/auth_hero.jpg';
 
 export const RegisterPage = () => {
@@ -269,6 +270,26 @@ export const RegisterPage = () => {
               {isSubmitting ? 'Registering...' : 'Register'}
             </button>
           </form>
+
+          {/* Social Separator */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              margin: '1.75rem 0',
+              color: '#a1a1aa',
+              fontSize: '0.75rem',
+            }}
+          >
+            <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }} />
+            <span style={{ padding: '0 0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>OR</span>
+            <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }} />
+          </div>
+
+          {/* Social Signup */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+            <GoogleAuthButton text="signup_with" />
+          </div>
 
           <div style={{ textAlign: 'center', marginTop: '2rem', fontSize: '0.875rem', color: '#71717a' }}>
             Already have an account?{' '}

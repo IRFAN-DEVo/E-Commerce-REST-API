@@ -328,3 +328,36 @@ class ResendPhoneOTPSerializer(serializers.Serializer):
 
         return attrs
 
+
+
+class GoogleAuthSerializer(serializers.Serializer):
+    """
+    Validates Google OAuth ID token from the frontend.
+    """
+    id_token = serializers.CharField(
+        required=True,
+        allow_blank=False,
+        help_text="Google ID token (credential) obtained from Google Identity Services."
+    )
+
+
+class GoogleCompleteProfileSerializer(serializers.Serializer):
+    """
+    Validates name entry for completing registration of a new Google user.
+    """
+    onboarding_token = serializers.CharField(
+        required=True,
+        allow_blank=False,
+        help_text="Cryptographic onboarding token issued during Google auth verification."
+    )
+    name = serializers.CharField(
+        required=True,
+        max_length=150,
+        help_text="User's full name manually entered during onboarding."
+    )
+
+    def validate_name(self, value):
+        cleaned = value.strip()
+        if not cleaned:
+            raise serializers.ValidationError("Name cannot be blank.")
+        return cleaned

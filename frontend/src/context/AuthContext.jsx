@@ -65,6 +65,20 @@ export const AuthProvider = ({ children }) => {
     return profile;
   }, []);
 
+  const setAuthSession = useCallback(async (data) => {
+    if (data?.access && data?.refresh) {
+      localStorage.setItem('access_token', data.access);
+      localStorage.setItem('refresh_token', data.refresh);
+      setToken(data.access);
+
+      const profile = data.user || (await authApi.getProfile());
+      setUser(profile);
+      localStorage.setItem('user_info', JSON.stringify(profile));
+      return profile;
+    }
+    return null;
+  }, []);
+
   const register = useCallback(async (formData) => {
     const res = await authApi.register(formData);
     return res;
@@ -106,11 +120,12 @@ export const AuthProvider = ({ children }) => {
       isOwner: user?.user_type === 'owner',
       isLoading,
       login,
+      setAuthSession,
       register,
       logout,
       refreshProfile,
     }),
-    [user, token, isLoading, login, register, logout, refreshProfile]
+    [user, token, isLoading, login, setAuthSession, register, logout, refreshProfile]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

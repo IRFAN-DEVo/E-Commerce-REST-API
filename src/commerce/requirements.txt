@@ -14,4 +14,5 @@ gunicorn>=21.2.0
 stripe>=10.0.0
 phonenumbers>=9.0.0
 razorpay>=2.0.0
+google-auth>=2.0.0
 

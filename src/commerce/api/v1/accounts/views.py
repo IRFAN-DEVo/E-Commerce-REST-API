@@ -22,6 +22,7 @@ from accounts.models import EmailVerificationOTP, PasswordResetOTP, PhoneVerific
 from accounts.services.sms import get_sms_provider
 from accounts.throttles import (
     ForgotPasswordThrottle,
+    GoogleAuthThrottle,
     RequestPhoneOTPThrottle,
     ResendPhoneOTPThrottle,
     ResendVerificationThrottle,
@@ -30,10 +31,14 @@ from accounts.throttles import (
 )
 from accounts.tokens import generate_reset_token, verify_reset_token
 from accounts.utils.phone import mask_phone_number
+from accounts.services.google_auth import verify_google_id_token, GoogleAuthError
+from django.core import signing
 from api.v1.products.permissions import IsOwner
 from .serializers import (
     EmailTokenObtainPairSerializer,
     ForgotPasswordSerializer,
+    GoogleAuthSerializer,
+    GoogleCompleteProfileSerializer,
     RegisterSerializer,
     RequestPhoneOTPSerializer,
     ResendPhoneOTPSerializer,
@@ -837,3 +842,191 @@ class PhoneVerificationStatusView(APIView):
             status=status.HTTP_200_OK,
         )
 
+
+
+
+# =====================================================================
+# Google OAuth Views
+# =====================================================================
+
+
+@extend_schema(
+    tags=["Authentication"],
+    summary="Google OAuth Sign-in & Sign-up",
+    description="Accepts a Google ID token from React, validates it against Google's servers, and authenticates an existing user or initiates restricted onboarding for a new user.",
+    request=GoogleAuthSerializer,
+    responses={
+        200: "Authentication success or onboarding required.",
+        400: "Invalid or expired Google token.",
+    },
+)
+class GoogleAuthView(APIView):
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [GoogleAuthThrottle]
+
+    def post(self, request):
+        serializer = GoogleAuthSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        id_token_string = serializer.validated_data["id_token"]
+
+        try:
+            payload = verify_google_id_token(id_token_string)
+        except GoogleAuthError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+        email = payload["email"]
+        sub = payload.get("sub", "")
+
+        user = User.objects.filter(email__iexact=email).first()
+
+        if user:
+            # Existing account flow: Do NOT overwrite existing profile information
+            if not user.is_active:
+                return Response(
+                    {"detail": "User account is disabled. Please contact support."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Mark email verified since Google confirmed ownership
+            if not user.is_email_verified:
+                user.is_email_verified = True
+                user.save(update_fields=["is_email_verified"])
+
+            # If user has no name set, prompt for name completion
+            if not user.first_name:
+                signer = signing.TimestampSigner(salt="google-oauth-onboarding")
+                onboarding_token = signer.sign_object({"email": email, "sub": sub, "user_id": user.id})
+                return Response(
+                    {
+                        "is_new_user": False,
+                        "needs_name": True,
+                        "onboarding_token": onboarding_token,
+                        "email": user.email,
+                        "message": "Please enter your name to complete your profile.",
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+            refresh = RefreshToken.for_user(user)
+            return Response(
+                {
+                    "is_new_user": False,
+                    "needs_name": False,
+                    "access": str(refresh.access_token),
+                    "refresh": str(refresh),
+                    "user": {
+                        "id": user.id,
+                        "name": user.first_name,
+                        "email": user.email,
+                        "phone": user.phone,
+                        "is_email_verified": user.is_email_verified,
+                        "is_phone_verified": user.is_phone_verified,
+                        "user_type": user.user_type,
+                    },
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        # New user flow: Do NOT issue unrestricted JWT access before profile completion!
+        # Issue a restricted, time-limited onboarding token (valid for 15 minutes)
+        signer = signing.TimestampSigner(salt="google-oauth-onboarding")
+        onboarding_token = signer.sign_object({"email": email, "sub": sub})
+
+        return Response(
+            {
+                "is_new_user": True,
+                "needs_name": True,
+                "onboarding_token": onboarding_token,
+                "email": email,
+                "message": "Google verification successful. Please enter your full name to complete your profile.",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+@extend_schema(
+    tags=["Authentication"],
+    summary="Complete Google OAuth Profile",
+    description="Completes registration for a new Google user by validating manual name entry with a restricted onboarding token and issuing full SimpleJWT tokens.",
+    request=GoogleCompleteProfileSerializer,
+    responses={
+        201: "Account created and JWT issued.",
+        400: "Invalid or expired onboarding session.",
+    },
+)
+class GoogleCompleteProfileView(APIView):
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [GoogleAuthThrottle]
+
+    def post(self, request):
+        serializer = GoogleCompleteProfileSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        onboarding_token = serializer.validated_data["onboarding_token"]
+        name = serializer.validated_data["name"]
+
+        signer = signing.TimestampSigner(salt="google-oauth-onboarding")
+        try:
+            token_data = signer.unsign_object(onboarding_token, max_age=900)  # 15 minutes validity
+        except signing.SignatureExpired:
+            return Response(
+                {"detail": "Onboarding session expired. Please sign in with Google again."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except signing.BadSignature:
+            return Response(
+                {"detail": "Invalid or tampered onboarding token."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        email = token_data.get("email")
+        if not email:
+            return Response(
+                {"detail": "Invalid onboarding data."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        with transaction.atomic():
+            user = User.objects.select_for_update().filter(email__iexact=email).first()
+            if not user:
+                # Generate unique username
+                generated_username = f"user_{uuid.uuid4().hex[:15]}"
+                user = User(
+                    username=generated_username,
+                    email=email,
+                    first_name=name,
+                    is_active=True,
+                    is_email_verified=True,
+                    user_type="customer",
+                )
+                user.set_unusable_password()  # Safe: no weak or default password assigned
+                user.save()
+            else:
+                # If user already existed but had missing name
+                if not user.first_name:
+                    user.first_name = name
+                    user.is_email_verified = True
+                    user.save(update_fields=["first_name", "is_email_verified"])
+
+            refresh = RefreshToken.for_user(user)
+
+        return Response(
+            {
+                "success": True,
+                "message": "Account setup complete.",
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+                "user": {
+                    "id": user.id,
+                    "name": user.first_name,
+                    "email": user.email,
+                    "phone": user.phone,
+                    "is_email_verified": user.is_email_verified,
+                    "is_phone_verified": user.is_phone_verified,
+                    "user_type": user.user_type,
+                },
+            },
+            status=status.HTTP_201_CREATED,
+        )

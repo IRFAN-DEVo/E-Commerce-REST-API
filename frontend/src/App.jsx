@@ -25,6 +25,7 @@ const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then((m
 const ProfilePage = lazy(() => import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage })));
 const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import('./pages/RegisterPage').then((m) => ({ default: m.RegisterPage })));
+const CompleteProfilePage = lazy(() => import('./pages/CompleteProfilePage').then((m) => ({ default: m.CompleteProfilePage })));
 const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage').then((m) => ({ default: m.VerifyEmailPage })));
 const VerifyPhonePage = lazy(() => import('./pages/VerifyPhonePage').then((m) => ({ default: m.VerifyPhonePage })));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
@@ -69,6 +70,7 @@ export function App() {
                   {/* Auth Routes */}
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/register" element={<RegisterPage />} />
+                  <Route path="/complete-profile" element={<CompleteProfilePage />} />
                   <Route path="/verify-email" element={<VerifyEmailPage />} />
                   <Route path="/verify-phone" element={<VerifyPhonePage />} />
                   <Route path="/forgot-password" element={<ForgotPasswordPage />} />

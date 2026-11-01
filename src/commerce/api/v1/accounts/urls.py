@@ -22,6 +22,10 @@ urlpatterns = [
     path('logout/', TokenBlacklistView.as_view(), name='token_blacklist'),
     path('profile/', UserProfileView.as_view(), name='user-profile'),
 
+    # Google OAuth APIs
+    path('google/', views.GoogleAuthView.as_view(), name='google-auth'),
+    path('google/complete/', views.GoogleCompleteProfileView.as_view(), name='google-complete-profile'),
+
     # Phone Verification APIs
     path('phone/request-otp/', views.RequestPhoneOTPView.as_view(), name='phone-request-otp'),
     path('phone/verify-otp/', views.VerifyPhoneOTPView.as_view(), name='phone-verify-otp'),

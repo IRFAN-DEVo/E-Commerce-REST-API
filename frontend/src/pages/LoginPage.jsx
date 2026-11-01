@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Lock, Mail, Eye, EyeOff, ShoppingBag } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { GoogleAuthButton } from '../components/auth/GoogleAuthButton';
 import authHeroImg from '../assets/auth_hero.jpg';
 
 export const LoginPage = () => {
@@ -255,14 +256,7 @@ export const LoginPage = () => {
 
           {/* Social Login Buttons (Screenshot #5) */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              style={{ width: '100%', fontSize: '0.8125rem', borderRadius: '6px' }}
-              onClick={() => showToast('Google login is coming soon.', 'info')}
-            >
-              Continue with Google
-            </button>
+            <GoogleAuthButton text="continue_with" />
             <button
               type="button"
               className="btn btn-secondary"

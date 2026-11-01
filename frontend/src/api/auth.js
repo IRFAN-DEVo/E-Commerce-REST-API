@@ -70,4 +70,14 @@ export const authApi = {
     const response = await apiClient.get('/accounts/phone/status/');
     return response.data;
   },
+
+  async googleAuth(idToken) {
+    const response = await apiClient.post('/accounts/google/', { id_token: idToken });
+    return response.data;
+  },
+
+  async completeGoogleProfile(data) {
+    const response = await apiClient.post('/accounts/google/complete/', data);
+    return response.data;
+  },
 };

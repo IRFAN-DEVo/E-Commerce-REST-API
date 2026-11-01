@@ -35,7 +35,9 @@ const isPublicAuthEndpoint = (url) => {
     url.includes('/accounts/resend-verification-otp/') ||
     url.includes('/accounts/forgot-password/') ||
     url.includes('/accounts/verify-otp/') ||
-    url.includes('/accounts/reset-password/')
+    url.includes('/accounts/reset-password/') ||
+    url.includes('/accounts/google/') ||
+    url.includes('/accounts/google/complete/')
   );
 };
 

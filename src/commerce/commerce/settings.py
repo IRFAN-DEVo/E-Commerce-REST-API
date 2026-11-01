@@ -224,6 +224,7 @@ REST_FRAMEWORK = {
         "request_phone_otp": "5/minute",
         "verify_phone_otp": "15/minute",
         "resend_phone_otp": "5/minute",
+        "google_auth": "10/minute",
     }
 }
 
@@ -306,8 +307,12 @@ RAZORPAY_WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "").strip()
 
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000").strip()
 
+# Google OAuth Configuration
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
+
 # Safe diagnostic (never prints credential values)
 if DEBUG:
+    print(f"[GOOGLE DIAGNOSTIC] Client ID configured: {bool(GOOGLE_CLIENT_ID)}")
     print(
         f"[RAZORPAY DIAGNOSTIC] Key ID configured: {bool(RAZORPAY_KEY_ID)} | "
         f"Key Secret configured: {bool(RAZORPAY_KEY_SECRET)} | "
