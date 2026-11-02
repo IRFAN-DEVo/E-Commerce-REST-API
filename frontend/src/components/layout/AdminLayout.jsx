@@ -383,13 +383,13 @@ export const AdminLayout = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '0 2rem',
+            padding: '0 clamp(0.75rem, 3vw, 2rem)',
             position: 'sticky',
             top: 0,
             zIndex: 30,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <button
               onClick={toggleSidebar}
               style={{
@@ -397,6 +397,7 @@ export const AdminLayout = () => {
                 alignItems: 'center',
                 gap: '0.5rem',
                 padding: '0.45rem 0.8rem',
+                minHeight: '38px',
                 backgroundColor: '#ffffff',
                 border: '1px solid #e5e7eb',
                 borderRadius: '8px',
@@ -419,7 +420,7 @@ export const AdminLayout = () => {
               aria-label={isSidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
             >
               {isSidebarOpen ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
-              <span>{isSidebarOpen ? 'Hide Sidebar' : 'Show Sidebar'}</span>
+              <span className="desktop-only-admin-meta">{isSidebarOpen ? 'Hide Sidebar' : 'Show Sidebar'}</span>
             </button>
 
             <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#71717a' }}>
@@ -427,7 +428,7 @@ export const AdminLayout = () => {
             </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(0.5rem, 2vw, 1.25rem)' }}>
             <Link
               to="/"
               style={{
@@ -439,6 +440,7 @@ export const AdminLayout = () => {
                 color: '#18181b',
                 textDecoration: 'none',
                 padding: '0.4rem 0.75rem',
+                minHeight: '38px',
                 borderRadius: '6px',
                 border: '1px solid #e5e7eb',
                 backgroundColor: '#fafafa',
@@ -452,17 +454,17 @@ export const AdminLayout = () => {
               }}
             >
               <Home size={14} />
-              <span>View Storefront</span>
+              <span>Storefront</span>
             </Link>
 
-            <div style={{ fontSize: '0.8125rem', color: '#71717a', fontWeight: 500 }}>
+            <div className="desktop-only-admin-meta" style={{ fontSize: '0.8125rem', color: '#71717a', fontWeight: 500 }}>
               Today: {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
             </div>
           </div>
         </header>
 
         {/* Content Outlet */}
-        <main className="admin-content" style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
+        <main className="admin-content" style={{ flex: 1, padding: 'clamp(1rem, 3vw, 2rem)', overflowY: 'auto' }}>
           <Outlet context={{ isSidebarOpen, toggleSidebar }} />
         </main>
       </div>

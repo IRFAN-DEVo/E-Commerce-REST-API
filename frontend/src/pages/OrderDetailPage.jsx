@@ -247,7 +247,7 @@ export const OrderDetailPage = () => {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'minmax(320px, 1.8fr) minmax(280px, 1fr)',
+          gridTemplateColumns: '1.8fr 1fr',
           gap: '2.5rem',
           alignItems: 'start',
         }}
@@ -357,9 +357,10 @@ export const OrderDetailPage = () => {
       />
 
       <style>{`
-        @media (max-width: 768px) {
+        @media (max-width: 900px) {
           .order-detail-layout {
             grid-template-columns: 1fr !important;
+            gap: 1.5rem !important;
           }
         }
       `}</style>

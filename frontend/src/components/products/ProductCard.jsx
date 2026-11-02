@@ -194,7 +194,15 @@ export const ProductCard = memo(({ product, inWishlist = false, onWishlistToggle
       </Link>
 
       {/* Product Information */}
-      <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', flex: 1, gap: '0.375rem' }}>
+      <div
+        style={{
+          padding: 'clamp(0.75rem, 2.5vw, 1.25rem)',
+          display: 'flex',
+          flexDirection: 'column',
+          flex: 1,
+          gap: '0.375rem',
+        }}
+      >
         {/* Category & Brand */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: '#71717a' }}>
           {product.category_name && (
@@ -215,7 +223,7 @@ export const ProductCard = memo(({ product, inWishlist = false, onWishlistToggle
           to={`/products/${product.id}`}
           style={{
             fontWeight: 600,
-            fontSize: '0.9375rem',
+            fontSize: 'clamp(0.875rem, 2vw, 0.9375rem)',
             color: '#111111',
             lineHeight: 1.4,
             display: '-webkit-box',
@@ -231,18 +239,28 @@ export const ProductCard = memo(({ product, inWishlist = false, onWishlistToggle
 
         {/* Ratings Display matching Mockup */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', margin: '0.25rem 0' }}>
-          <StarRating rating={Math.round(rating)} size={14} />
+          <StarRating rating={Math.round(rating)} size={13} />
           <span style={{ fontSize: '0.75rem', color: '#71717a' }}>({reviewsCount})</span>
         </div>
 
         {/* Price & Action Bottom Row */}
-        <div style={{ marginTop: 'auto', paddingTop: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-            <span style={{ fontWeight: 700, fontSize: '1.0625rem', color: '#000000' }}>
+        <div
+          style={{
+            marginTop: 'auto',
+            paddingTop: '0.625rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '0.375rem',
+            flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.375rem', flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 700, fontSize: 'clamp(0.9375rem, 2.5vw, 1.0625rem)', color: '#000000' }}>
               ₹{Number(displayPrice).toFixed(2)}
             </span>
             {originalPrice && (
-              <span style={{ textDecoration: 'line-through', color: '#a1a1aa', fontSize: '0.8125rem' }}>
+              <span style={{ textDecoration: 'line-through', color: '#a1a1aa', fontSize: '0.75rem' }}>
                 ₹{Number(originalPrice).toFixed(2)}
               </span>
             )}
@@ -253,15 +271,16 @@ export const ProductCard = memo(({ product, inWishlist = false, onWishlistToggle
             disabled={!product.is_available || product.stock <= 0}
             className="btn btn-primary"
             style={{
-              padding: '0.4rem 0.8rem',
+              padding: '0.35rem 0.65rem',
               fontSize: '0.75rem',
               borderRadius: '4px',
               backgroundColor: '#000000',
               color: '#ffffff',
+              minHeight: '32px',
             }}
             aria-label={`Add ${product.name} to cart`}
           >
-            <ShoppingCart size={14} />
+            <ShoppingCart size={13} />
             <span>Add</span>
           </button>
         </div>

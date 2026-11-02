@@ -391,7 +391,7 @@ export const VerifyEmailPage = () => {
             style={{
               display: 'flex',
               justifyContent: 'center',
-              gap: '0.5rem',
+              gap: 'clamp(4px, 1.5vw, 8px)',
               marginBottom: '1.5rem',
             }}
           >
@@ -410,9 +410,9 @@ export const VerifyEmailPage = () => {
                 onKeyDown={(e) => handleKeyDown(idx, e)}
                 onPaste={handlePaste}
                 style={{
-                  width: '48px',
-                  height: '56px',
-                  fontSize: '1.5rem',
+                  width: 'clamp(36px, 11vw, 48px)',
+                  height: 'clamp(44px, 13vw, 56px)',
+                  fontSize: 'clamp(1.125rem, 4vw, 1.5rem)',
                   fontWeight: 700,
                   textAlign: 'center',
                   color: '#000000',

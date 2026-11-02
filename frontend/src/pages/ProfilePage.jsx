@@ -412,57 +412,59 @@ export const ProfilePage = () => {
                         </div>
 
                         {recentOrders.length > 0 ? (
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            {recentOrders.map((order) => {
-                              const badge = getStatusBadgeStyle(order.status);
-                              return (
-                                <Link
-                                  key={order.id}
-                                  to={`/orders/${order.id}`}
-                                  style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: '1.2fr 1.2fr 1fr 1fr 40px',
-                                    alignItems: 'center',
-                                    padding: '1rem 0',
-                                    borderBottom: '1px solid #f4f4f5',
-                                    fontSize: '0.875rem',
-                                    color: '#000000',
-                                    textDecoration: 'none',
-                                    transition: 'background-color 150ms ease',
-                                  }}
-                                >
-                                  <div style={{ fontWeight: 600 }}>
-                                    #ORD{String(order.id).padStart(5, '0')}
-                                  </div>
-                                  <div style={{ color: '#71717a' }}>
-                                    {order.created_at
-                                      ? new Date(order.created_at).toLocaleDateString()
-                                      : 'Recent'}
-                                  </div>
-                                  <div style={{ fontWeight: 700 }}>
-                                    ₹{Number(order.total_price || 0).toFixed(2)}
-                                  </div>
-                                  <div>
-                                    <span
-                                      style={{
-                                        fontSize: '0.75rem',
-                                        fontWeight: 600,
-                                        padding: '0.2rem 0.5rem',
-                                        borderRadius: '4px',
-                                        backgroundColor: badge.bg,
-                                        color: badge.color,
-                                        border: `1px solid ${badge.border}`,
-                                      }}
-                                    >
-                                      {order.status || 'Pending'}
-                                    </span>
-                                  </div>
-                                  <div style={{ textAlign: 'right', color: '#a1a1aa' }}>
-                                    <ChevronRight size={16} />
-                                  </div>
-                                </Link>
-                              );
-                            })}
+                          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', minWidth: '480px' }}>
+                              {recentOrders.map((order) => {
+                                const badge = getStatusBadgeStyle(order.status);
+                                return (
+                                  <Link
+                                    key={order.id}
+                                    to={`/orders/${order.id}`}
+                                    style={{
+                                      display: 'grid',
+                                      gridTemplateColumns: '1.2fr 1.2fr 1fr 1fr 40px',
+                                      alignItems: 'center',
+                                      padding: '1rem 0',
+                                      borderBottom: '1px solid #f4f4f5',
+                                      fontSize: '0.875rem',
+                                      color: '#000000',
+                                      textDecoration: 'none',
+                                      transition: 'background-color 150ms ease',
+                                    }}
+                                  >
+                                    <div style={{ fontWeight: 600 }}>
+                                      #ORD{String(order.id).padStart(5, '0')}
+                                    </div>
+                                    <div style={{ color: '#71717a' }}>
+                                      {order.created_at
+                                        ? new Date(order.created_at).toLocaleDateString()
+                                        : 'Recent'}
+                                    </div>
+                                    <div style={{ fontWeight: 700 }}>
+                                      ₹{Number(order.total_price || 0).toFixed(2)}
+                                    </div>
+                                    <div>
+                                      <span
+                                        style={{
+                                          fontSize: '0.75rem',
+                                          fontWeight: 600,
+                                          padding: '0.2rem 0.5rem',
+                                          borderRadius: '4px',
+                                          backgroundColor: badge.bg,
+                                          color: badge.color,
+                                          border: `1px solid ${badge.border}`,
+                                        }}
+                                      >
+                                        {order.status || 'Pending'}
+                                      </span>
+                                    </div>
+                                    <div style={{ textAlign: 'right', color: '#a1a1aa' }}>
+                                      <ChevronRight size={16} />
+                                    </div>
+                                  </Link>
+                                );
+                              })}
+                            </div>
                           </div>
                         ) : (
                           <div
@@ -1560,10 +1562,11 @@ export const ProfilePage = () => {
         @media (max-width: 900px) {
           .account-layout {
             grid-template-columns: 1fr !important;
-            gap: 2rem !important;
+            gap: 1.5rem !important;
           }
           .stats-grid {
-            grid-template-columns: 1fr !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 1rem !important;
           }
           .profile-form-grid {
             grid-template-columns: 1fr !important;
@@ -1572,6 +1575,11 @@ export const ProfilePage = () => {
             grid-column: span 1 !important;
           }
           .profile-cart-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+        @media (max-width: 500px) {
+          .stats-grid {
             grid-template-columns: 1fr !important;
           }
         }

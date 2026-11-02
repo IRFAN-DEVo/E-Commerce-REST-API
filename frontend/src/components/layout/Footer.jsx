@@ -11,20 +11,20 @@ export const Footer = () => {
         marginTop: 'auto',
       }}
     >
-      {/* Value Badges Banner (Screenshot style) */}
+      {/* Value Badges Banner */}
       <div
         style={{
           borderBottom: '1px solid #e5e7eb',
           backgroundColor: '#fafafa',
-          padding: '2.5rem 0',
+          padding: 'clamp(1.75rem, 4vw, 2.5rem) 0',
         }}
       >
         <div
-          className="container"
+          className="container footer-value-props-grid"
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: '2rem',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: '1.5rem',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -47,7 +47,7 @@ export const Footer = () => {
             <div>
               <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#000000' }}>Free Shipping</div>
               <div style={{ fontSize: '0.8125rem', color: '#71717a' }}>
-                On orders over $50
+                On orders over ₹999
               </div>
             </div>
           </div>
@@ -97,7 +97,7 @@ export const Footer = () => {
             <div>
               <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#000000' }}>Secure Payment</div>
               <div style={{ fontSize: '0.8125rem', color: '#71717a' }}>
-                100% secure checkout
+                100% encrypted checkout
               </div>
             </div>
           </div>
@@ -122,7 +122,7 @@ export const Footer = () => {
             <div>
               <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#000000' }}>Special Offers</div>
               <div style={{ fontSize: '0.8125rem', color: '#71717a' }}>
-                Save up to 50% on sales
+                Curated tech discounts
               </div>
             </div>
           </div>
@@ -130,13 +130,13 @@ export const Footer = () => {
       </div>
 
       {/* Main Footer Links */}
-      <div style={{ padding: '4rem 0 3rem 0' }}>
+      <div style={{ padding: 'clamp(2.5rem, 5vw, 4rem) 0 clamp(2rem, 4vw, 3rem) 0' }}>
         <div
-          className="container"
+          className="container footer-main-grid"
           style={{
             display: 'grid',
             gridTemplateColumns: '2fr 1fr 1fr 1.5fr',
-            gap: '3rem',
+            gap: 'clamp(2rem, 4vw, 3rem)',
           }}
         >
           {/* Brand Info */}
@@ -144,7 +144,7 @@ export const Footer = () => {
             <Link
               to="/"
               style={{
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
                 gap: '0.5rem',
                 fontWeight: 800,
@@ -152,6 +152,7 @@ export const Footer = () => {
                 color: '#000000',
                 letterSpacing: '-0.025em',
                 marginBottom: '1rem',
+                textDecoration: 'none',
               }}
             >
               <div
@@ -177,39 +178,82 @@ export const Footer = () => {
 
           {/* Quick Links */}
           <div>
-            <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#000000', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1.25rem' }}>
+            <h4
+              style={{
+                fontSize: '0.875rem',
+                fontWeight: 700,
+                color: '#000000',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginBottom: '1.25rem',
+              }}
+            >
               Shop
             </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.875rem', color: '#52525b' }}>
-              <Link to="/products" style={{ transition: 'color 150ms' }} onMouseEnter={(e) => e.target.style.color = '#000'} onMouseLeave={(e) => e.target.style.color = '#52525b'}>All Products</Link>
-              <Link to="/products?category=all" style={{ transition: 'color 150ms' }} onMouseEnter={(e) => e.target.style.color = '#000'} onMouseLeave={(e) => e.target.style.color = '#52525b'}>Categories</Link>
-              <Link to="/products?brand=all" style={{ transition: 'color 150ms' }} onMouseEnter={(e) => e.target.style.color = '#000'} onMouseLeave={(e) => e.target.style.color = '#52525b'}>Featured Brands</Link>
-              <Link to="/wishlist" style={{ transition: 'color 150ms' }} onMouseEnter={(e) => e.target.style.color = '#000'} onMouseLeave={(e) => e.target.style.color = '#52525b'}>My Wishlist</Link>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.75rem',
+                fontSize: '0.875rem',
+                color: '#52525b',
+              }}
+            >
+              <Link to="/products" style={{ transition: 'color 150ms' }}>All Products</Link>
+              <Link to="/products?category=all" style={{ transition: 'color 150ms' }}>Categories</Link>
+              <Link to="/products?brand=all" style={{ transition: 'color 150ms' }}>Featured Brands</Link>
+              <Link to="/wishlist" style={{ transition: 'color 150ms' }}>My Wishlist</Link>
             </div>
           </div>
 
           {/* Customer Service */}
           <div>
-            <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#000000', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1.25rem' }}>
+            <h4
+              style={{
+                fontSize: '0.875rem',
+                fontWeight: 700,
+                color: '#000000',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginBottom: '1.25rem',
+              }}
+            >
               Help & Support
             </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.875rem', color: '#52525b' }}>
-              <Link to="/orders" style={{ transition: 'color 150ms' }} onMouseEnter={(e) => e.target.style.color = '#000'} onMouseLeave={(e) => e.target.style.color = '#52525b'}>Track Order</Link>
-              <Link to="/contact" style={{ transition: 'color 150ms' }} onMouseEnter={(e) => e.target.style.color = '#000'} onMouseLeave={(e) => e.target.style.color = '#52525b'}>Contact Us</Link>
-              <Link to="/about" style={{ transition: 'color 150ms' }} onMouseEnter={(e) => e.target.style.color = '#000'} onMouseLeave={(e) => e.target.style.color = '#52525b'}>About DjangoMart</Link>
-              <Link to="/privacy-policy" style={{ transition: 'color 150ms' }} onMouseEnter={(e) => e.target.style.color = '#000'} onMouseLeave={(e) => e.target.style.color = '#52525b'}>Privacy Policy</Link>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.75rem',
+                fontSize: '0.875rem',
+                color: '#52525b',
+              }}
+            >
+              <Link to="/orders" style={{ transition: 'color 150ms' }}>Track Order</Link>
+              <Link to="/contact" style={{ transition: 'color 150ms' }}>Contact Us</Link>
+              <Link to="/about" style={{ transition: 'color 150ms' }}>About DjangoMart</Link>
+              <Link to="/privacy-policy" style={{ transition: 'color 150ms' }}>Privacy Policy</Link>
             </div>
           </div>
 
           {/* Newsletter */}
           <div>
-            <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#000000', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1.25rem' }}>
+            <h4
+              style={{
+                fontSize: '0.875rem',
+                fontWeight: 700,
+                color: '#000000',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginBottom: '1.25rem',
+              }}
+            >
               Stay Updated
             </h4>
-            <p style={{ color: '#71717a', fontSize: '0.875rem', marginBottom: '1rem' }}>
-              Subscribe to get special offers, free giveaways, and once-in-a-lifetime deals.
+            <p style={{ color: '#71717a', fontSize: '0.875rem', marginBottom: '1rem', lineHeight: '1.5' }}>
+              Subscribe to get special offers, curated drops, and once-in-a-lifetime deals.
             </p>
-            <form onSubmit={(e) => e.preventDefault()} style={{ display: 'flex', gap: '0.5rem' }}>
+            <form onSubmit={(e) => e.preventDefault()} style={{ display: 'flex', gap: '0.5rem', maxWidth: '340px' }}>
               <input
                 type="email"
                 placeholder="Enter your email"
@@ -220,8 +264,8 @@ export const Footer = () => {
               <button
                 type="submit"
                 className="btn btn-primary"
-                style={{ padding: '0.625rem 1rem' }}
-                aria-label="Subscribe"
+                style={{ padding: '0.625rem 1rem', flexShrink: 0 }}
+                aria-label="Subscribe to newsletter"
               >
                 <ArrowRight size={16} />
               </button>
@@ -237,19 +281,51 @@ export const Footer = () => {
           padding: '1.5rem 0',
           fontSize: '0.8125rem',
           color: '#a1a1aa',
-          textAlign: 'center',
         }}
       >
-        <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <div
+          className="container"
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '1rem',
+          }}
+        >
           <div>&copy; {new Date().getFullYear()} DjangoMart Inc. All rights reserved.</div>
-          <div style={{ display: 'flex', gap: '1.5rem' }}>
+          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
             <Link to="/privacy-policy" style={{ color: '#71717a' }}>Privacy</Link>
             <Link to="/terms" style={{ color: '#71717a' }}>Terms</Link>
             <Link to="/shipping-policy" style={{ color: '#71717a' }}>Shipping</Link>
           </div>
         </div>
       </div>
+
+      <style>{`
+        @media (max-width: 1024px) {
+          .footer-value-props-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 1.25rem !important;
+          }
+          .footer-main-grid {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 2.5rem !important;
+          }
+        }
+        @media (max-width: 600px) {
+          .footer-value-props-grid {
+            grid-template-columns: 1fr !important;
+            gap: 1rem !important;
+          }
+          .footer-main-grid {
+            grid-template-columns: 1fr !important;
+            gap: 2rem !important;
+          }
+        }
+      `}</style>
     </footer>
   );
 };
+
 export default Footer;

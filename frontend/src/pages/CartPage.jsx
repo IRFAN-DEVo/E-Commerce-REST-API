@@ -185,12 +185,12 @@ export const CartPage = () => {
                       alignItems: 'center',
                       padding: '1.5rem 0',
                       borderBottom: '1px solid #f4f4f5',
-                      gap: '0.5rem',
+                      gap: '0.75rem',
                     }}
                     className="cart-item-row"
                   >
                     {/* Product Info (Thumbnail + Name) */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div className="cart-item-info" style={{ display: 'flex', alignItems: 'center', gap: '1rem', minWidth: 0 }}>
                       <Link
                         to={`/products/${product.id}`}
                         style={{
@@ -218,7 +218,7 @@ export const CartPage = () => {
                         )}
                       </Link>
 
-                      <div style={{ minWidth: 0 }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
                         <Link
                           to={`/products/${product.id}`}
                           style={{
@@ -226,10 +226,11 @@ export const CartPage = () => {
                             fontSize: '0.9375rem',
                             color: '#000000',
                             display: '-webkit-box',
-                            WebkitLineClamp: 1,
+                            WebkitLineClamp: 2,
                             WebkitBoxOrient: 'vertical',
                             overflow: 'hidden',
                             textDecoration: 'none',
+                            lineHeight: 1.35,
                           }}
                         >
                           {product.name}
@@ -262,86 +263,99 @@ export const CartPage = () => {
                       </div>
                     </div>
 
-                    {/* Unit Price */}
-                    <div style={{ textAlign: 'center', fontSize: '0.9375rem', fontWeight: 500, color: '#000000' }}>
+                    {/* Unit Price (Desktop Only column) */}
+                    <div
+                      className="cart-desktop-cell"
+                      style={{ textAlign: 'center', fontSize: '0.9375rem', fontWeight: 500, color: '#000000' }}
+                    >
                       ₹{Number(itemPrice || 0).toFixed(2)}
                     </div>
 
-                    {/* Quantity Selector */}
-                    <div style={{ display: 'flex', justifyContent: 'center' }}>
-                      <div
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '6px',
-                          backgroundColor: '#ffffff',
-                        }}
-                      >
-                        <button
-                          onClick={() => {
-                            if (item.quantity > 1) {
-                              updateItem(item.id, item.quantity - 1);
-                            } else {
-                              removeItem(item.id);
-                            }
+                    {/* Quantity Selector + Total + Remove on Mobile Bottom Bar / Desktop Columns */}
+                    <div className="cart-mobile-actions-wrapper">
+                      {/* Quantity Selector */}
+                      <div className="cart-qty-container" style={{ display: 'flex', justifyContent: 'center' }}>
+                        <div
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '6px',
+                            backgroundColor: '#ffffff',
                           }}
+                        >
+                          <button
+                            onClick={() => {
+                              if (item.quantity > 1) {
+                                updateItem(item.id, item.quantity - 1);
+                              } else {
+                                removeItem(item.id);
+                              }
+                            }}
+                            disabled={isLoading}
+                            style={{
+                              padding: '0.35rem 0.6rem',
+                              fontSize: '0.875rem',
+                              cursor: 'pointer',
+                              color: '#000000',
+                              minWidth: '32px',
+                              minHeight: '32px',
+                            }}
+                            aria-label="Decrease quantity"
+                          >
+                            -
+                          </button>
+                          <span style={{ padding: '0.35rem 0.5rem', minWidth: '28px', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600 }}>
+                            {item.quantity}
+                          </span>
+                          <button
+                            onClick={() => updateItem(item.id, item.quantity + 1)}
+                            disabled={isLoading || (product.stock !== undefined && item.quantity >= product.stock)}
+                            style={{
+                              padding: '0.35rem 0.6rem',
+                              fontSize: '0.875rem',
+                              cursor: 'pointer',
+                              color: '#000000',
+                              minWidth: '32px',
+                              minHeight: '32px',
+                            }}
+                            aria-label="Increase quantity"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Item Total */}
+                      <div className="cart-item-subtotal-cell" style={{ textAlign: 'right', fontSize: '0.9375rem', fontWeight: 700, color: '#000000' }}>
+                        ₹{itemSubtotal}
+                      </div>
+
+                      {/* Remove Action */}
+                      <div className="cart-item-trash-cell" style={{ textAlign: 'right' }}>
+                        <button
+                          onClick={() => removeItem(item.id)}
                           disabled={isLoading}
+                          className="touch-target"
                           style={{
-                            padding: '0.35rem 0.6rem',
-                            fontSize: '0.875rem',
+                            color: '#a1a1aa',
                             cursor: 'pointer',
-                            color: '#000000',
+                            padding: '0.4rem',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'color 150ms ease',
+                            background: 'none',
+                            border: 'none',
                           }}
-                          aria-label="Decrease quantity"
+                          onMouseEnter={(e) => (e.currentTarget.style.color = '#dc2626')}
+                          onMouseLeave={(e) => (e.currentTarget.style.color = '#a1a1aa')}
+                          aria-label={`Remove ${product.name} from cart`}
+                          title="Remove item"
                         >
-                          -
-                        </button>
-                        <span style={{ padding: '0.35rem 0.5rem', minWidth: '28px', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600 }}>
-                          {item.quantity}
-                        </span>
-                        <button
-                          onClick={() => updateItem(item.id, item.quantity + 1)}
-                          disabled={isLoading || (product.stock !== undefined && item.quantity >= product.stock)}
-                          style={{
-                            padding: '0.35rem 0.6rem',
-                            fontSize: '0.875rem',
-                            cursor: 'pointer',
-                            color: '#000000',
-                          }}
-                          aria-label="Increase quantity"
-                        >
-                          +
+                          <Trash2 size={16} />
                         </button>
                       </div>
-                    </div>
-
-                    {/* Item Total */}
-                    <div style={{ textAlign: 'right', fontSize: '0.9375rem', fontWeight: 700, color: '#000000' }}>
-                      ₹{itemSubtotal}
-                    </div>
-
-                    {/* Remove Action */}
-                    <div style={{ textAlign: 'right' }}>
-                      <button
-                        onClick={() => removeItem(item.id)}
-                        disabled={isLoading}
-                        style={{
-                          color: '#a1a1aa',
-                          cursor: 'pointer',
-                          padding: '0.4rem',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          transition: 'color 150ms ease',
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = '#000000'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = '#a1a1aa'}
-                        aria-label={`Remove ${product.name} from cart`}
-                        title="Remove item"
-                      >
-                        <Trash2 size={16} />
-                      </button>
                     </div>
                   </div>
                 );
@@ -472,20 +486,35 @@ export const CartPage = () => {
     </div>
 
     <style>{`
-      @media (max-width: 900px) {
-          .cart-grid {
-            grid-template-columns: 1fr !important;
-            gap: 2rem !important;
-          }
-          .cart-table-header {
-            display: none !important;
-          }
-          .cart-item-row {
-            grid-template-columns: 1fr auto !important;
-            grid-template-rows: auto auto !important;
-          }
+      .cart-mobile-actions-wrapper {
+        display: contents;
+      }
+      @media (max-width: 768px) {
+        .cart-grid {
+          grid-template-columns: 1fr !important;
+          gap: 2rem !important;
         }
-      `}</style>
+        .cart-table-header,
+        .cart-desktop-cell {
+          display: none !important;
+        }
+        .cart-item-row {
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: stretch !important;
+          gap: 0.875rem !important;
+          padding: 1.25rem 0 !important;
+        }
+        .cart-mobile-actions-wrapper {
+          display: flex !important;
+          align-items: center !important;
+          justifyContent: space-between !important;
+          width: 100% !important;
+          padding-top: 0.75rem !important;
+          border-top: 1px dashed #e5e7eb !important;
+        }
+      }
+    `}</style>
     </div>
   );
 };

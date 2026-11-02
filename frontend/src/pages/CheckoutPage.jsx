@@ -430,7 +430,7 @@ export const CheckoutPage = () => {
               <div
                 className="card"
                 style={{
-                  padding: '2rem',
+                  padding: 'clamp(1.25rem, 4vw, 2rem)',
                   backgroundColor: '#ffffff',
                   border: '1px solid #e5e7eb',
                   borderRadius: '12px',
@@ -449,7 +449,7 @@ export const CheckoutPage = () => {
                 </h2>
 
                 <form onSubmit={handleCreateOrder}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                  <div className="form-grid-2">
                     <div className="form-group">
                       <label htmlFor="full_name" className="form-label">Full Name *</label>
                       <input
@@ -492,7 +492,7 @@ export const CheckoutPage = () => {
                     />
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                  <div className="form-grid-3">
                     <div className="form-group">
                       <label htmlFor="city" className="form-label">City *</label>
                       <input

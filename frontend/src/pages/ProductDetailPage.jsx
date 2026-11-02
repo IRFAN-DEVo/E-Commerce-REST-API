@@ -214,7 +214,7 @@ export const ProductDetailPage = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  padding: '2.5rem',
+                  padding: 'clamp(1rem, 4vw, 2.5rem)',
                   position: 'relative',
                   overflow: 'hidden',
                 }}
@@ -396,7 +396,16 @@ export const ProductDetailPage = () => {
             </div>
 
             {/* Quantity Selector + Add to Cart + Wishlist (Screenshot #3) */}
-            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginTop: '0.5rem' }}>
+            <div
+              className="product-action-row"
+              style={{
+                display: 'flex',
+                gap: '0.75rem',
+                alignItems: 'center',
+                marginTop: '0.5rem',
+                flexWrap: 'wrap',
+              }}
+            >
               {product.is_available && product.stock > 0 ? (
                 <>
                   {/* Quantity Counter */}
@@ -416,6 +425,11 @@ export const ProductDetailPage = () => {
                         fontSize: '1rem',
                         color: '#000000',
                         cursor: 'pointer',
+                        minWidth: '40px',
+                        minHeight: '44px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                       }}
                       aria-label="Decrease quantity"
                     >
@@ -431,6 +445,11 @@ export const ProductDetailPage = () => {
                         fontSize: '1rem',
                         color: '#000000',
                         cursor: 'pointer',
+                        minWidth: '40px',
+                        minHeight: '44px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                       }}
                       aria-label="Increase quantity"
                     >
@@ -443,10 +462,11 @@ export const ProductDetailPage = () => {
                     onClick={handleAddToCart}
                     className="btn btn-primary"
                     style={{
-                      flex: 1,
+                      flex: '1 1 180px',
                       padding: '0.75rem 1.5rem',
                       fontSize: '0.9375rem',
                       borderRadius: '6px',
+                      minHeight: '44px',
                     }}
                   >
                     <ShoppingCart size={18} />
@@ -458,12 +478,13 @@ export const ProductDetailPage = () => {
                   disabled
                   className="btn btn-secondary"
                   style={{
-                    flex: 1,
+                    flex: '1 1 180px',
                     padding: '0.75rem 1.5rem',
                     fontSize: '0.9375rem',
                     borderRadius: '6px',
                     opacity: 0.6,
                     cursor: 'not-allowed',
+                    minHeight: '44px',
                   }}
                 >
                   Currently Out of Stock
@@ -474,7 +495,7 @@ export const ProductDetailPage = () => {
               <button
                 onClick={handleToggleWishlist}
                 disabled={isWishlistLoading}
-                className="btn btn-secondary"
+                className="btn btn-secondary touch-target"
                 style={{
                   padding: '0.75rem',
                   borderRadius: '6px',
@@ -485,9 +506,11 @@ export const ProductDetailPage = () => {
                   opacity: isWishlistLoading ? 0.7 : 1,
                   transition: 'all 200ms ease',
                   minWidth: '46px',
+                  minHeight: '44px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  flexShrink: 0,
                 }}
                 title={isFavorited ? 'Remove from Wishlist' : 'Add to Wishlist'}
                 aria-label={isFavorited ? 'Remove from Wishlist' : 'Save to Wishlist'}
@@ -701,6 +724,11 @@ export const ProductDetailPage = () => {
           .product-detail-grid, .reviews-grid {
             grid-template-columns: 1fr !important;
             gap: 2rem !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .product-action-row {
+            gap: 0.5rem !important;
           }
         }
       `}</style>

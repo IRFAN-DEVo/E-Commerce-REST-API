@@ -499,7 +499,7 @@ export const VerifyPhonePage = () => {
                 <div
                   style={{
                     display: 'flex',
-                    gap: '0.5rem',
+                    gap: 'clamp(4px, 1.5vw, 8px)',
                     justifyContent: 'center',
                     marginBottom: '1.75rem',
                   }}
@@ -519,10 +519,10 @@ export const VerifyPhonePage = () => {
                       onKeyDown={(e) => handleKeyDown(idx, e)}
                       disabled={isSubmitting}
                       style={{
-                        width: '46px',
-                        height: '52px',
+                        width: 'clamp(36px, 11vw, 46px)',
+                        height: 'clamp(44px, 13vw, 52px)',
                         textAlign: 'center',
-                        fontSize: '1.35rem',
+                        fontSize: 'clamp(1.125rem, 4vw, 1.35rem)',
                         fontWeight: 700,
                         color: '#000000',
                         backgroundColor: '#fafafa',

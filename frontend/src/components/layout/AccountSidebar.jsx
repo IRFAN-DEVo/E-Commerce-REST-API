@@ -28,6 +28,7 @@ export const AccountSidebar = ({ activeTab = 'dashboard', onTabChange }) => {
 
   return (
     <aside
+      className="account-sidebar-card"
       style={{
         backgroundColor: '#ffffff',
         border: '1px solid #e5e7eb',
@@ -37,6 +38,7 @@ export const AccountSidebar = ({ activeTab = 'dashboard', onTabChange }) => {
     >
       {/* User Profile Card Header */}
       <div
+        className="account-sidebar-user"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -91,7 +93,7 @@ export const AccountSidebar = ({ activeTab = 'dashboard', onTabChange }) => {
       </div>
 
       {/* Navigation Menu */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+      <div className="account-sidebar-nav" style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -208,6 +210,33 @@ export const AccountSidebar = ({ activeTab = 'dashboard', onTabChange }) => {
           <span>Logout</span>
         </button>
       </div>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .account-sidebar-card {
+            padding: 1rem !important;
+            margin-bottom: 1.5rem !important;
+          }
+          .account-sidebar-user {
+            padding-bottom: 0.75rem !important;
+            margin-bottom: 0.75rem !important;
+          }
+          .account-sidebar-nav {
+            flex-direction: row !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            gap: 0.5rem !important;
+            padding-bottom: 0.35rem !important;
+          }
+          .account-sidebar-nav > * {
+            flex-shrink: 0 !important;
+            width: auto !important;
+            white-space: nowrap !important;
+            border-top: none !important;
+            margin-top: 0 !important;
+          }
+        }
+      `}</style>
     </aside>
   );
 };
