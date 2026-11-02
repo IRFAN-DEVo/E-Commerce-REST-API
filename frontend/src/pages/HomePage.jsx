@@ -1105,6 +1105,7 @@ export const HomePage = () => {
 
               {/* Distinctive Editorial Category Grid */}
               <div
+                className="home-category-grid"
                 style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
@@ -1117,6 +1118,7 @@ export const HomePage = () => {
                     <Link
                       key={cat.id}
                       to={`/products?category=${encodeURIComponent(cat.slug || cat.name)}`}
+                      className="home-category-card"
                       style={{
                         backgroundColor: '#ffffff',
                         border: '1px solid #e5e7eb',
@@ -1150,6 +1152,7 @@ export const HomePage = () => {
                         }}
                       >
                         <span
+                          className="home-category-card-index"
                           style={{
                             fontSize: '0.75rem',
                             fontWeight: 800,
@@ -1159,14 +1162,14 @@ export const HomePage = () => {
                         >
                           // {indexFormatted}
                         </span>
-                        <ArrowUpRight size={16} color="#71717a" />
+                        <ArrowUpRight size={16} color="#71717a" className="home-category-card-arrow" />
                       </div>
 
-                      <div style={{ marginTop: '1.5rem' }}>
-                        <div style={{ fontWeight: 800, fontSize: '1.0625rem', color: '#0a0a0a', letterSpacing: '-0.01em' }}>
+                      <div className="home-category-card-content" style={{ marginTop: '1.5rem' }}>
+                        <div className="home-category-card-title" style={{ fontWeight: 800, fontSize: '1.0625rem', color: '#0a0a0a', letterSpacing: '-0.01em' }}>
                           {cat.name}
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: '#71717a', marginTop: '0.2rem' }}>
+                        <div className="home-category-card-sub" style={{ fontSize: '0.75rem', color: '#71717a', marginTop: '0.2rem' }}>
                           Explore Collection
                         </div>
                       </div>

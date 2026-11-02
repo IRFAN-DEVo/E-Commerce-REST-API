@@ -1052,3 +1052,74 @@ class GoogleCompleteProfileView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+@extend_schema(
+    tags=["Authentication"],
+    summary="User Account & Data Deletion",
+    description="Deletes customer account, anonymizes personal data, clears wishlist/cart/notifications, and retains required financial/order records per statutory retention laws.",
+)
+class DeleteAccountView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request):
+        return self._perform_deletion(request)
+
+    def post(self, request):
+        return self._perform_deletion(request)
+
+    def _perform_deletion(self, request):
+        user = request.user
+        password = request.data.get("password")
+        confirm = request.data.get("confirm", False)
+
+        if user.has_usable_password():
+            if not password or not user.check_password(password):
+                return Response(
+                    {"detail": "Incorrect password. Password confirmation is required to delete your account."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            if not confirm:
+                return Response(
+                    {"detail": "Explicit confirmation is required to delete this account."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        from orders.models import Order
+        active_orders = Order.objects.filter(
+            user=user,
+            status__in=["PENDING", "PROCESSING", "SHIPPED"]
+        ).exists()
+        if active_orders:
+            return Response(
+                {"detail": "Cannot delete account with active in-progress orders. Please wait until orders are delivered or cancel them first."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        with transaction.atomic():
+            from cart.models import Cart
+            Cart.objects.filter(user=user).delete()
+
+            from wishlist.models import Wishlist
+            Wishlist.objects.filter(user=user).delete()
+
+            from notifications.models import Notification
+            Notification.objects.filter(user=user).delete()
+
+            user.first_name = "Deleted"
+            user.last_name = "User"
+            user.email = f"deleted_{user.id}_{uuid.uuid4().hex[:8]}@deleted.djangomart.com"
+            user.phone = ""
+            user.google_id = None
+            user.is_active = False
+            user.set_unusable_password()
+            user.save()
+
+        return Response(
+            {
+                "success": True,
+                "message": "Your account has been deleted and personal data anonymized in accordance with our data retention policy.",
+            },
+            status=status.HTTP_200_OK,
+        )

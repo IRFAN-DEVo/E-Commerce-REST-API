@@ -21,6 +21,7 @@ urlpatterns = [
     path('reset-password/', ResetPasswordView.as_view(), name='reset-password'),
     path('logout/', TokenBlacklistView.as_view(), name='token_blacklist'),
     path('profile/', UserProfileView.as_view(), name='user-profile'),
+    path('delete-account/', views.DeleteAccountView.as_view(), name='delete-account'),
 
     # Google OAuth APIs
     path('google/', views.GoogleAuthView.as_view(), name='google-auth'),

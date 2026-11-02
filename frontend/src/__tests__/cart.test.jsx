@@ -176,7 +176,7 @@ describe('CartPage component', () => {
       expect(screen.getByText('Stock: 3 available')).toBeInTheDocument();
     });
 
-    const increaseBtn = screen.getByRole('button', { name: /Increase quantity/i });
+    const increaseBtn = screen.getByRole('button', { name: /Increase quantity/i, hidden: true });
     expect(increaseBtn).toBeDisabled();
   });
 

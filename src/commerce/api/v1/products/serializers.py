@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from products.models import Product, Category, Brand, ProductImage
+from products.validators import validate_image_file
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -9,6 +10,9 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = ["id", "name", "image", "product_count"]
 
+    def validate_image(self, value):
+        return validate_image_file(value)
+
 
 class BrandSerializer(serializers.ModelSerializer):
     product_count = serializers.IntegerField(read_only=True)
@@ -17,11 +21,17 @@ class BrandSerializer(serializers.ModelSerializer):
         model = Brand
         fields = ["id", "name", "image", "product_count"]
 
+    def validate_image(self, value):
+        return validate_image_file(value)
+
 
 class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductImage
         fields = ["id", "image", "alt_text", "is_primary", "created_at"]
+
+    def validate_image(self, value):
+        return validate_image_file(value)
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -71,6 +81,9 @@ class ProductSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+    def validate_image(self, value):
+        return validate_image_file(value)
+
     def validate_price(self, value):
         if value <= 0:
             raise serializers.ValidationError("Price must be greater than zero.")
@@ -87,5 +100,3 @@ class ProductSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({"discount_price": "Discount price must be less than the regular price."})
 
         return attrs
-
-

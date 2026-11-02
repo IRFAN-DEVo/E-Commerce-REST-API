@@ -236,8 +236,9 @@ SPECTACULAR_SETTINGS = {
 }
 
 from datetime import timedelta
+_access_lifetime_minutes = int(os.environ.get("JWT_ACCESS_TOKEN_LIFETIME_MINUTES", 60))
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=_access_lifetime_minutes),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
@@ -343,6 +344,9 @@ elif DEBUG:
 else:
     CORS_ALLOWED_ORIGINS = []
 
+if FRONTEND_URL and FRONTEND_URL not in CORS_ALLOWED_ORIGINS:
+    CORS_ALLOWED_ORIGINS.append(FRONTEND_URL)
+
 # JWT is sent via the Authorization header, not cookies.
 # Credentialed CORS (Access-Control-Allow-Credentials) is unnecessary
 # and would be a security risk with broad origin lists.
@@ -365,12 +369,19 @@ elif DEBUG:
 else:
     CSRF_TRUSTED_ORIGINS = []
 
+if FRONTEND_URL and FRONTEND_URL not in CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS.append(FRONTEND_URL)
+
 # Production Security Headers (Active when DEBUG is False)
 if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = "DENY"
     CSRF_COOKIE_SECURE = os.environ.get("CSRF_COOKIE_SECURE", "True").lower() in ("true", "1", "yes")
     SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "True").lower() in ("true", "1", "yes")
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    CSRF_COOKIE_SAMESITE = "Lax"
+    SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
     SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "False").lower() in ("true", "1", "yes")
 
     # HSTS — instruct browsers to only use HTTPS for the domain.
@@ -385,8 +396,8 @@ if not DEBUG:
     ).lower() in ("true", "1", "yes")
 
     # Reverse Proxy SSL Header — set this when behind a TLS-terminating
-    # proxy (e.g. Nginx, AWS ALB) so Django knows the request was HTTPS.
-    _proxy_ssl_header = os.environ.get("SECURE_PROXY_SSL_HEADER", "").strip()
+    # proxy (e.g. Render, Nginx, AWS ALB) so Django knows the request was HTTPS.
+    _proxy_ssl_header = os.environ.get("SECURE_PROXY_SSL_HEADER", "HTTP_X_FORWARDED_PROTO").strip()
     if _proxy_ssl_header:
         # Django requires the WSGI request.META key format: 'HTTP_<NAME>'
         if not _proxy_ssl_header.startswith("HTTP_"):

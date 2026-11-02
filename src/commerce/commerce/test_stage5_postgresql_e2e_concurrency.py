@@ -97,6 +97,15 @@ class Stage5PostgreSQLE2EAndConcurrencyTests(TransactionTestCase):
         )
         self.assertEqual(reg_resp.status_code, status.HTTP_201_CREATED)
 
+        import re
+        from django.core import mail
+        jane_otp = re.search(r"\b\d{6}\b", mail.outbox[-1].body)
+        client_cust.post(
+            "/api/v1/accounts/verify-email/",
+            {"email": "jane_e2e@example.com", "otp": jane_otp.group(0)},
+            format="json",
+        )
+
         login_resp = client_cust.post(
             "/api/v1/accounts/login/",
             {
@@ -120,6 +129,12 @@ class Stage5PostgreSQLE2EAndConcurrencyTests(TransactionTestCase):
                 "password": "SecurePassword123!",
                 "confirm_password": "SecurePassword123!",
             },
+            format="json",
+        )
+        bob_otp = re.search(r"\b\d{6}\b", mail.outbox[-1].body)
+        client_other.post(
+            "/api/v1/accounts/verify-email/",
+            {"email": "bob_other@example.com", "otp": bob_otp.group(0)},
             format="json",
         )
         other_login = client_other.post(

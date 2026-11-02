@@ -451,6 +451,16 @@ class CustomerPrivilegeEscalationTests(BaseSecurityTestCase):
             },
         )
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        import re
+        from django.core import mail
+        self.assertGreater(len(mail.outbox), 0)
+        otp_match = re.search(r"\b\d{6}\b", mail.outbox[-1].body)
+        self.assertIsNotNone(otp_match)
+        v_resp = self.client_anon.post(
+            "/api/v1/accounts/verify-email/",
+            {"email": "attacker@example.com", "otp": otp_match.group(0)},
+        )
+        self.assertEqual(v_resp.status_code, status.HTTP_200_OK)
         attacker = User.objects.get(email="attacker@example.com")
         self.assertEqual(attacker.user_type, "customer")
         self.assertFalse(attacker.is_staff)

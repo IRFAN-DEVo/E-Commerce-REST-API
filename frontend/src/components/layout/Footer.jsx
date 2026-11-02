@@ -233,6 +233,8 @@ export const Footer = () => {
               <Link to="/contact" style={{ transition: 'color 150ms' }}>Contact Us</Link>
               <Link to="/about" style={{ transition: 'color 150ms' }}>About DjangoMart</Link>
               <Link to="/privacy-policy" style={{ transition: 'color 150ms' }}>Privacy Policy</Link>
+              <Link to="/refund-policy" style={{ transition: 'color 150ms' }}>Refund &amp; Cancellation</Link>
+              <Link to="/terms" style={{ transition: 'color 150ms' }}>Terms of Service</Link>
             </div>
           </div>
 
@@ -297,7 +299,8 @@ export const Footer = () => {
           <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
             <Link to="/privacy-policy" style={{ color: '#71717a' }}>Privacy</Link>
             <Link to="/terms" style={{ color: '#71717a' }}>Terms</Link>
-            <Link to="/shipping-policy" style={{ color: '#71717a' }}>Shipping</Link>
+            <Link to="/refund-policy" style={{ color: '#71717a' }}>Refunds</Link>
+            <Link to="/cookie-policy" style={{ color: '#71717a' }}>Cookies</Link>
           </div>
         </div>
       </div>

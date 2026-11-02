@@ -8,6 +8,7 @@ import { Layout } from './components/layout/Layout';
 import { ProtectedRoute, AdminRoute } from './components/common/ProtectedRoute';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 import { ScrollToTop } from './components/common/ScrollToTop';
+import { CookieConsentBanner } from './components/common/CookieConsentBanner';
 
 // Lazy load AdminLayout so public storefront bundles don't download admin shell
 const AdminLayout = lazy(() => import('./components/layout/AdminLayout').then((m) => ({ default: m.AdminLayout })));
@@ -32,6 +33,10 @@ const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then(
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })));
 const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage })));
 const ContactPage = lazy(() => import('./pages/ContactPage').then((m) => ({ default: m.ContactPage })));
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage').then((m) => ({ default: m.PrivacyPolicyPage })));
+const TermsPage = lazy(() => import('./pages/TermsPage').then((m) => ({ default: m.TermsPage })));
+const RefundPolicyPage = lazy(() => import('./pages/RefundPolicyPage').then((m) => ({ default: m.RefundPolicyPage })));
+const CookiePolicyPage = lazy(() => import('./pages/CookiePolicyPage').then((m) => ({ default: m.CookiePolicyPage })));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 
 // Admin Pages
@@ -50,6 +55,7 @@ export function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
+      <CookieConsentBanner />
       <ToastProvider>
         <AuthProvider>
           <WishlistProvider>
@@ -63,9 +69,11 @@ export function App() {
                   <Route path="/products/:id" element={<ProductDetailPage />} />
                   <Route path="/about" element={<AboutPage />} />
                   <Route path="/contact" element={<ContactPage />} />
-                  <Route path="/privacy-policy" element={<AboutPage />} />
-                  <Route path="/terms" element={<AboutPage />} />
-                  <Route path="/shipping-policy" element={<AboutPage />} />
+                  <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+                  <Route path="/terms" element={<TermsPage />} />
+                  <Route path="/refund-policy" element={<RefundPolicyPage />} />
+                  <Route path="/cookie-policy" element={<CookiePolicyPage />} />
+                  <Route path="/shipping-policy" element={<RefundPolicyPage />} />
 
                   {/* Auth Routes */}
                   <Route path="/login" element={<LoginPage />} />
