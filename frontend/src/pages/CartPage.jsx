@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { EmptyState } from '../components/common/EmptyState';
 import { AnimatedContent } from '../components/common/AnimatedContent';
+import { getProductImageUrl } from '../utils/imageUrl';
 
 export const CartPage = () => {
   const { cartItems, totalItems, totalPrice, isLoading, updateItem, removeItem } = useCart();
@@ -209,7 +210,7 @@ export const CartPage = () => {
                       >
                         {product.image ? (
                           <img
-                            src={product.image}
+                            src={getProductImageUrl(product.image)}
                             alt={product.name}
                             style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
                           />

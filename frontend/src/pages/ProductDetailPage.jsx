@@ -10,6 +10,7 @@ import { useToast } from '../context/ToastContext';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { StarRating } from '../components/common/StarRating';
 import { AnimatedContent } from '../components/common/AnimatedContent';
+import { getProductImageUrl } from '../utils/imageUrl';
 
 export const ProductDetailPage = () => {
   const { id } = useParams();
@@ -240,7 +241,7 @@ export const ProductDetailPage = () => {
               >
                 {product.image ? (
                   <img
-                    src={product.image}
+                    src={getProductImageUrl(product.image)}
                     alt={product.name}
                     style={{
                       maxHeight: '100%',

@@ -7,6 +7,7 @@ import { useToast } from '../../context/ToastContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { StockBadge } from '../common/Badge';
 import { StarRating } from '../common/StarRating';
+import { getProductImageUrl } from '../../utils/imageUrl';
 
 export const ProductCard = memo(({ product, inWishlist = false, onWishlistToggle }) => {
   const { addItem } = useCart();
@@ -92,7 +93,7 @@ export const ProductCard = memo(({ product, inWishlist = false, onWishlistToggle
       >
         {product.image ? (
           <img
-            src={product.image}
+            src={getProductImageUrl(product.image)}
             alt={product.name}
             style={{
               position: 'absolute',

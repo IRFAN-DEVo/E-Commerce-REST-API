@@ -27,9 +27,7 @@ import {
   EditorialBadge,
   HandwrittenNote,
 } from '../components/editorial/EditorialAnnotations';
-
-import heroWatchImg from '../assets/hero_watch.jpg';
-import heroHeadphonesImg from '../assets/hero_headphones.jpg';
+import { getProductImageUrl } from '../utils/imageUrl';
 
 export const HomePage = () => {
   const [categories, setCategories] = useState([]);
@@ -452,35 +450,64 @@ export const HomePage = () => {
                   <Link
                     to={heroProduct ? `/products/${heroProduct.id}` : '/products'}
                     style={{
-                      display: 'block',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                       height: 'clamp(280px, 36vw, 380px)',
                       margin: '1.5rem 0 1rem',
                       position: 'relative',
                       textAlign: 'center',
+                      textDecoration: 'none',
+                      backgroundColor: '#f8f8fa',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
                     }}
                     aria-label={heroProduct ? `View ${heroProduct.name}` : 'View products'}
                   >
-                    <img
-                      src={heroProduct?.image || heroWatchImg}
-                      alt={heroProduct?.name || 'Featured Statement Hardware'}
-                      onError={(e) => {
-                        e.currentTarget.onerror = null;
-                        e.currentTarget.src = heroWatchImg;
-                      }}
+                    {heroProduct?.image ? (
+                      <img
+                        src={getProductImageUrl(heroProduct.image)}
+                        alt={heroProduct?.name || 'Featured Statement Hardware'}
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          const fallback = e.currentTarget.parentElement?.querySelector('.hero-product-fallback');
+                          if (fallback) fallback.style.display = 'flex';
+                        }}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'contain',
+                          objectPosition: 'center',
+                          padding: '1rem',
+                          transition: 'transform 350ms cubic-bezier(0.4, 0, 0.2, 1)',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.05)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                        }}
+                      />
+                    ) : null}
+                    <div
+                      className="hero-product-fallback"
                       style={{
+                        display: heroProduct?.image ? 'none' : 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.75rem',
                         width: '100%',
                         height: '100%',
-                        objectFit: 'contain',
-                        objectPosition: 'center',
-                        transition: 'transform 350ms cubic-bezier(0.4, 0, 0.2, 1)',
+                        padding: '1.5rem',
+                        color: '#71717a',
                       }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'scale(1.05)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'scale(1)';
-                      }}
-                    />
+                    >
+                      <ShoppingBag size={48} strokeWidth={1.5} color="#a1a1aa" />
+                      <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#3f3f46' }}>
+                        {heroProduct?.name || 'Curated Product'}
+                      </span>
+                    </div>
                   </Link>
 
                   {/* Editorial Floating Spec Callout */}
@@ -754,7 +781,7 @@ export const HomePage = () => {
                         }}
                       >
                         <img
-                          src={activeShowcase.image}
+                          src={getProductImageUrl(activeShowcase.image)}
                           alt={activeShowcase.name}
                           style={{
                             width: '100%',
@@ -971,7 +998,7 @@ export const HomePage = () => {
                       <div style={{ width: '130px', height: '130px', flexShrink: 0 }}>
                         <Link to={`/products/${supportingShowcase.id}`}>
                           <img
-                            src={supportingShowcase.image}
+                            src={getProductImageUrl(supportingShowcase.image)}
                             alt={supportingShowcase.name}
                             style={{
                               width: '100%',

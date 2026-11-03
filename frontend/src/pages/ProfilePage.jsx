@@ -18,6 +18,7 @@ import { useCart } from '../context/CartContext';
 import { ordersApi } from '../api/orders';
 import { wishlistApi } from '../api/wishlist';
 import { getUserDisplayName } from '../utils/user';
+import { getProductImageUrl } from '../utils/imageUrl';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { EmptyState } from '../components/common/EmptyState';
 import { OrderStatusBadge } from '../components/common/Badge';
@@ -735,7 +736,7 @@ export const ProfilePage = () => {
                                 >
                                   {product.image ? (
                                     <img
-                                      src={product.image}
+                                      src={getProductImageUrl(product.image)}
                                       alt={product.name}
                                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                     />
@@ -906,7 +907,7 @@ export const ProfilePage = () => {
                                   >
                                     {product.image ? (
                                       <img
-                                        src={product.image}
+                                        src={getProductImageUrl(product.image)}
                                         alt={product.name}
                                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                       />

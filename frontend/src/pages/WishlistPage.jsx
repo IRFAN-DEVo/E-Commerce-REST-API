@@ -7,6 +7,7 @@ import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { AnimatedContent } from '../components/common/AnimatedContent';
+import { getProductImageUrl } from '../utils/imageUrl';
 
 export const WishlistPage = () => {
   const { wishlistItems, removeFromWishlist } = useWishlist();
@@ -307,7 +308,7 @@ export const WishlistPage = () => {
                       >
                         {product.image ? (
                           <img
-                            src={product.image}
+                            src={getProductImageUrl(product.image)}
                             alt={product.name}
                             style={{
                               maxWidth: '100%',
