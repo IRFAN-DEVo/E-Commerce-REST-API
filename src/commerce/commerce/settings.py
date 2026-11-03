@@ -92,8 +92,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -350,6 +350,10 @@ from corsheaders.defaults import default_headers
 
 CORS_ALLOW_ALL_ORIGINS = False
 
+_default_trusted_origins = [
+    "https://djangomart-frontend.onrender.com",
+]
+
 _cors_origins_env = os.environ.get("CORS_ALLOWED_ORIGINS", "").strip()
 if _cors_origins_env:
     CORS_ALLOWED_ORIGINS = [orig.strip() for orig in _cors_origins_env.split(",") if orig.strip()]
@@ -361,7 +365,11 @@ elif DEBUG:
         "http://127.0.0.1:3000",
     ]
 else:
-    CORS_ALLOWED_ORIGINS = []
+    CORS_ALLOWED_ORIGINS = list(_default_trusted_origins)
+
+for _origin in _default_trusted_origins:
+    if _origin not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(_origin)
 
 if FRONTEND_URL and FRONTEND_URL not in CORS_ALLOWED_ORIGINS:
     CORS_ALLOWED_ORIGINS.append(FRONTEND_URL)
@@ -386,7 +394,11 @@ elif DEBUG:
         "http://127.0.0.1:3000",
     ]
 else:
-    CSRF_TRUSTED_ORIGINS = []
+    CSRF_TRUSTED_ORIGINS = list(_default_trusted_origins)
+
+for _origin in _default_trusted_origins:
+    if _origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(_origin)
 
 if FRONTEND_URL and FRONTEND_URL not in CSRF_TRUSTED_ORIGINS:
     CSRF_TRUSTED_ORIGINS.append(FRONTEND_URL)
