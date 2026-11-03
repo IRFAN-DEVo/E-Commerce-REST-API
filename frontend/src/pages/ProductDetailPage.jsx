@@ -147,6 +147,25 @@ export const ProductDetailPage = () => {
     { id: 'gray', hex: '#71717a', name: 'Slate Gray' },
   ];
 
+  // Determine if the product supports clothing variations (Color & Size)
+  const hasClothingVariations = product.has_clothing_variations !== undefined
+    ? Boolean(product.has_clothing_variations)
+    : (() => {
+        const cat = product.category;
+        const catName = typeof cat === 'string' ? cat : (cat?.name || product.category_name || '');
+        const catSlug = (cat?.slug || catName).toLowerCase();
+        if (!catSlug) return false;
+        return (
+          catSlug === 'dress' ||
+          catSlug === 'dresses' ||
+          catSlug === 'clothing' ||
+          catSlug === 'apparel' ||
+          catSlug.includes('dress') ||
+          catSlug.includes('clothing') ||
+          catSlug.includes('apparel')
+        );
+      })();
+
   return (
     <div style={{ backgroundColor: '#ffffff', padding: '2rem 0 5rem 0' }}>
       <div className="container">
@@ -334,66 +353,71 @@ export const ProductDetailPage = () => {
               {product.description || 'Lightweight, breathable and designed for maximum comfort and style. Perfect for everyday performance.'}
             </p>
 
-            {/* Color Swatch Selector (Screenshot #3) */}
-            <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.25rem' }}>
-              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#000000', marginBottom: '0.625rem' }}>
-                Color
-              </div>
-              <div style={{ display: 'flex', gap: '0.625rem' }}>
-                {colors.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => setSelectedColor(c.id)}
-                    style={{
-                      width: '28px',
-                      height: '28px',
-                      borderRadius: '50%',
-                      backgroundColor: c.hex,
-                      border: c.border ? '1px solid #d4d4d8' : 'none',
-                      outline: selectedColor === c.id ? '2px solid #000000' : 'none',
-                      outlineOffset: '2px',
-                      cursor: 'pointer',
-                      transition: 'outline 150ms ease',
-                    }}
-                    title={c.name}
-                    aria-label={c.name}
-                  />
-                ))}
-              </div>
-            </div>
+            {/* Clothing Variations: Color & Size (Rendered only for Dress/Clothing categories) */}
+            {hasClothingVariations && (
+              <div className="product-variations" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                {/* Color Swatch Selector (Screenshot #3) */}
+                <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1.25rem' }}>
+                  <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#000000', marginBottom: '0.625rem' }}>
+                    Color
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.625rem' }}>
+                    {colors.map((c) => (
+                      <button
+                        key={c.id}
+                        onClick={() => setSelectedColor(c.id)}
+                        style={{
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '50%',
+                          backgroundColor: c.hex,
+                          border: c.border ? '1px solid #d4d4d8' : 'none',
+                          outline: selectedColor === c.id ? '2px solid #000000' : 'none',
+                          outlineOffset: '2px',
+                          cursor: 'pointer',
+                          transition: 'outline 150ms ease',
+                        }}
+                        title={c.name}
+                        aria-label={c.name}
+                      />
+                    ))}
+                  </div>
+                </div>
 
-            {/* Size Selector Chips (Screenshot #3) */}
-            <div>
-              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#000000', marginBottom: '0.625rem' }}>
-                Size
+                {/* Size Selector Chips (Screenshot #3) */}
+                <div>
+                  <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#000000', marginBottom: '0.625rem' }}>
+                    Size
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {sizes.map((s) => {
+                      const isSelected = selectedSize === s;
+                      return (
+                        <button
+                          key={s}
+                          onClick={() => setSelectedSize(s)}
+                          style={{
+                            minWidth: '38px',
+                            height: '38px',
+                            padding: '0 0.625rem',
+                            borderRadius: '6px',
+                            fontSize: '0.875rem',
+                            fontWeight: isSelected ? 600 : 500,
+                            backgroundColor: isSelected ? '#000000' : '#ffffff',
+                            color: isSelected ? '#ffffff' : '#111111',
+                            border: isSelected ? '1px solid #000000' : '1px solid #e5e7eb',
+                            cursor: 'pointer',
+                            transition: 'all 150ms ease',
+                          }}
+                        >
+                          {s}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                {sizes.map((s) => {
-                  const isSelected = selectedSize === s;
-                  return (
-                    <button
-                      key={s}
-                      onClick={() => setSelectedSize(s)}
-                      style={{
-                        minWidth: '38px',
-                        height: '38px',
-                        padding: '0 0.625rem',
-                        borderRadius: '6px',
-                        fontSize: '0.875rem',
-                        fontWeight: isSelected ? 600 : 500,
-                        backgroundColor: isSelected ? '#000000' : '#ffffff',
-                        color: isSelected ? '#ffffff' : '#111111',
-                        border: isSelected ? '1px solid #000000' : '1px solid #e5e7eb',
-                        cursor: 'pointer',
-                        transition: 'all 150ms ease',
-                      }}
-                    >
-                      {s}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            )}
 
             {/* Quantity Selector + Add to Cart + Wishlist (Screenshot #3) */}
             <div
@@ -403,6 +427,8 @@ export const ProductDetailPage = () => {
                 gap: '0.75rem',
                 alignItems: 'center',
                 marginTop: '0.5rem',
+                borderTop: hasClothingVariations ? 'none' : '1px solid #e5e7eb',
+                paddingTop: hasClothingVariations ? 0 : '1.25rem',
                 flexWrap: 'wrap',
               }}
             >

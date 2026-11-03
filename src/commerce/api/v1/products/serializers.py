@@ -5,10 +5,11 @@ from products.validators import validate_image_file
 
 class CategorySerializer(serializers.ModelSerializer):
     product_count = serializers.IntegerField(read_only=True)
+    slug = serializers.CharField(read_only=True)
 
     class Meta:
         model = Category
-        fields = ["id", "name", "image", "product_count"]
+        fields = ["id", "name", "slug", "image", "product_count"]
 
     def validate_image(self, value):
         return validate_image_file(value)
@@ -41,6 +42,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
     category_name = serializers.CharField(source="category.name", read_only=True)
     brand_name = serializers.CharField(source="brand.name", read_only=True)
+    has_clothing_variations = serializers.BooleanField(read_only=True)
 
     category_id = serializers.PrimaryKeyRelatedField(
         queryset=Category.objects.all(),
@@ -71,6 +73,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "image",
             "images",
             "is_available",
+            "has_clothing_variations",
             "category",
             "brand",
             "category_name",

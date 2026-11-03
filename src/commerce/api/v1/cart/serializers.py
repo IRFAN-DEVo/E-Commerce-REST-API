@@ -11,6 +11,7 @@ class CartProductSerializer(serializers.ModelSerializer):
         default=None,
     )
     image = serializers.SerializerMethodField()
+    has_clothing_variations = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Product
@@ -23,6 +24,7 @@ class CartProductSerializer(serializers.ModelSerializer):
             "category_name",
             "stock",
             "is_available",
+            "has_clothing_variations",
         ]
 
     def get_image(self, obj):
@@ -47,10 +49,26 @@ class CartItemSerializer(serializers.ModelSerializer):
         decimal_places=2,
         read_only=True,
     )
+    # Optional clothing variation fields
+    color = serializers.CharField(required=False, write_only=True, allow_blank=True, allow_null=True)
+    size = serializers.CharField(required=False, write_only=True, allow_blank=True, allow_null=True)
+    selected_color = serializers.CharField(required=False, write_only=True, allow_blank=True, allow_null=True)
+    selected_size = serializers.CharField(required=False, write_only=True, allow_blank=True, allow_null=True)
+    variations = serializers.DictField(required=False, write_only=True, allow_null=True)
 
     class Meta:
         model = CartItem
-        fields = ["id", "product", "quantity", "sub_total"]
+        fields = [
+            "id",
+            "product",
+            "quantity",
+            "sub_total",
+            "color",
+            "size",
+            "selected_color",
+            "selected_size",
+            "variations",
+        ]
 
     def validate(self, attrs):
         if self.instance is None and "product" not in attrs:
@@ -68,7 +86,32 @@ class CartItemSerializer(serializers.ModelSerializer):
             if product.stock < quantity:
                 raise serializers.ValidationError({"quantity": f"Only {product.stock} item(s) available in stock."})
 
+            # Variation validation: verify product supports clothing variations
+            color = attrs.get("color") or attrs.get("selected_color")
+            size = attrs.get("size") or attrs.get("selected_size")
+            variations = attrs.get("variations") or {}
+            if not color and isinstance(variations, dict):
+                color = variations.get("color")
+            if not size and isinstance(variations, dict):
+                size = variations.get("size")
+
+            has_clothing_vars = getattr(product, "has_clothing_variations", False)
+            if (color or size or variations) and not has_clothing_vars:
+                raise serializers.ValidationError(
+                    {"variations": f"Product '{product.name}' does not support clothing variations (color/size)."}
+                )
+
         return attrs
+
+    def create(self, validated_data):
+        for k in ("color", "size", "selected_color", "selected_size", "variations"):
+            validated_data.pop(k, None)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        for k in ("color", "size", "selected_color", "selected_size", "variations"):
+            validated_data.pop(k, None)
+        return super().update(instance, validated_data)
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)

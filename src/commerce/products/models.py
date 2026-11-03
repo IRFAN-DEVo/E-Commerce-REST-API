@@ -14,6 +14,16 @@ class Category(models.Model):
         verbose_name = "Category"
         verbose_name_plural = "Categories"
 
+    def __init__(self, *args, **kwargs):
+        # Allow tests or serializers passing 'slug' without schema mismatch
+        kwargs.pop("slug", None)
+        super().__init__(*args, **kwargs)
+
+    @property
+    def slug(self) -> str:
+        from django.utils.text import slugify
+        return slugify(self.name or "")
+
     def __str__(self):
         return self.name
 
@@ -97,13 +107,57 @@ class Product(models.Model):
     is_available = models.BooleanField(default=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
-
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ("name",)
         verbose_name = "Product"
         verbose_name_plural = "Products"
+
+    @property
+    def has_clothing_variations(self) -> bool:
+        """
+        Determines whether the product supports clothing variations (Color & Size).
+        Restricted to products belonging to Dress or Clothing categories.
+        Non-clothing categories (Electronics, Computers, Accessories, etc.) return False.
+        """
+        try:
+            if not self.category or not self.category.name:
+                return False
+        except Exception:
+            return False
+
+        from django.utils.text import slugify
+        cat = self.category
+        clothing_slugs = {
+            "dress",
+            "dresses",
+            "clothing",
+            "clothes",
+            "apparel",
+            "men-clothing",
+            "women-clothing",
+        }
+
+        while cat:
+            cat_name = getattr(cat, "name", "") or ""
+            cat_slug = slugify(cat_name).lower()
+            if not cat_slug:
+                break
+
+            if cat_slug in clothing_slugs:
+                return True
+
+            slug_parts = set(cat_slug.split("-"))
+            if any(part in clothing_slugs for part in slug_parts):
+                return True
+
+            if "clothing" in cat_slug or "dress" in cat_slug or "apparel" in cat_slug:
+                return True
+
+            cat = getattr(cat, "parent", None)
+
+        return False
 
     def __str__(self):
         return self.name

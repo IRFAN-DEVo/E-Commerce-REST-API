@@ -230,4 +230,144 @@ describe('ProductDetailPage component', () => {
       expect(screen.getByText('Currently Out of Stock')).toBeInTheDocument();
     });
   });
+
+  it('displays Color and Size variation selectors for Dress / Clothing products', async () => {
+    productsApi.getProduct.mockResolvedValue({
+      id: 10,
+      name: "Women's Summer Dress",
+      price: '1999.00',
+      stock: 12,
+      is_available: true,
+      category: { name: 'Dress', slug: 'dress' },
+      category_name: 'Dress',
+      has_clothing_variations: true,
+      description: 'Elegant casual dress.',
+    });
+    reviewsApi.getProductReviews.mockResolvedValue([]);
+
+    render(
+      <MemoryRouter initialEntries={['/products/10']}>
+        <ToastProvider>
+          <AuthProvider>
+            <CartProvider>
+              <Routes>
+                <Route path="/products/:id" element={<ProductDetailPage />} />
+              </Routes>
+            </CartProvider>
+          </AuthProvider>
+        </ToastProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: "Women's Summer Dress" })).toBeInTheDocument();
+      expect(screen.getByText('Color')).toBeInTheDocument();
+      expect(screen.getByText('Size')).toBeInTheDocument();
+    });
+  });
+
+  it('hides Color and Size variation selectors for Monitor / Computers products', async () => {
+    productsApi.getProduct.mockResolvedValue({
+      id: 20,
+      name: 'Monitor 27-inch 4K',
+      price: '24999.00',
+      stock: 5,
+      is_available: true,
+      category: { name: 'Computers', slug: 'computers' },
+      category_name: 'Computers',
+      has_clothing_variations: false,
+      description: 'Ultra HD 4K monitor.',
+    });
+    reviewsApi.getProductReviews.mockResolvedValue([]);
+
+    render(
+      <MemoryRouter initialEntries={['/products/20']}>
+        <ToastProvider>
+          <AuthProvider>
+            <CartProvider>
+              <Routes>
+                <Route path="/products/:id" element={<ProductDetailPage />} />
+              </Routes>
+            </CartProvider>
+          </AuthProvider>
+        </ToastProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Monitor 27-inch 4K' })).toBeInTheDocument();
+      expect(screen.queryByText('Color')).not.toBeInTheDocument();
+      expect(screen.queryByText('Size')).not.toBeInTheDocument();
+    });
+  });
+
+  it('hides Color and Size variation selectors for Electronics and Accessories products', async () => {
+    productsApi.getProduct.mockResolvedValue({
+      id: 30,
+      name: 'Leather Belt',
+      price: '499.00',
+      stock: 20,
+      is_available: true,
+      category: { name: 'Accessories', slug: 'accessories' },
+      category_name: 'Accessories',
+      has_clothing_variations: false,
+      description: 'Classic genuine leather belt.',
+    });
+    reviewsApi.getProductReviews.mockResolvedValue([]);
+
+    render(
+      <MemoryRouter initialEntries={['/products/30']}>
+        <ToastProvider>
+          <AuthProvider>
+            <CartProvider>
+              <Routes>
+                <Route path="/products/:id" element={<ProductDetailPage />} />
+              </Routes>
+            </CartProvider>
+          </AuthProvider>
+        </ToastProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Leather Belt' })).toBeInTheDocument();
+      expect(screen.queryByText('Color')).not.toBeInTheDocument();
+      expect(screen.queryByText('Size')).not.toBeInTheDocument();
+    });
+  });
+
+  it('hides Color and Size variation selectors when product has no category', async () => {
+    productsApi.getProduct.mockResolvedValue({
+      id: 40,
+      name: 'Uncategorized Gadget',
+      price: '999.00',
+      stock: 10,
+      is_available: true,
+      category: null,
+      category_name: null,
+      has_clothing_variations: false,
+      description: 'Generic gadget.',
+    });
+    reviewsApi.getProductReviews.mockResolvedValue([]);
+
+    render(
+      <MemoryRouter initialEntries={['/products/40']}>
+        <ToastProvider>
+          <AuthProvider>
+            <CartProvider>
+              <Routes>
+                <Route path="/products/:id" element={<ProductDetailPage />} />
+              </Routes>
+            </CartProvider>
+          </AuthProvider>
+        </ToastProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Uncategorized Gadget' })).toBeInTheDocument();
+      expect(screen.queryByText('Color')).not.toBeInTheDocument();
+      expect(screen.queryByText('Size')).not.toBeInTheDocument();
+    });
+  });
 });
