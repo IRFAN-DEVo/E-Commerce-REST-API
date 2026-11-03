@@ -92,6 +92,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -142,11 +143,19 @@ if _database_url:
             "dj-database-url is required to parse DATABASE_URL."
         ) from err
 
+    _is_production = os.environ.get("DJANGO_ENV", "").lower() in ("production", "prod")
+    _ssl_require = (
+        os.environ.get("DB_SSL_REQUIRE", "").lower() in ("true", "1", "yes")
+        if "DB_SSL_REQUIRE" in os.environ
+        else _is_production
+    )
+
     DATABASES = {
         'default': dj_database_url.parse(
             _database_url,
             conn_max_age=600,
             conn_health_checks=True,
+            ssl_require=_ssl_require,
         )
     }
 
@@ -181,8 +190,18 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+_static_dir = os.path.join(BASE_DIR, 'static')
+STATICFILES_DIRS = [_static_dir] if os.path.exists(_static_dir) else []
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
